@@ -5,13 +5,26 @@ evaluation_output.csvの評価結果をグラフで表示します。
 """
 
 import argparse
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
+import platform
 import sys
 
+import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from utils.logging_config import (
+    log_error,
+    log_info,
+    log_section,
+    log_success,
+    log_warning,
+    setup_logging,
+)
+
+# Set up logging system
+setup_logging()
+
 # 日本語フォントの設定（macOS用）
-import platform
 
 if platform.system() == "Darwin":  # macOS
     # macOSの日本語フォントを試す
@@ -32,13 +45,13 @@ def load_data(csv_file: str) -> pd.DataFrame:
     """CSVファイルを読み込む"""
     try:
         df = pd.read_csv(csv_file)
-        print(f"✓ データを読み込みました: {len(df)}行")
+        log_success(f"データを読み込みました: {len(df)}行")
         return df
     except FileNotFoundError:
-        print(f"❌ エラー: ファイル '{csv_file}' が見つかりません", file=sys.stderr)
+        log_error(f"ファイル '{csv_file}' が見つかりません")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ エラー: ファイルの読み込みに失敗しました: {e}", file=sys.stderr)
+        log_error(f"ファイルの読み込みに失敗しました: {e}")
         sys.exit(1)
 
 
@@ -49,7 +62,7 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
         df_clean = df[df["Evaluation_Error"].isna()].copy()
         error_count = len(df) - len(df_clean)
         if error_count > 0:
-            print(f"⚠️  エラー行を除外: {error_count}行")
+            log_warning(f"エラー行を除外: {error_count}行")
     else:
         df_clean = df.copy()
 
@@ -138,7 +151,7 @@ def create_score_comparison_chart(
 
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"✓ スコア比較チャートを保存: {output_file}")
+    log_success(f"スコア比較チャートを保存: {output_file}")
     plt.close()
 
 
@@ -191,7 +204,7 @@ def create_score_distribution_chart(
     )
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"✓ スコア分布チャートを保存: {output_file}")
+    log_success(f"スコア分布チャートを保存: {output_file}")
     plt.close()
 
 
@@ -245,7 +258,7 @@ def create_boxplot_chart(df: pd.DataFrame, output_file: str = "evaluation_boxplo
 
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"✓ 箱ひげ図を保存: {output_file}")
+    log_success(f"箱ひげ図を保存: {output_file}")
     plt.close()
 
 
@@ -311,7 +324,7 @@ def create_summary_table(df: pd.DataFrame, output_file: str = "evaluation_summar
                     f"標準偏差={df[model_b_col].std():.2f}\n\n"
                 )
 
-    print(f"✓ サマリーテーブルを保存: {output_file}")
+    log_success(f"サマリーテーブルを保存: {output_file}")
 
 
 def main():
@@ -359,38 +372,33 @@ def main():
     args = parser.parse_args()
     csv_file = args.input_csv
 
-    print("=" * 70)
-    print("評価結果の可視化")
-    print("=" * 70)
-    print()
+    log_section("評価結果の可視化")
 
     # データを読み込む
     df = load_data(csv_file)
     df_clean = prepare_data(df)
 
     if len(df_clean) == 0:
-        print("❌ エラー: 有効な評価データがありません", file=sys.stderr)
+        log_error("有効な評価データがありません")
         sys.exit(1)
 
-    print(f"✓ 有効な評価データ: {len(df_clean)}行")
-    print()
+    log_success(f"有効な評価データ: {len(df_clean)}行")
+    log_info("")
 
     # グラフを作成
-    print("グラフを作成中...")
+    log_info("グラフを作成中...")
     create_score_comparison_chart(df_clean, "evaluation_comparison.png")
     create_score_distribution_chart(df_clean, "evaluation_distribution.png")
     create_boxplot_chart(df_clean, "evaluation_boxplot.png")
     create_summary_table(df_clean, "evaluation_summary.txt")
 
-    print()
-    print("=" * 70)
-    print("✓ 可視化完了!")
-    print("=" * 70)
-    print("生成されたファイル:")
-    print("  - evaluation_comparison.png: スコア比較チャート")
-    print("  - evaluation_distribution.png: スコア分布チャート")
-    print("  - evaluation_boxplot.png: 箱ひげ図")
-    print("  - evaluation_summary.txt: サマリーテーブル")
+    log_info("")
+    log_section("✓ 可視化完了!")
+    log_info("生成されたファイル:")
+    log_info("  - evaluation_comparison.png: スコア比較チャート", indent=1)
+    log_info("  - evaluation_distribution.png: スコア分布チャート", indent=1)
+    log_info("  - evaluation_boxplot.png: 箱ひげ図", indent=1)
+    log_info("  - evaluation_summary.txt: サマリーテーブル", indent=1)
 
 
 if __name__ == "__main__":

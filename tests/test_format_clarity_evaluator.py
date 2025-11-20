@@ -1,10 +1,9 @@
 """Unit tests for format_clarity_evaluator.py"""
 
 import json
-import pytest
 import sys
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -317,7 +316,6 @@ class TestCallJudgeModel:
 
     def test_call_judge_model_timeout_error(self):
         """Test handling timeout error"""
-        import time
         mock_client = Mock()
         mock_client.chat.completions.create.side_effect = TimeoutError("Request timeout")
 

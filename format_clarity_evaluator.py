@@ -34,12 +34,23 @@ from config.model_configs import (
     SUPPORTED_MODELS,
     get_simple_config as get_model_config_from_common,
 )
+from utils.logging_config import (
+    log_info,
+    log_error,
+    log_warning,
+    log_success,
+    log_section,
+    setup_logging,
+)
 
 # Format clarity evaluator uses gpt-4-turbo as default (different from common default)
 DEFAULT_MODEL = "gpt-4-turbo"
 
 # Load environment variables from .env file if it exists
 load_dotenv()
+
+# Set up logging system
+setup_logging()
 
 
 # Model configuration is now imported from config.model_configs
@@ -139,10 +150,7 @@ def parse_final_answer(raw_log: str) -> str:
                 return match.group(1).strip()
 
         # If still no match, return a warning message or the original log
-        print(
-            "⚠️  Warning: Could not parse final answer from log. Using full log.",
-            file=sys.stderr,
-        )
+        log_warning("Could not parse final answer from log. Using full log.")
         return raw_log
 
 
@@ -233,10 +241,7 @@ def call_judge_model(
             # Check if response was truncated
             finish_reason = response.choices[0].finish_reason
             if finish_reason == "length":
-                print(
-                    "\n⚠️  Warning: Response was truncated (hit max_completion_tokens limit)",
-                    file=sys.stderr,
-                )
+                log_warning("Response was truncated (hit max_completion_tokens limit)")
 
             # Extract the response content
             content = response.choices[0].message.content
@@ -262,7 +267,7 @@ def call_judge_model(
             error_msg = (
                 f"JSON parsing error on attempt {attempt + 1}/{max_retries}: {e}"
             )
-            print(f"\n{error_msg}", file=sys.stderr)
+            log_error(error_msg)
 
             # Debug: Print what we actually received
             content_for_debug: Optional[str] = None
@@ -277,17 +282,15 @@ def call_judge_model(
                     pass
 
             if content_for_debug:
-                print(
-                    f"Received content (first 500 chars): {content_for_debug[:500]}",
-                    file=sys.stderr,
+                log_info(
+                    f"Received content (first 500 chars): {content_for_debug[:500]}"
                 )
             else:
                 response_for_debug = "No response"
                 if response is not None:
                     response_for_debug = str(response)[:200]
-                print(
-                    f"Content was empty or None. Full response: {response_for_debug}",
-                    file=sys.stderr,
+                log_info(
+                    f"Content was empty or None. Full response: {response_for_debug}"
                 )
 
             if attempt == max_retries - 1:
@@ -296,7 +299,7 @@ def call_judge_model(
 
         except Exception as e:
             error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {e}"
-            print(f"\n{error_msg}", file=sys.stderr)
+            log_error(error_msg)
             if attempt == max_retries - 1:
                 return None
             time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
@@ -352,10 +355,10 @@ def process_csv(
         # Initialize Azure OpenAI client
         if azure_endpoint is None:
             raise ValueError("azure_endpoint is required for Azure OpenAI")
-        print("Using Azure OpenAI")
-        print(f"Endpoint: {azure_endpoint}")
-        print(f"Model/Deployment: {model_name}")
-        print(f"API Version: {azure_api_version}")
+        log_info("Using Azure OpenAI")
+        log_info(f"Endpoint: {azure_endpoint}")
+        log_info(f"Model/Deployment: {model_name}")
+        log_info(f"API Version: {azure_api_version}")
         client = AzureOpenAI(
             azure_endpoint=azure_endpoint,
             api_key=azure_api_key,
@@ -365,29 +368,22 @@ def process_csv(
         # Initialize standard OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            print(
-                "ERROR: Neither Azure OpenAI nor standard OpenAI credentials found.",
-                file=sys.stderr,
+            log_error("Neither Azure OpenAI nor standard OpenAI credentials found.")
+            log_error("\nFor Azure OpenAI, set:")
+            log_error(
+                "  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'"
             )
-            print("\nFor Azure OpenAI, set:", file=sys.stderr)
-            print(
-                "  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'",
-                file=sys.stderr,
-            )
-            print("  export AZURE_OPENAI_API_KEY='your-api-key'", file=sys.stderr)
-            print(
-                "  export MODEL_NAME='gpt-5'  # or your deployment name",
-                file=sys.stderr,
-            )
-            print("\nFor standard OpenAI, set:", file=sys.stderr)
-            print("  export OPENAI_API_KEY='your-api-key-here'", file=sys.stderr)
+            log_error("  export AZURE_OPENAI_API_KEY='your-api-key'")
+            log_error("  export MODEL_NAME='gpt-5'  # or your deployment name")
+            log_error("\nFor standard OpenAI, set:")
+            log_error("  export OPENAI_API_KEY='your-api-key-here'")
             sys.exit(1)
-        print("Using standard OpenAI")
-        print(f"Model: {model_name}")
+        log_info("Using standard OpenAI")
+        log_info(f"Model: {model_name}")
         client = OpenAI(api_key=api_key)
 
     # Read input CSV
-    print(f"Reading input file: {input_file}")
+    log_info(f"Reading input file: {input_file}")
     try:
         # Check if CSV has header row
         with open(input_file, "r", encoding="utf-8") as f:
@@ -398,7 +394,7 @@ def process_csv(
             keyword in first_line
             for keyword in ["question", "model", "answer", "response", "claude"]
         ):
-            print("⚠️  Detected header row in input CSV. Skipping first row.")
+            log_warning("Detected header row in input CSV. Skipping first row.")
             df = pd.read_csv(input_file)
             # Normalize column names to standard format
             # Support both Model_A_Response/Model_B_Response and Claude_35_Raw_Log/Claude_45_Raw_Log
@@ -433,7 +429,7 @@ def process_csv(
                         "Model_B_Response",
                     ] + list(df.columns[3:])
         else:
-            print("⚠️  No header row detected. Treating first row as data.")
+            log_warning("No header row detected. Treating first row as data.")
             df = pd.read_csv(
                 input_file,
                 header=None,
@@ -443,29 +439,29 @@ def process_csv(
         # Validate columns
         expected_columns = ["Question", "Model_A_Response", "Model_B_Response"]
         if not all(col in df.columns for col in expected_columns):
-            print(f"ERROR: CSV must have columns: {expected_columns}", file=sys.stderr)
-            print(f"Found columns: {list(df.columns)}", file=sys.stderr)
+            log_error(f"CSV must have columns: {expected_columns}")
+            log_error(f"Found columns: {list(df.columns)}")
             sys.exit(1)
     except FileNotFoundError:
-        print(f"ERROR: Input file '{input_file}' not found.", file=sys.stderr)
+        log_error(f"Input file '{input_file}' not found.")
         sys.exit(1)
     except Exception as e:
-        print(f"ERROR: Failed to read input file: {e}", file=sys.stderr)
+        log_error(f"Failed to read input file: {e}")
         sys.exit(1)
 
-    print(f"Loaded {len(df)} rows from input file.")
+    log_info(f"Loaded {len(df)} rows from input file.")
 
     # Apply row limit if specified (for cost control during testing)
     if limit_rows is not None and limit_rows < len(df):
         df = df.head(limit_rows)
-        print(
-            f"⚠️  LIMITING to first {limit_rows} rows for testing (use -n flag to change)"
+        log_warning(
+            f"LIMITING to first {limit_rows} rows for testing (use -n flag to change)"
         )
-        print(f"⚠️  This will make {limit_rows} API calls")
+        log_warning(f"This will make {limit_rows} API calls")
     else:
-        print(f"⚠️  WARNING: This will make {len(df)} API calls to {model_name}")
-        print(
-            f"⚠️  Estimated cost: ${len(df) * 0.05:.2f} - ${len(df) * 0.20:.2f} (rough estimate)"
+        log_warning(f"WARNING: This will make {len(df)} API calls to {model_name}")
+        log_warning(
+            f"Estimated cost: ${len(df) * 0.05:.2f} - ${len(df) * 0.20:.2f} (rough estimate)"
         )
 
         # Prompt for confirmation if processing many rows
@@ -477,12 +473,12 @@ def process_csv(
                     .lower()
                 )
                 if response != "y" and response != "yes":
-                    print(
+                    log_info(
                         "Cancelled. Use -n flag to test with fewer rows: python format_clarity_evaluator.py input.csv -n 5"
                     )
                     sys.exit(0)
             except (KeyboardInterrupt, EOFError):
-                print("\nCancelled.")
+                log_info("\nCancelled.")
                 sys.exit(0)
 
     # Prepare output columns
@@ -498,7 +494,7 @@ def process_csv(
     results = []
 
     # Process each row with progress bar
-    print("\nParsing logs and evaluating format similarity...")
+    log_info("\nParsing logs and evaluating format similarity...")
     for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
         # Convert pandas Series to str if needed
         question_val = row["Question"]
@@ -574,14 +570,14 @@ def process_csv(
         output_df = pd.DataFrame({col: [] for col in output_columns})
         output_df.to_csv(output_file, index=False)
 
-    print("\n✓ Evaluation complete!")
-    print(f"✓ Results written to: {output_file}")
-    print(f"✓ Processed {len(results)} rows")
+    log_success("Evaluation complete!")
+    log_success(f"Results written to: {output_file}")
+    log_success(f"Processed {len(results)} rows")
 
     # Print summary statistics
     errors = output_df[output_df["Evaluation_Error"] != ""].shape[0]
     if errors > 0:
-        print(f"⚠️  Warning: {errors} rows had evaluation errors")
+        log_warning(f"Warning: {errors} rows had evaluation errors")
 
     # Calculate average score (excluding None/empty values)
     if len(output_df) > 0 and "Format_Clarity_Score" in output_df.columns:
@@ -592,11 +588,11 @@ def process_csv(
                 valid_scores = score_series.dropna()
                 if len(valid_scores) > 0:
                     avg_score = float(valid_scores.mean())
-                    print(f"\n📊 Average Format Clarity Score: {avg_score:.2f}/5.0")
-                    print("📊 Score Distribution:")
+                    log_info(f"\n📊 Average Format Clarity Score: {avg_score:.2f}/5.0")
+                    log_info("📊 Score Distribution:")
                     value_counts = score_series.value_counts()
                     if isinstance(value_counts, pd.Series):
-                        print(value_counts.sort_index())
+                        log_info(str(value_counts.sort_index()))
 
 
 def main():
@@ -695,15 +691,13 @@ How It Works:
                 args.model = supported_model
                 break
 
-    print("=" * 70)
-    print("Format Clarity Evaluator - LLM-as-a-Judge")
-    print("Comparing Claude 4.5 Sonnet formatting against Claude 3.5 Sonnet")
-    print("=" * 70)
+    log_section("Format Clarity Evaluator - LLM-as-a-Judge")
+    log_info("Comparing Claude 4.5 Sonnet formatting against Claude 3.5 Sonnet")
 
     # Determine model name
     model_name = args.model or os.getenv("MODEL_NAME", DEFAULT_MODEL)
     if model_name:
-        print(f"Using model: {model_name}")
+        log_info(f"Using model: {model_name}")
 
     process_csv(
         args.input_csv, args.output, limit_rows=args.limit, model_name=model_name
