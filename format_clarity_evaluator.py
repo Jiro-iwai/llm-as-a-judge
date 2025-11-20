@@ -307,8 +307,16 @@ def call_judge_model(
                 return None
             time.sleep(retry_delay)
 
+        except (TimeoutError, ValueError) as e:
+            # タイムアウトや値エラーは再試行しない
+            error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {type(e).__name__}: {e}"
+            log_error(error_msg)
+            if attempt == max_retries - 1:
+                return None
+            time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
         except Exception as e:
-            error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {e}"
+            # その他のAPIエラー（接続エラー、認証エラーなど）は再試行
+            error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {type(e).__name__}: {e}"
             log_error(error_msg)
             if attempt == max_retries - 1:
                 return None
@@ -455,8 +463,18 @@ def process_csv(
     except FileNotFoundError:
         log_error(f"Input file '{input_file}' not found.")
         sys.exit(1)
-    except Exception as e:
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError) as e:
         log_error(f"Failed to read input file: {e}")
+        log_error(
+            "Please check that the file format is correct and the encoding is valid."
+        )
+        sys.exit(1)
+    except PermissionError as e:
+        log_error(f"Permission denied accessing file: {e}")
+        sys.exit(1)
+    except Exception as e:
+        # 予期しないエラーの場合は詳細な情報を記録
+        log_error(f"Unexpected error occurred: {type(e).__name__}: {e}")
         sys.exit(1)
 
     log_info(f"Loaded {len(df)} rows from input file.")

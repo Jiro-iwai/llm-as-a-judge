@@ -83,14 +83,29 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
                     # Merge file config into default config
                     if isinstance(file_config, dict):
                         config.update(file_config)
-            except Exception as e:
-                # If file loading fails, use defaults
+            except (OSError, PermissionError) as e:
+                # ファイル読み込みエラー、権限エラーを具体的に処理
                 import sys
 
                 print(
-                    f"Warning: Failed to load config file '{config_file_path}': {e}",
+                    f"Warning: Failed to load config file '{config_file_path}': {type(e).__name__}: {e}",
                     file=sys.stderr,
                 )
+            except Exception as e:
+                # YAML解析エラーやその他の予期しないエラー
+                import sys
+
+                # yamlが利用可能な場合はYAMLErrorをチェック
+                if yaml is not None and isinstance(e, yaml.YAMLError):
+                    print(
+                        f"Warning: YAML parsing error in config file '{config_file_path}': {e}",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"Warning: Unexpected error loading config file '{config_file_path}': {type(e).__name__}: {e}",
+                        file=sys.stderr,
+                    )
 
     # Override with environment variables
     if "APP_TIMEOUT" in os.environ:

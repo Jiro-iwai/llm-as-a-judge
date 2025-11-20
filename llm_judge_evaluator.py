@@ -345,7 +345,18 @@ def call_judge_model(
                 if attempt == 0:
                     print("", file=sys.stderr)  # New line after progress
                     log_info(f"✓ API呼び出し成功（{elapsed_time:.1f}秒）", indent=1)
+            except TimeoutError:
+                progress_stop.set()
+                elapsed_time = time_module.time() - start_time
+                print("", file=sys.stderr)  # New line after progress
+                if timeout is not None:
+                    raise TimeoutError(
+                        f"API呼び出しがタイムアウトしました（{timeout}秒経過）"
+                    )
+                raise
             except Exception as api_error:
+                # OpenAI APIのエラーは様々な例外タイプを投げる可能性があるため、
+                # ここでは一般的なExceptionをキャッチして再スロー
                 progress_stop.set()
                 elapsed_time = time_module.time() - start_time
                 print("", file=sys.stderr)  # New line after progress
@@ -502,8 +513,10 @@ def call_judge_model(
                 )
                 return None  # Don't retry - input+output exceeds limit
             else:
+                # その他のAPIエラー（接続エラー、認証エラーなど）は再試行
                 log_error(
-                    f"APIエラー (試行 {attempt + 1}/{max_retries}): {e}", indent=1
+                    f"APIエラー (試行 {attempt + 1}/{max_retries}): {type(e).__name__}: {e}",
+                    indent=1,
                 )
                 if attempt == max_retries - 1:
                     return None
@@ -656,8 +669,18 @@ def process_csv(
     except FileNotFoundError:
         log_error(f"入力ファイル '{input_file}' が見つかりません。", indent=0)
         sys.exit(1)
-    except Exception as e:
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError) as e:
         log_error(f"入力ファイルの読み込みに失敗しました: {e}", indent=0)
+        log_error(
+            "ファイル形式が正しいか、文字エンコーディングを確認してください。", indent=0
+        )
+        sys.exit(1)
+    except PermissionError as e:
+        log_error(f"ファイルへのアクセス権限がありません: {e}", indent=0)
+        sys.exit(1)
+    except Exception as e:
+        # 予期しないエラーの場合は詳細な情報を記録
+        log_error(f"予期しないエラーが発生しました: {type(e).__name__}: {e}", indent=0)
         sys.exit(1)
 
     log_success(f"{len(df)}行を読み込みました")
