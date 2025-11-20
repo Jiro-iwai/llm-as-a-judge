@@ -12,11 +12,10 @@ Usage:
 Requirements:
     - For Azure OpenAI: Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and MODEL_NAME
     - For Standard OpenAI: Set OPENAI_API_KEY (and optionally MODEL_NAME)
-    - Input CSV must have 3 columns (no header): Question, Model A Response, Model B Response
+    - Input CSV must have 3 columns (header row optional): Question, Model_A_Response, Model_B_Response
 """
 
 import argparse
-import csv
 import json
 import os
 import sys
@@ -30,6 +29,124 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
 load_dotenv()
+
+
+# Logging helper functions
+def log_info(message: str, indent: int = 0) -> None:
+    """Print info message with optional indentation."""
+    prefix = "  " * indent
+    print(f"{prefix}{message}", file=sys.stderr)
+
+
+def log_section(title: str) -> None:
+    """Print section header."""
+    print(f"\n{'=' * 70}", file=sys.stderr)
+    print(f"{title}", file=sys.stderr)
+    print(f"{'=' * 70}", file=sys.stderr)
+
+
+def log_warning(message: str, indent: int = 0) -> None:
+    """Print warning message."""
+    prefix = "  " * indent
+    print(f"{prefix}⚠️  {message}", file=sys.stderr)
+
+
+def log_error(message: str, indent: int = 0) -> None:
+    """Print error message."""
+    prefix = "  " * indent
+    print(f"{prefix}❌ {message}", file=sys.stderr)
+
+
+def log_success(message: str, indent: int = 0) -> None:
+    """Print success message."""
+    prefix = "  " * indent
+    print(f"{prefix}✓ {message}", file=sys.stderr)
+
+
+# Model configuration
+MODEL_CONFIGS = {
+    "gpt-5": {
+        "max_total_tokens": 128000,  # 128K
+        "min_output_tokens": 800,
+        "max_output_tokens": 4000,
+        "safety_margin": 2000,
+        "temperature": 1.0,
+        "use_max_completion_tokens": True,  # GPT-5 uses max_completion_tokens
+        "timeout": 120,
+    },
+    "gpt-4.1": {
+        "max_total_tokens": 128000,  # 128K
+        "min_output_tokens": 800,
+        "max_output_tokens": 4000,
+        "safety_margin": 2000,
+        "temperature": 0.7,
+        "use_max_completion_tokens": False,  # GPT-4.1 uses max_tokens
+        "timeout": 120,
+    },
+    "gpt-4-turbo": {
+        "max_total_tokens": 128000,  # 128K
+        "min_output_tokens": 800,
+        "max_output_tokens": 4000,
+        "safety_margin": 2000,
+        "temperature": 0.7,
+        "use_max_completion_tokens": False,
+        "timeout": 120,
+    },
+}
+
+# Default model
+DEFAULT_MODEL = "gpt-4.1"
+
+# Supported models
+SUPPORTED_MODELS = list(MODEL_CONFIGS.keys())
+
+
+def get_model_config(model_name: str) -> Dict[str, Any]:
+    """
+    Get configuration for a specific model.
+
+    Args:
+        model_name: Model name (e.g., "gpt-5", "gpt-4.1")
+
+    Returns:
+        Model configuration dictionary
+
+    Raises:
+        ValueError: If model is not supported
+    """
+    # Normalize model name (case-insensitive, handle variations)
+    model_name_lower = model_name.lower().strip()
+
+    # Try exact match first
+    if model_name_lower in MODEL_CONFIGS:
+        return MODEL_CONFIGS[model_name_lower]
+
+    # Try partial match (e.g., "gpt5" -> "gpt-5")
+    for key in MODEL_CONFIGS.keys():
+        if key.replace("-", "").lower() == model_name_lower.replace("-", ""):
+            return MODEL_CONFIGS[key]
+
+    # If not found, return default config with warning
+    log_warning(
+        f"モデル '{model_name}' の設定が見つかりません。デフォルト設定 ({DEFAULT_MODEL}) を使用します。",
+        indent=0,
+    )
+    log_info(f"サポートされているモデル: {', '.join(SUPPORTED_MODELS)}", indent=1)
+    return MODEL_CONFIGS[DEFAULT_MODEL]
+
+
+def is_gpt5(model_name: str) -> bool:
+    """
+    Check if the model is GPT-5.
+
+    Args:
+        model_name: Model name
+
+    Returns:
+        True if model is GPT-5, False otherwise
+    """
+    model_name_lower = model_name.lower().strip()
+    return model_name_lower == "gpt-5" or model_name_lower.replace("-", "") == "gpt5"
 
 
 # Judge system prompt and rubric (embedded as per requirements)
@@ -100,15 +217,17 @@ Required JSON Output Format:
 }"""
 
 
-def create_user_prompt(question: str, model_a_response: str, model_b_response: str) -> str:
+def create_user_prompt(
+    question: str, model_a_response: str, model_b_response: str
+) -> str:
     """
     Create the user prompt that will be sent to the judge model.
-    
+
     Args:
         question: The original user question
         model_a_response: Response from Model A
         model_b_response: Response from Model B
-    
+
     Returns:
         Formatted prompt string
     """
@@ -131,14 +250,15 @@ def call_judge_model(
     question: str,
     model_a_response: str,
     model_b_response: str,
-    model_name: str = "gpt-5",
+    model_name: str = DEFAULT_MODEL,
     is_azure: bool = False,
     max_retries: int = 3,
-    retry_delay: int = 2
+    retry_delay: int = 2,
+    timeout: Optional[int] = None,  # If None, will use model config default
 ) -> Optional[Dict[str, Any]]:
     """
     Call the OpenAI API to evaluate the two model responses.
-    
+
     Args:
         client: OpenAI or AzureOpenAI client instance
         question: The original user question
@@ -148,12 +268,20 @@ def call_judge_model(
         is_azure: Whether using Azure OpenAI (affects parameter naming)
         max_retries: Maximum number of retry attempts on failure
         retry_delay: Delay in seconds between retries
-    
+
     Returns:
         Parsed JSON response from the judge model, or None if all retries fail
     """
     user_prompt = create_user_prompt(question, model_a_response, model_b_response)
-    
+
+    # Get model configuration
+    model_config = get_model_config(model_name)
+
+    # Use timeout from parameter or model config
+    if timeout is None:
+        timeout = model_config["timeout"]
+
+    response: Any = None
     for attempt in range(max_retries):
         try:
             # Prepare API call parameters
@@ -161,114 +289,330 @@ def call_judge_model(
                 "model": model_name,
                 "messages": [
                     {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "user", "content": user_prompt},
                 ],
                 "response_format": {"type": "json_object"},
             }
-            
-            # GPT-5 の場合は max_completion_tokens を使用、その他は max_tokens を使用
-            if is_azure and model_name == "gpt-5":
-                api_params["max_completion_tokens"] = 800
-                api_params["temperature"] = 1  # GPT-5 defaults to temperature 1
+
+            # 入力トークン数に応じて動的に出力トークン数を調整
+            user_prompt_len = len(user_prompt)
+            system_prompt_len = len(JUDGE_SYSTEM_PROMPT)
+            estimated_input_tokens = (user_prompt_len + system_prompt_len) / 4
+
+            # モデル設定から値を取得
+            max_total_tokens = model_config["max_total_tokens"]
+            min_output_tokens = model_config["min_output_tokens"]
+            max_output_tokens_limit = model_config["max_output_tokens"]
+            safety_margin = model_config["safety_margin"]
+            temperature = model_config["temperature"]
+            use_max_completion_tokens = model_config["use_max_completion_tokens"]
+
+            # 入力が長すぎる場合は事前にエラーを出す
+            max_input_tokens = max_total_tokens - min_output_tokens - safety_margin
+            if estimated_input_tokens > max_input_tokens:
+                error_msg = (
+                    f"入力トークン数が長すぎます（約{estimated_input_tokens:.0f}トークン）。"
+                    f"最大{max_input_tokens:.0f}トークンまで対応可能です。"
+                    f"入力データを短縮するか、分割してください。"
+                )
+                raise ValueError(error_msg)
+
+            # 入力トークン数に応じて出力トークン数を動的に調整
+            # 合計がmax_total_tokensを超えないようにする（安全マージンを含む）
+            calculated_max_output_tokens = max(
+                min_output_tokens,
+                min(
+                    max_output_tokens_limit,
+                    int(max_total_tokens - estimated_input_tokens - safety_margin),
+                ),
+            )
+
+            # モデルに応じて適切なパラメータを設定
+            if use_max_completion_tokens:
+                api_params["max_completion_tokens"] = calculated_max_output_tokens
             else:
-                api_params["max_tokens"] = 800
-                api_params["temperature"] = 0.7  # GPT-4.1 では temperature も設定可能
-            
-            response = client.chat.completions.create(**api_params)
-            
-            # Check if response was truncated
-            finish_reason = response.choices[0].finish_reason
-            if finish_reason == "length":
-                print(f"\n⚠️  Warning: Response was truncated (hit max_completion_tokens limit)", file=sys.stderr)
-            
-            # Extract the response content
+                api_params["max_tokens"] = calculated_max_output_tokens
+
+            api_params["temperature"] = temperature
+
+            # Log token information only on first attempt
+            if attempt == 0:
+                log_info("📊 トークン情報:", indent=1)
+                log_info(f"  モデル: {model_name}", indent=2)
+                log_info(
+                    f"  入力トークン（推定）: 約{estimated_input_tokens:.0f}トークン",
+                    indent=2,
+                )
+                log_info(f"  - User prompt: {user_prompt_len:,}文字", indent=3)
+                log_info(f"  - System prompt: {system_prompt_len:,}文字", indent=3)
+                log_info(
+                    f"  出力トークン（最大）: {calculated_max_output_tokens}トークン",
+                    indent=2,
+                )
+                log_info(
+                    f"  合計トークン（最大）: 約{estimated_input_tokens + calculated_max_output_tokens:.0f}トークン（制限: {max_total_tokens:,}トークン）",
+                    indent=2,
+                )
+                log_info(f"⏱️  タイムアウト: {timeout}秒", indent=1)
+
+            # Add timeout to API call with progress indication
+            import time as time_module
+            import threading
+
+            start_time = time_module.time()
+
+            # Progress indicator
+            progress_stop = threading.Event()
+
+            def show_progress():
+                while not progress_stop.is_set():
+                    elapsed = time_module.time() - start_time
+                    if timeout is not None and elapsed < timeout:
+                        print(
+                            f"  ⏳ API処理中... {elapsed:.0f}秒経過",
+                            file=sys.stderr,
+                            end="\r",
+                        )
+                        time_module.sleep(5)  # Update every 5 seconds
+                    else:
+                        break
+
+            progress_thread = threading.Thread(target=show_progress, daemon=True)
+            progress_thread.start()
+
+            try:
+                response = client.chat.completions.create(**api_params, timeout=timeout)
+                progress_stop.set()
+                elapsed_time = time_module.time() - start_time
+                if attempt == 0:
+                    print("", file=sys.stderr)  # New line after progress
+                    log_info(f"✓ API呼び出し成功（{elapsed_time:.1f}秒）", indent=1)
+            except Exception as api_error:
+                progress_stop.set()
+                elapsed_time = time_module.time() - start_time
+                print("", file=sys.stderr)  # New line after progress
+                if timeout is not None and elapsed_time >= timeout:
+                    raise TimeoutError(
+                        f"API呼び出しがタイムアウトしました（{timeout}秒経過）"
+                    )
+                else:
+                    raise api_error
+
+            # Extract the response content (response is guaranteed to be set here)
+            if response is None:
+                raise ValueError("Response is None after API call")
             content = response.choices[0].message.content
-            
+            finish_reason = response.choices[0].finish_reason
+
+            # Log response details only on first attempt
+            if attempt == 0:
+                content_length = len(content) if content else 0
+                log_info(
+                    f"📥 レスポンス受信: {content_length:,}文字, finish_reason={finish_reason}",
+                    indent=1,
+                )
+
+            # Check if response was truncated
+            if finish_reason == "length":
+                content_length = len(content) if content else 0
+
+                # If content is empty or very short, this indicates input+output exceeds API limit
+                # This should have been caught by the pre-check, but if it happens, don't retry
+                if content_length == 0:
+                    log_error(
+                        "レスポンスが空です（max_tokens制限に達しました）", indent=1
+                    )
+                    log_warning(
+                        "入力+出力の合計がAPIの制限を超えています。リトライしても同じ結果になります。処理をスキップします。",
+                        indent=2,
+                    )
+                    return None  # Don't retry - input+output exceeds limit
+                elif content_length < 100:
+                    # Very short response - likely incomplete, but may be retryable with lower output tokens
+                    log_warning(
+                        f"レスポンスが非常に短いです（{content_length}文字）。max_tokens制限に達した可能性があります。",
+                        indent=1,
+                    )
+                    log_warning(
+                        "リトライしても同じ結果になる可能性があります。", indent=2
+                    )
+                    # Continue to retry logic - may succeed with lower output tokens
+                else:
+                    # Response was truncated but has content - this is acceptable, just warn
+                    log_warning(
+                        f"レスポンスが途中で切れました（{content_length:,}文字）。max_tokens制限に達しましたが、処理を続行します。",
+                        indent=1,
+                    )
+                    # Continue processing - truncated response may still be usable
+
             # Debug: Check if content is empty or None
             if not content:
-                raise ValueError(f"Empty response from API. Finish reason: {finish_reason}")
-            
+                raise ValueError(
+                    f"Empty response from API. Finish reason: {finish_reason}"
+                )
+
             # Parse and validate JSON
             evaluation = json.loads(content)
-            
+
             # Basic validation of the response structure
-            if "model_a_evaluation" not in evaluation or "model_b_evaluation" not in evaluation:
+            if (
+                "model_a_evaluation" not in evaluation
+                or "model_b_evaluation" not in evaluation
+            ):
                 raise ValueError("Response missing required evaluation keys")
-            
+
             return evaluation
-            
+
         except json.JSONDecodeError as e:
-            error_msg = f"JSON parsing error on attempt {attempt + 1}/{max_retries}: {e}"
-            print(f"\n{error_msg}", file=sys.stderr)
-            
+            log_error(
+                f"JSON解析エラー (試行 {attempt + 1}/{max_retries}): {e}", indent=1
+            )
+
             # Debug: Print what we actually received
-            if 'content' in locals() and content:
-                print(f"Received content (first 500 chars): {content[:500]}", file=sys.stderr)
+            content_for_debug: Optional[str] = None
+            if response is not None:
+                try:
+                    content_for_debug = (
+                        response.choices[0].message.content
+                        if response.choices
+                        else None
+                    )
+                except (AttributeError, IndexError):
+                    pass
+
+            if content_for_debug:
+                log_info(
+                    f"受信したコンテンツ（最初の500文字）: {content_for_debug[:500]}",
+                    indent=2,
+                )
             else:
-                print(f"Content was empty or None. Full response: {response if 'response' in locals() else 'No response'}", file=sys.stderr)
-            
+                log_info("受信したコンテンツが空または取得できませんでした", indent=2)
+
             if attempt == max_retries - 1:
                 return None
             time.sleep(retry_delay)
-            
-        except Exception as e:
-            error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {e}"
-            print(f"\n{error_msg}", file=sys.stderr)
+
+        except ValueError as e:
+            error_msg = str(e)
+            # 入力が長すぎる場合は事前に検出済み - リトライ不要
+            if "入力トークン数が長すぎます" in error_msg:
+                log_error(error_msg, indent=1)
+                return None  # Don't retry - input is too long
+            # Empty response due to input being too long - retrying won't help
+            elif (
+                "Empty or too short response" in error_msg
+                and "Content length: 0" in error_msg
+            ):
+                log_error(error_msg, indent=1)
+                log_warning(
+                    "入力が長すぎるため、リトライしても同じ結果になります。処理をスキップします。",
+                    indent=2,
+                )
+                return None  # Don't retry - it won't help
+            else:
+                # Other ValueError - may be retryable
+                log_error(
+                    f"ValueError (試行 {attempt + 1}/{max_retries}): {e}", indent=1
+                )
+                if attempt == max_retries - 1:
+                    return None
+                time.sleep(retry_delay)
+
+        except TimeoutError as e:
+            log_error(
+                f"タイムアウトエラー (試行 {attempt + 1}/{max_retries}): {e}", indent=1
+            )
             if attempt == max_retries - 1:
                 return None
-            time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-    
+            time.sleep(retry_delay)
+
+        except Exception as e:
+            error_msg = str(e)
+            # APIがmax_tokensのエラーを返した場合（入力+出力の合計が制限を超えている）
+            if (
+                "max_tokens" in error_msg
+                or "max_completion_tokens" in error_msg
+                or "output limit" in error_msg.lower()
+            ):
+                log_error(
+                    f"APIエラー (試行 {attempt + 1}/{max_retries}): {error_msg}",
+                    indent=1,
+                )
+                log_warning(
+                    "入力+出力の合計がAPIの制限を超えています。リトライしても同じ結果になります。処理をスキップします。",
+                    indent=2,
+                )
+                return None  # Don't retry - input+output exceeds limit
+            else:
+                log_error(
+                    f"APIエラー (試行 {attempt + 1}/{max_retries}): {e}", indent=1
+                )
+                if attempt == max_retries - 1:
+                    return None
+                time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+
     return None
 
 
-def extract_scores_from_evaluation(evaluation: Dict[str, Any], model_key: str) -> Dict[str, Any]:
+def extract_scores_from_evaluation(
+    evaluation: Dict[str, Any], model_key: str
+) -> Dict[str, Any]:
     """
     Extract scores and justifications from the evaluation JSON for a specific model.
-    
+
     Args:
         evaluation: The full evaluation JSON object
         model_key: Either "model_a_evaluation" or "model_b_evaluation"
-    
+
     Returns:
         Dictionary containing all scores and justifications with standardized keys
     """
     model_eval = evaluation.get(model_key, {})
-    
+
     result = {}
-    
+
     # Extract citation score
     citation = model_eval.get("citation_score", {})
     result["citation_score"] = citation.get("score", None)
     result["citation_justification"] = citation.get("justification", "")
-    
+
     # Extract relevance score
     relevance = model_eval.get("relevance_score", {})
     result["relevance_score"] = relevance.get("score", None)
     result["relevance_justification"] = relevance.get("justification", "")
-    
+
     # Extract react performance thought score
     react = model_eval.get("react_performance_thought_score", {})
     result["react_performance_thought_score"] = react.get("score", None)
     result["react_performance_thought_justification"] = react.get("justification", "")
-    
+
     # Extract RAG retrieval observation score
     rag_retrieval = model_eval.get("rag_retrieval_observation_score", {})
     result["rag_retrieval_observation_score"] = rag_retrieval.get("score", None)
-    result["rag_retrieval_observation_justification"] = rag_retrieval.get("justification", "")
-    
+    result["rag_retrieval_observation_justification"] = rag_retrieval.get(
+        "justification", ""
+    )
+
     # Extract information integration score
     info_integration = model_eval.get("information_integration_score", {})
     result["information_integration_score"] = info_integration.get("score", None)
-    result["information_integration_justification"] = info_integration.get("justification", "")
-    
+    result["information_integration_justification"] = info_integration.get(
+        "justification", ""
+    )
+
     return result
 
 
-def process_csv(input_file: str, output_file: str = "evaluation_output.csv", limit_rows: Optional[int] = None) -> None:
+def process_csv(
+    input_file: str,
+    output_file: str = "evaluation_output.csv",
+    limit_rows: Optional[int] = None,
+    model_name: Optional[str] = None,
+) -> None:
     """
     Main processing function that reads the input CSV, evaluates each row,
     and writes the results to the output CSV.
-    
+
     Args:
         input_file: Path to the input CSV file
         output_file: Path to the output CSV file (default: evaluation_output.csv)
@@ -278,176 +622,299 @@ def process_csv(input_file: str, output_file: str = "evaluation_output.csv", lim
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-    model_name = os.getenv("MODEL_NAME", "gpt-5")  # Default to gpt-4-turbo, use "gpt-5" for Azure GPT-5
-    
+    # Model name can be set via command line argument, environment variable, or default
+    if model_name is None:
+        model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
+
+    # Validate model name
+    if model_name not in SUPPORTED_MODELS:
+        # Try to get config (will warn if not found)
+        get_model_config(model_name)
+
     is_azure = bool(azure_endpoint and azure_api_key)
-    
+
     if is_azure:
         # Initialize Azure OpenAI client
-        print("Using Azure OpenAI")
-        print(f"Endpoint: {azure_endpoint}")
-        print(f"Model/Deployment: {model_name}")
-        print(f"API Version: {azure_api_version}")
+        if azure_endpoint is None:
+            raise ValueError("azure_endpoint is required for Azure OpenAI")
+        log_section("Azure OpenAI 設定")
+        log_info(f"Endpoint: {azure_endpoint}")
+        log_info(f"Model/Deployment: {model_name}")
+        log_info(f"API Version: {azure_api_version}")
         client = AzureOpenAI(
             azure_endpoint=azure_endpoint,
             api_key=azure_api_key,
-            api_version=azure_api_version
+            api_version=azure_api_version,
         )
     else:
         # Initialize standard OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            print("ERROR: Neither Azure OpenAI nor standard OpenAI credentials found.", file=sys.stderr)
-            print("\nFor Azure OpenAI, set:", file=sys.stderr)
-            print("  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'", file=sys.stderr)
+            log_error(
+                "Azure OpenAI または Standard OpenAI の認証情報が見つかりません。",
+                indent=0,
+            )
+            print("\nAzure OpenAI を使用する場合:", file=sys.stderr)
+            print(
+                "  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'",
+                file=sys.stderr,
+            )
             print("  export AZURE_OPENAI_API_KEY='your-api-key'", file=sys.stderr)
-            print("  export MODEL_NAME='gpt-5'  # or your deployment name", file=sys.stderr)
-            print("\nFor standard OpenAI, set:", file=sys.stderr)
+            print(
+                "  export MODEL_NAME='gpt-4.1'  # or your deployment name",
+                file=sys.stderr,
+            )
+            print("\nStandard OpenAI を使用する場合:", file=sys.stderr)
             print("  export OPENAI_API_KEY='your-api-key-here'", file=sys.stderr)
             sys.exit(1)
-        print("Using standard OpenAI")
-        print(f"Model: {model_name}")
+        log_section("Standard OpenAI 設定")
+        log_info(f"Model: {model_name}")
         client = OpenAI(api_key=api_key)
-    
+
     # Read input CSV
-    print(f"Reading input file: {input_file}")
+    log_section("入力ファイルの読み込み")
+    log_info(f"ファイル: {input_file}")
     try:
         # Try to detect if there's a header row by reading first line
-        with open(input_file, 'r', encoding='utf-8') as f:
+        with open(input_file, "r", encoding="utf-8") as f:
             first_line = f.readline().strip().lower()
-        
+
         # If first line looks like headers, use it as header
-        if any(keyword in first_line for keyword in ['question', 'model', 'answer', 'response']):
-            print("Detected header row in CSV")
+        if any(
+            keyword in first_line
+            for keyword in ["question", "model", "answer", "response"]
+        ):
+            log_info("CSVヘッダー行を検出しました")
             df = pd.read_csv(input_file)
             # Rename columns to standard names
             df.columns = ["Question", "Model_A_Response", "Model_B_Response"]
         else:
-            print("No header detected, treating first row as data")
-            df = pd.read_csv(input_file, header=None, names=["Question", "Model_A_Response", "Model_B_Response"])
+            log_info("ヘッダー行なし。最初の行をデータとして扱います")
+            df = pd.read_csv(
+                input_file,
+                header=None,
+                names=["Question", "Model_A_Response", "Model_B_Response"],
+            )
     except FileNotFoundError:
-        print(f"ERROR: Input file '{input_file}' not found.", file=sys.stderr)
+        log_error(f"入力ファイル '{input_file}' が見つかりません。", indent=0)
         sys.exit(1)
     except Exception as e:
-        print(f"ERROR: Failed to read input file: {e}", file=sys.stderr)
+        log_error(f"入力ファイルの読み込みに失敗しました: {e}", indent=0)
         sys.exit(1)
-    
-    print(f"Loaded {len(df)} rows from input file.")
-    
+
+    log_success(f"{len(df)}行を読み込みました")
+
     # Apply row limit if specified (for cost control during testing)
+    log_section("処理設定")
     if limit_rows is not None and limit_rows < len(df):
         df = df.head(limit_rows)
-        print(f"⚠️  LIMITING to first {limit_rows} rows for testing (use -n flag to change)")
-        print(f"⚠️  This will make {limit_rows} API calls")
+        log_warning(
+            f"テスト用に最初の{limit_rows}行に制限しています（-nフラグで変更可能）",
+            indent=0,
+        )
+        log_warning(f"API呼び出し回数: {limit_rows}回", indent=0)
     else:
-        print(f"⚠️  WARNING: This will make {len(df)} API calls to GPT-5")
-        print(f"⚠️  Estimated cost: ${len(df) * 0.15:.2f} - ${len(df) * 0.50:.2f} (rough estimate)")
-        
+        log_warning(f"API呼び出し回数: {len(df)}回（モデル: {model_name}）", indent=0)
+        log_warning(
+            f"推定コスト: ${len(df) * 0.15:.2f} - ${len(df) * 0.50:.2f}（概算）",
+            indent=0,
+        )
+
         # Prompt for confirmation if processing many rows
         if len(df) > 10:
             try:
-                response = input(f"\n🤔 Proceed with {len(df)} API calls? [y/N]: ").strip().lower()
-                if response != 'y' and response != 'yes':
-                    print("Cancelled. Use -n flag to test with fewer rows: python llm_judge_evaluator.py input.csv -n 5")
+                response = (
+                    input(f"\n🤔 {len(df)}回のAPI呼び出しを実行しますか？ [y/N]: ")
+                    .strip()
+                    .lower()
+                )
+                if response != "y" and response != "yes":
+                    print(
+                        "キャンセルしました。少ない行数でテストする場合は -n フラグを使用してください: python llm_judge_evaluator.py input.csv -n 5"
+                    )
                     sys.exit(0)
             except (KeyboardInterrupt, EOFError):
-                print("\nCancelled.")
+                print("\nキャンセルしました。")
                 sys.exit(0)
-    
+
     # Prepare output columns
     output_columns = [
-        "Question", "Model_A_Response", "Model_B_Response",
+        "Question",
+        "Model_A_Response",
+        "Model_B_Response",
         # Model A scores and justifications
-        "Model_A_Citation_Score", "Model_A_Citation_Justification",
-        "Model_A_Relevance_Score", "Model_A_Relevance_Justification",
-        "Model_A_ReAct_Performance_Thought_Score", "Model_A_ReAct_Performance_Thought_Justification",
-        "Model_A_RAG_Retrieval_Observation_Score", "Model_A_RAG_Retrieval_Observation_Justification",
-        "Model_A_Information_Integration_Score", "Model_A_Information_Integration_Justification",
+        "Model_A_Citation_Score",
+        "Model_A_Citation_Justification",
+        "Model_A_Relevance_Score",
+        "Model_A_Relevance_Justification",
+        "Model_A_ReAct_Performance_Thought_Score",
+        "Model_A_ReAct_Performance_Thought_Justification",
+        "Model_A_RAG_Retrieval_Observation_Score",
+        "Model_A_RAG_Retrieval_Observation_Justification",
+        "Model_A_Information_Integration_Score",
+        "Model_A_Information_Integration_Justification",
         # Model B scores and justifications
-        "Model_B_Citation_Score", "Model_B_Citation_Justification",
-        "Model_B_Relevance_Score", "Model_B_Relevance_Justification",
-        "Model_B_ReAct_Performance_Thought_Score", "Model_B_ReAct_Performance_Thought_Justification",
-        "Model_B_RAG_Retrieval_Observation_Score", "Model_B_RAG_Retrieval_Observation_Justification",
-        "Model_B_Information_Integration_Score", "Model_B_Information_Integration_Justification",
+        "Model_B_Citation_Score",
+        "Model_B_Citation_Justification",
+        "Model_B_Relevance_Score",
+        "Model_B_Relevance_Justification",
+        "Model_B_ReAct_Performance_Thought_Score",
+        "Model_B_ReAct_Performance_Thought_Justification",
+        "Model_B_RAG_Retrieval_Observation_Score",
+        "Model_B_RAG_Retrieval_Observation_Justification",
+        "Model_B_Information_Integration_Score",
+        "Model_B_Information_Integration_Justification",
         # Error tracking
-        "Evaluation_Error"
+        "Evaluation_Error",
     ]
-    
+
     results = []
-    
+
     # Process each row with progress bar
-    print("\nEvaluating responses...")
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
-        question = row["Question"]
-        model_a_response = row["Model_A_Response"]
-        model_b_response = row["Model_B_Response"]
-        
+    log_section("評価処理の開始")
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="評価中"):
+        # Convert pandas Series to str if needed
+        question_val = row["Question"]
+        model_a_val = row["Model_A_Response"]
+        model_b_val = row["Model_B_Response"]
+
+        # Use isinstance check to avoid Series condition operator error
+        question = (
+            str(question_val)
+            if not (isinstance(question_val, float) and pd.isna(question_val))
+            else ""
+        )
+        model_a_response = (
+            str(model_a_val)
+            if not (isinstance(model_a_val, float) and pd.isna(model_a_val))
+            else ""
+        )
+        model_b_response = (
+            str(model_b_val)
+            if not (isinstance(model_b_val, float) and pd.isna(model_b_val))
+            else ""
+        )
+
         # Initialize result row with original data
         result_row = {
             "Question": question,
             "Model_A_Response": model_a_response,
             "Model_B_Response": model_b_response,
         }
-        
-        # Call judge model
+
+        # Call judge model (timeout will be automatically set from model config)
         evaluation = call_judge_model(
             client,
             question,
             model_a_response,
             model_b_response,
             model_name=model_name,
-            is_azure=is_azure
+            is_azure=is_azure,
+            timeout=None,  # None means use model config default
         )
-        
+
         if evaluation is None:
             # If evaluation failed, record error and set all scores to None
-            result_row["Evaluation_Error"] = "Failed to get valid evaluation from judge model"
+            result_row["Evaluation_Error"] = (
+                "Failed to get valid evaluation from judge model"
+            )
             for col in output_columns:
                 if col not in result_row:
-                    result_row[col] = None
+                    result_row[col] = ""
         else:
             # Extract scores for Model A
-            model_a_scores = extract_scores_from_evaluation(evaluation, "model_a_evaluation")
+            model_a_scores = extract_scores_from_evaluation(
+                evaluation, "model_a_evaluation"
+            )
             result_row["Model_A_Citation_Score"] = model_a_scores["citation_score"]
-            result_row["Model_A_Citation_Justification"] = model_a_scores["citation_justification"]
+            result_row["Model_A_Citation_Justification"] = model_a_scores[
+                "citation_justification"
+            ]
             result_row["Model_A_Relevance_Score"] = model_a_scores["relevance_score"]
-            result_row["Model_A_Relevance_Justification"] = model_a_scores["relevance_justification"]
-            result_row["Model_A_ReAct_Performance_Thought_Score"] = model_a_scores["react_performance_thought_score"]
-            result_row["Model_A_ReAct_Performance_Thought_Justification"] = model_a_scores["react_performance_thought_justification"]
-            result_row["Model_A_RAG_Retrieval_Observation_Score"] = model_a_scores["rag_retrieval_observation_score"]
-            result_row["Model_A_RAG_Retrieval_Observation_Justification"] = model_a_scores["rag_retrieval_observation_justification"]
-            result_row["Model_A_Information_Integration_Score"] = model_a_scores["information_integration_score"]
-            result_row["Model_A_Information_Integration_Justification"] = model_a_scores["information_integration_justification"]
-            
+            result_row["Model_A_Relevance_Justification"] = model_a_scores[
+                "relevance_justification"
+            ]
+            result_row["Model_A_ReAct_Performance_Thought_Score"] = model_a_scores[
+                "react_performance_thought_score"
+            ]
+            result_row["Model_A_ReAct_Performance_Thought_Justification"] = (
+                model_a_scores["react_performance_thought_justification"]
+            )
+            result_row["Model_A_RAG_Retrieval_Observation_Score"] = model_a_scores[
+                "rag_retrieval_observation_score"
+            ]
+            result_row["Model_A_RAG_Retrieval_Observation_Justification"] = (
+                model_a_scores["rag_retrieval_observation_justification"]
+            )
+            result_row["Model_A_Information_Integration_Score"] = model_a_scores[
+                "information_integration_score"
+            ]
+            result_row["Model_A_Information_Integration_Justification"] = (
+                model_a_scores["information_integration_justification"]
+            )
+
             # Extract scores for Model B
-            model_b_scores = extract_scores_from_evaluation(evaluation, "model_b_evaluation")
+            model_b_scores = extract_scores_from_evaluation(
+                evaluation, "model_b_evaluation"
+            )
             result_row["Model_B_Citation_Score"] = model_b_scores["citation_score"]
-            result_row["Model_B_Citation_Justification"] = model_b_scores["citation_justification"]
+            result_row["Model_B_Citation_Justification"] = model_b_scores[
+                "citation_justification"
+            ]
             result_row["Model_B_Relevance_Score"] = model_b_scores["relevance_score"]
-            result_row["Model_B_Relevance_Justification"] = model_b_scores["relevance_justification"]
-            result_row["Model_B_ReAct_Performance_Thought_Score"] = model_b_scores["react_performance_thought_score"]
-            result_row["Model_B_ReAct_Performance_Thought_Justification"] = model_b_scores["react_performance_thought_justification"]
-            result_row["Model_B_RAG_Retrieval_Observation_Score"] = model_b_scores["rag_retrieval_observation_score"]
-            result_row["Model_B_RAG_Retrieval_Observation_Justification"] = model_b_scores["rag_retrieval_observation_justification"]
-            result_row["Model_B_Information_Integration_Score"] = model_b_scores["information_integration_score"]
-            result_row["Model_B_Information_Integration_Justification"] = model_b_scores["information_integration_justification"]
-            
+            result_row["Model_B_Relevance_Justification"] = model_b_scores[
+                "relevance_justification"
+            ]
+            result_row["Model_B_ReAct_Performance_Thought_Score"] = model_b_scores[
+                "react_performance_thought_score"
+            ]
+            result_row["Model_B_ReAct_Performance_Thought_Justification"] = (
+                model_b_scores["react_performance_thought_justification"]
+            )
+            result_row["Model_B_RAG_Retrieval_Observation_Score"] = model_b_scores[
+                "rag_retrieval_observation_score"
+            ]
+            result_row["Model_B_RAG_Retrieval_Observation_Justification"] = (
+                model_b_scores["rag_retrieval_observation_justification"]
+            )
+            result_row["Model_B_Information_Integration_Score"] = model_b_scores[
+                "information_integration_score"
+            ]
+            result_row["Model_B_Information_Integration_Justification"] = (
+                model_b_scores["information_integration_justification"]
+            )
+
             result_row["Evaluation_Error"] = ""
-        
+
         results.append(result_row)
-    
+
     # Create output DataFrame and write to CSV
-    output_df = pd.DataFrame(results, columns=output_columns)
-    output_df.to_csv(output_file, index=False)
-    
-    print(f"\n✓ Evaluation complete!")
-    print(f"✓ Results written to: {output_file}")
-    print(f"✓ Processed {len(results)} rows")
-    
+    if results:
+        output_df = pd.DataFrame(results)
+        # Ensure all columns exist
+        for col in output_columns:
+            if col not in output_df.columns:
+                output_df[col] = ""
+        # Reorder columns
+        output_df = output_df.reindex(columns=output_columns)
+        output_df.to_csv(output_file, index=False)
+    else:
+        # Create empty DataFrame with correct columns
+        output_df = pd.DataFrame({col: [] for col in output_columns})
+        output_df.to_csv(output_file, index=False)
+
+    # Print summary
+    log_section("処理完了")
+    log_success("評価が完了しました")
+    log_success(f"結果ファイル: {output_file}")
+    log_success(f"処理行数: {len(results)}行")
+
     # Print summary statistics
     errors = output_df[output_df["Evaluation_Error"] != ""].shape[0]
     if errors > 0:
-        print(f"⚠ Warning: {errors} rows had evaluation errors")
+        log_warning(f"{errors}行で評価エラーが発生しました", indent=0)
+    else:
+        log_success("すべての行が正常に処理されました", indent=0)
 
 
 def main():
@@ -462,49 +929,100 @@ Examples:
     python llm_judge_evaluator.py my_test_data.csv
     python llm_judge_evaluator.py /path/to/input.csv
 
-Setup for Azure OpenAI (GPT-5):
+Setup for Azure OpenAI:
     1. Install dependencies: pip install -r requirements.txt
     2. Set environment variables:
        export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'
        export AZURE_OPENAI_API_KEY='your-api-key'
-       export MODEL_NAME='gpt-5'  # or your deployment name
+       export MODEL_NAME='gpt-4.1'  # or 'gpt-5', 'gpt-4-turbo'
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional, defaults to this
-    3. Run the script with your input CSV file
+    3. Run the script with your input CSV file:
+       python llm_judge_evaluator.py input.csv -m gpt-5  # Use -m to specify model
 
 Setup for Standard OpenAI:
     1. Install dependencies: pip install -r requirements.txt
     2. Set API key: export OPENAI_API_KEY='your-api-key-here'
-    4. Run the script with your input CSV file
-        """
+    3. Optionally set model: export MODEL_NAME='gpt-4-turbo'
+    4. Run the script with your input CSV file:
+       python llm_judge_evaluator.py input.csv -m gpt-4-turbo  # Use -m to specify model
+
+Supported Models:
+    - gpt-5: GPT-5 (uses max_completion_tokens, temperature=1.0)
+    - gpt-4.1: GPT-4.1 (uses max_tokens, temperature=0.7)
+    - gpt-4-turbo: GPT-4 Turbo (uses max_tokens, temperature=0.7)
+
+You can specify the model via:
+    - Command line: -m gpt-5 or --model gpt-4.1
+    - Environment variable: export MODEL_NAME='gpt-5'
+    - Default: gpt-4.1
+        """,
     )
-    
+
     parser.add_argument(
         "input_csv",
-        help="Path to the input CSV file (no header, columns: Question, Model A Response, Model B Response)"
+        help="Path to the input CSV file (header row optional, columns: Question, Model_A_Response, Model_B_Response)",
     )
-    
+
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         default="evaluation_output.csv",
-        help="Path to the output CSV file (default: evaluation_output.csv)"
+        help="Path to the output CSV file (default: evaluation_output.csv)",
     )
-    
+
     parser.add_argument(
-        "-n", "--limit",
+        "-n",
+        "--limit",
         type=int,
         default=None,
-        help="Limit processing to first N rows (useful for testing to avoid high API costs)"
+        help="Limit processing to first N rows (useful for testing to avoid high API costs)",
     )
-    
+
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default=None,
+        help=f"Model to use for evaluation (default: {DEFAULT_MODEL}). Supported models: {', '.join(SUPPORTED_MODELS)}",
+    )
+
     args = parser.parse_args()
-    
-    print("=" * 70)
-    print("LLM-as-a-Judge Evaluation Script")
-    print("=" * 70)
-    
-    process_csv(args.input_csv, args.output, limit_rows=args.limit)
+
+    # Normalize model name if provided
+    if args.model:
+        # Convert "gpt5" to "gpt-5", etc.
+        model_name_normalized = args.model.lower().strip()
+        for supported_model in SUPPORTED_MODELS:
+            if (
+                supported_model.lower() == model_name_normalized
+                or supported_model.replace("-", "").lower()
+                == model_name_normalized.replace("-", "")
+            ):
+                args.model = supported_model
+                break
+        else:
+            # If not found, keep original but will warn later
+            pass
+
+    log_section("LLM-as-a-Judge 評価スクリプト")
+
+    # Determine model name
+    model_name = args.model or os.getenv("MODEL_NAME", DEFAULT_MODEL)
+    if model_name:
+        log_info(f"使用モデル: {model_name}")
+        if model_name not in SUPPORTED_MODELS:
+            log_warning(
+                f"モデル '{model_name}' は正式にサポートされていませんが、試行します。",
+                indent=0,
+            )
+            log_info(
+                f"サポートされているモデル: {', '.join(SUPPORTED_MODELS)}", indent=1
+            )
+
+    process_csv(
+        args.input_csv, args.output, limit_rows=args.limit, model_name=model_name
+    )
 
 
 if __name__ == "__main__":
     main()
-
