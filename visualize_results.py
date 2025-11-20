@@ -4,6 +4,7 @@
 evaluation_output.csvの評価結果をグラフで表示します。
 """
 
+import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
@@ -315,10 +316,48 @@ def create_summary_table(df: pd.DataFrame, output_file: str = "evaluation_summar
 
 def main():
     """メイン処理"""
-    csv_file = "evaluation_output.csv"
+    parser = argparse.ArgumentParser(
+        description="評価結果を可視化するスクリプト",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用例:
+    # デフォルトのevaluation_output.csvを使用
+    python visualize_results.py
+    
+    # カスタムCSVファイルを指定
+    python visualize_results.py my_evaluation_results.csv
+    
+    # ragas_evaluation_output.csvを可視化
+    python visualize_results.py ragas_evaluation_output.csv
 
-    if len(sys.argv) > 1:
-        csv_file = sys.argv[1]
+入力CSV形式:
+    llm_judge_evaluator.pyの出力CSV（evaluation_output.csv）を想定しています。
+    以下の列が必要です:
+    - Question
+    - Model_A_Citation_Score, Model_B_Citation_Score
+    - Model_A_Relevance_Score, Model_B_Relevance_Score
+    - Model_A_ReAct_Performance_Thought_Score, Model_B_ReAct_Performance_Thought_Score
+    - Model_A_RAG_Retrieval_Observation_Score, Model_B_RAG_Retrieval_Observation_Score
+    - Model_A_Information_Integration_Score, Model_B_Information_Integration_Score
+    - Evaluation_Error (オプション)
+
+出力ファイル:
+    - evaluation_comparison.png: Model AとModel Bのスコア比較チャート
+    - evaluation_distribution.png: スコア分布のヒストグラム
+    - evaluation_boxplot.png: スコア分布の箱ひげ図
+    - evaluation_summary.txt: 統計サマリーテーブル
+        """,
+    )
+
+    parser.add_argument(
+        "input_csv",
+        nargs="?",
+        default="evaluation_output.csv",
+        help="評価結果のCSVファイル（デフォルト: evaluation_output.csv）",
+    )
+
+    args = parser.parse_args()
+    csv_file = args.input_csv
 
     print("=" * 70)
     print("評価結果の可視化")

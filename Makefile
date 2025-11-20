@@ -1,4 +1,4 @@
-.PHONY: test format lint typecheck test-scripts test-unit help help-llm-judge help-format-clarity help-ragas help-collect help-all clean clean-venv setup venv install-deps update-deps
+.PHONY: test format lint typecheck test-scripts test-unit help help-llm-judge help-format-clarity help-ragas help-collect help-visualize help-all clean clean-venv setup venv install-deps update-deps
 
 # Python executable (use .venv if available, otherwise system python)
 PYTHON := $(shell if [ -f .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
@@ -41,6 +41,7 @@ help:
 	@echo "  make help-format-clarity - Show usage for format_clarity_evaluator.py"
 	@echo "  make help-ragas          - Show usage for ragas_llm_judge_evaluator.py"
 	@echo "  make help-collect        - Show usage for collect_responses.py"
+	@echo "  make help-visualize      - Show usage for visualize_results.py"
 	@echo "  make help-all            - Show usage for all scripts"
 
 help-llm-judge:
@@ -67,7 +68,13 @@ help-collect:
 	@echo "=========================================="
 	@$(PYTHON) collect_responses.py --help
 
-help-all: help-llm-judge help-format-clarity help-ragas help-collect
+help-visualize:
+	@echo "=========================================="
+	@echo "visualize_results.py の使い方"
+	@echo "=========================================="
+	@$(PYTHON) visualize_results.py --help
+
+help-all: help-llm-judge help-format-clarity help-ragas help-collect help-visualize
 	@echo ""
 	@echo "=========================================="
 	@echo "すべてのスクリプトの使い方を表示しました"

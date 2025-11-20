@@ -695,6 +695,69 @@ python llm_judge_evaluator.py responses.csv -n 5
 
 -----
 
+## 結果可視化スクリプト
+
+### `visualize_results.py` - 評価結果の可視化スクリプト
+
+`llm_judge_evaluator.py`の評価結果をグラフやチャートで可視化するスクリプトです。
+
+**主な機能：**
+- Model AとModel Bのスコア比較チャート
+- スコア分布のヒストグラム
+- スコア分布の箱ひげ図
+- 統計サマリーテーブル
+
+**使用方法：**
+
+```bash
+# デフォルトのevaluation_output.csvを使用
+python visualize_results.py
+
+# カスタムCSVファイルを指定
+python visualize_results.py my_evaluation_results.csv
+
+# ragas_evaluation_output.csvを可視化
+python visualize_results.py ragas_evaluation_output.csv
+```
+
+**入力CSV形式：**
+
+`llm_judge_evaluator.py`の出力CSV（`evaluation_output.csv`）を想定しています。以下の列が必要です：
+
+- `Question`
+- `Model_A_Citation_Score`, `Model_B_Citation_Score`
+- `Model_A_Relevance_Score`, `Model_B_Relevance_Score`
+- `Model_A_ReAct_Performance_Thought_Score`, `Model_B_ReAct_Performance_Thought_Score`
+- `Model_A_RAG_Retrieval_Observation_Score`, `Model_B_RAG_Retrieval_Observation_Score`
+- `Model_A_Information_Integration_Score`, `Model_B_Information_Integration_Score`
+- `Evaluation_Error` (オプション)
+
+**出力ファイル：**
+
+- `evaluation_comparison.png`: Model AとModel Bのスコア比較チャート（バーチャート）
+- `evaluation_distribution.png`: スコア分布のヒストグラム
+- `evaluation_boxplot.png`: スコア分布の箱ひげ図
+- `evaluation_summary.txt`: 統計サマリーテーブル（平均、最小、最大、標準偏差など）
+
+**使用例：**
+
+```bash
+# 1. 評価を実行
+python llm_judge_evaluator.py responses.csv -o evaluation_output.csv
+
+# 2. 結果を可視化
+python visualize_results.py evaluation_output.csv
+
+# 3. 生成されたファイルを確認
+ls -la evaluation_*.png evaluation_summary.txt
+```
+
+**注意：**
+- エラーが発生した行（`Evaluation_Error`列に値がある行）は自動的に除外されます
+- 日本語フォントが正しく表示されない場合は、システムの日本語フォント設定を確認してください
+
+-----
+
 ## エラーハンドリング
 
 すべてのスクリプトには、堅牢なエラーハンドリングが含まれています：
