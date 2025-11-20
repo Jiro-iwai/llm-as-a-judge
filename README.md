@@ -107,6 +107,87 @@ MODEL_NAME=gpt-4-turbo  # または gpt-4.1
 
 **注意**: `MODEL_NAME`環境変数は任意です。コマンドライン引数 `-m` で指定することもできます。
 
+### アプリケーション設定（設定値の外部化）
+
+このプロジェクトでは、多くの設定値を環境変数やYAML設定ファイルから読み込むことができます。これにより、コードを編集せずに設定を変更できます。
+
+#### 環境変数での設定
+
+以下の環境変数を使用して設定値を変更できます：
+
+```bash
+# API設定
+export APP_TIMEOUT=150              # リクエストタイムアウト（秒、デフォルト: 120）
+export APP_MAX_RETRIES=5           # 最大リトライ回数（デフォルト: 3）
+export APP_RETRY_DELAY=3           # リトライ間隔（秒、デフォルト: 2）
+export APP_API_DELAY=2.0           # API呼び出し間隔（秒、デフォルト: 1.0）
+export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト: A14804）
+
+# 設定ファイルのパス
+export APP_CONFIG_FILE=config.yaml  # YAML設定ファイルのパス（オプション）
+```
+
+#### YAML設定ファイルでの設定
+
+プロジェクトルートに `config.yaml` ファイルを作成して設定を管理できます：
+
+```yaml
+# API設定
+timeout: 180
+max_retries: 5
+retry_delay: 3
+api_delay: 2.0
+default_identity: "CONFIG_USER"
+
+# 出力ファイル名
+output_files:
+  evaluation_comparison: "custom_comparison.png"
+  evaluation_distribution: "evaluation_distribution.png"
+  evaluation_boxplot: "evaluation_boxplot.png"
+  evaluation_summary: "evaluation_summary.txt"
+  processing_time_comparison: "processing_time_comparison.png"
+  processing_time_statistics: "processing_time_statistics.png"
+  processing_time_summary: "processing_time_summary.txt"
+
+# 正規表現パターン（compare_processing_time.py用）
+regex_patterns:
+  model_a_pattern: "📥 \[claude3\.5-sonnet\].*?経過時間: ([\\d.]+)秒"
+  model_b_pattern: "📥 \[claude4\.5-haiku\].*?経過時間: ([\\d.]+)秒"
+```
+
+設定ファイルは `APP_CONFIG_FILE` 環境変数で指定できます：
+
+```bash
+export APP_CONFIG_FILE=/path/to/config.yaml
+```
+
+#### 優先順位
+
+設定値は以下の優先順位で読み込まれます：
+
+1. **環境変数**（最優先）
+2. **設定ファイル**（YAML）
+3. **デフォルト値**（コード内）
+
+環境変数は設定ファイルの値を上書きします。
+
+#### 使用例
+
+```bash
+# 環境変数でタイムアウトを変更
+export APP_TIMEOUT=200
+python llm_judge_evaluator.py data.csv
+
+# 設定ファイルを使用
+export APP_CONFIG_FILE=my_config.yaml
+python collect_responses.py questions.txt
+
+# コマンドライン引数で上書き（一部のスクリプトのみ）
+python collect_responses.py questions.txt --timeout 150 --delay 2.5
+```
+
+**注意**: コマンドライン引数が指定された場合は、それが環境変数や設定ファイルよりも優先されます。
+
 ## Makefileの使い方
 
 このプロジェクトには、開発作業を効率化するためのMakefileが含まれています。
@@ -665,9 +746,13 @@ python collect_responses.py questions.txt --api-url http://localhost:8080/api/v1
 # カスタムモデルを指定
 python collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
 
-# カスタムidentityを指定
-python collect_responses.py questions.txt --identity YOUR_IDENTITY
+# カスタムidentity、timeout、delayを指定（デフォルト値は設定ファイルまたは環境変数から読み込まれます）
+python collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
 ```
+
+**設定値の外部化：**
+
+`identity`、`timeout`、`delay`のデフォルト値は、環境変数（`APP_DEFAULT_IDENTITY`、`APP_TIMEOUT`、`APP_API_DELAY`）または設定ファイルから読み込まれます。コマンドライン引数で明示的に指定した場合は、それが優先されます。
 
 **入力ファイル形式：**
 - **テキストファイル（.txt）**: 1行に1つの質問。`#`で始まる行はコメントとして無視されます
@@ -762,12 +847,20 @@ ls -la evaluation_*.png evaluation_summary.txt
 
 すべてのスクリプトには、堅牢なエラーハンドリングが含まれています：
 
-  - **APIエラー**：指数関数的バックオフによる自動リトライ（最大3回）
+  - **APIエラー**：指数関数的バックオフによる自動リトライ（デフォルト: 最大3回、`APP_MAX_RETRIES`で変更可能）
   - **JSON解析エラー**：応答の形式が不正な場合に検証し、リトライします
   - **APIキーの欠落**：セットアップ手順を含む明確なエラーメッセージ
   - **ファイルが見つからない**：入力ファイルが見つからない場合のグレースフルなエラーハンドリング
 
 すべてのエラーは、出力CSVのそれぞれのエラー列に記録されます。
+
+**リトライ設定のカスタマイズ：**
+
+リトライ設定は環境変数または設定ファイルで変更できます：
+- `APP_MAX_RETRIES`: 最大リトライ回数（デフォルト: 3）
+- `APP_RETRY_DELAY`: リトライ間隔（秒、デフォルト: 2）
+
+詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
 
