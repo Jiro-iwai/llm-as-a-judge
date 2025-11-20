@@ -50,6 +50,12 @@ htmlcov/
 # Results directory
 results/
 
+# Generated image files
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 # OS
 .DS_Store
 Thumbs.db
