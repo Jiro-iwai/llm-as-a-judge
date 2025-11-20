@@ -156,10 +156,20 @@ test-unit:
 		HAS_TESTS=1; \
 	fi; \
 	if [ $$HAS_TESTS -eq 1 ]; then \
-		if $(PYTHON) -m pytest tests/ test_*.py -v 2>/dev/null; then \
-			echo "✓ Unit tests passed"; \
-		else \
-			echo "⚠️  pytest not available or tests failed, skipping..."; \
+		PYTEST_ARGS=""; \
+		if [ -d "tests" ] && [ -f "tests/__init__.py" ]; then \
+			PYTEST_ARGS="tests/"; \
+		fi; \
+		if ls test_*.py 2>/dev/null | grep -q .; then \
+			PYTEST_ARGS="$$PYTEST_ARGS test_*.py"; \
+		fi; \
+		if [ -n "$$PYTEST_ARGS" ]; then \
+			if $(PYTHON) -m pytest $$PYTEST_ARGS -v; then \
+				echo "✓ Unit tests passed"; \
+			else \
+				echo "✗ Unit tests failed"; \
+				exit 1; \
+			fi; \
 		fi; \
 	else \
 		echo "⚠️  No test files found, skipping pytest..."; \
