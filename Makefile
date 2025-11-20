@@ -14,7 +14,7 @@ MODEL_SCRIPTS := llm_judge_evaluator.py format_clarity_evaluator.py ragas_llm_ju
 
 # Files to clean (exclude requirements.txt and other important files)
 CLEAN_FILES := *.csv *.png evaluation_output.csv format_clarity_output.csv ragas_evaluation_output.csv collected_responses.csv processing_time_summary.txt evaluation_summary.txt
-CLEAN_DIRS := __pycache__ .pytest_cache .ruff_cache .pyright_cache
+CLEAN_DIRS := __pycache__ .pytest_cache .ruff_cache .pyright_cache htmlcov
 
 help:
 	@echo "Available targets:"
@@ -27,12 +27,13 @@ help:
 	@echo "  make clean-venv    - Remove virtual environment (.venv)"
 	@echo ""
 	@echo "Testing targets:"
-	@echo "  make test          - Run all tests (format, lint, typecheck, script tests)"
+	@echo "  make test          - Run all tests (format, lint, typecheck, test-scripts, test-unit)"
 	@echo "  make format        - Format code with ruff"
 	@echo "  make lint          - Run ruff linter"
 	@echo "  make typecheck     - Run pyright type checker"
 	@echo "  make test-scripts  - Test script interfaces (--help)"
 	@echo "  make test-unit     - Run pytest unit tests (if available)"
+	@echo "  make test-coverage - Run pytest with coverage report"
 	@echo "  make clean         - Clean generated files"
 	@echo ""
 	@echo "Script usage help:"
@@ -168,6 +169,40 @@ test-unit:
 				echo "✓ Unit tests passed"; \
 			else \
 				echo "✗ Unit tests failed"; \
+				exit 1; \
+			fi; \
+		fi; \
+	else \
+		echo "⚠️  No test files found, skipping pytest..."; \
+	fi
+
+# Run pytest with coverage report
+test-coverage:
+	@echo ""
+	@echo "=========================================="
+	@echo "Running pytest with coverage..."
+	@echo "=========================================="
+	@HAS_TESTS=0; \
+	if [ -d "tests" ] && [ -f "tests/__init__.py" ]; then \
+		HAS_TESTS=1; \
+	elif ls test_*.py 2>/dev/null | grep -q .; then \
+		HAS_TESTS=1; \
+	fi; \
+	if [ $$HAS_TESTS -eq 1 ]; then \
+		PYTEST_ARGS=""; \
+		if [ -d "tests" ] && [ -f "tests/__init__.py" ]; then \
+			PYTEST_ARGS="tests/"; \
+		fi; \
+		if ls test_*.py 2>/dev/null | grep -q .; then \
+			PYTEST_ARGS="$$PYTEST_ARGS test_*.py"; \
+		fi; \
+		if [ -n "$$PYTEST_ARGS" ]; then \
+			if $(PYTHON) -m pytest $$PYTEST_ARGS --cov=. --cov-report=term-missing --cov-report=html -v; then \
+				echo ""; \
+				echo "✓ Coverage report generated"; \
+				echo "  HTML report: htmlcov/index.html"; \
+			else \
+				echo "✗ Coverage test failed"; \
 				exit 1; \
 			fi; \
 		fi; \

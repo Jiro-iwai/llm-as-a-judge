@@ -182,6 +182,7 @@ make help-all
 | `make typecheck` | pyrightで型チェックを実行 |
 | `make test-scripts` | スクリプトのインターフェース（--help）をテスト |
 | `make test-unit` | pytestでユニットテストを実行（テストファイルがある場合） |
+| `make test-coverage` | pytestでカバレッジレポートを生成（HTMLレポート: htmlcov/index.html） |
 | `make clean` | 生成ファイルとキャッシュを削除 |
 
 #### ヘルプ関連
@@ -195,8 +196,9 @@ make help-all
 | `make help-all` | すべてのスクリプトの使い方を表示 |
 
 **注意**: 
-- `ruff`や`pyright`がインストールされていない場合でも、スクリプトの動作確認テストは実行されます。
 - `make setup`は`uv`を使用して仮想環境と依存関係をセットアップします。`uv`がインストールされていない場合は、方法2の手動インストール手順を参照してください。
+- `ruff`、`pyright`、`pytest`などの開発依存関係は`requirements.txt`に含まれており、`make setup`または`make install-deps`でインストールされます。
+- 仮想環境がセットアップされていない場合、`format`、`lint`、`typecheck`ターゲットは警告を表示してスキップしますが、スクリプトの動作確認テスト（`test-scripts`）は実行されます。
 
 ## プログラム別のAPI要件
 
