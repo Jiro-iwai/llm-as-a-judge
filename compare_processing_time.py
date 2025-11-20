@@ -7,6 +7,7 @@ tmp.txtから処理時間を抽出して2つのモデルを比較します。
 import platform
 import re
 import sys
+from typing import List, Tuple
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -43,7 +44,9 @@ else:
 plt.rcParams["figure.figsize"] = (14, 8)
 
 
-def extract_processing_times(log_file: str):
+def extract_processing_times(
+    log_file: str,
+) -> Tuple[List[int], List[float], List[float]]:
     """ログファイルから処理時間を抽出"""
 
     model_a_times = []
@@ -87,11 +90,11 @@ def extract_processing_times(log_file: str):
 
 
 def create_comparison_chart(
-    question_numbers,
-    model_a_times,
-    model_b_times,
+    question_numbers: List[int],
+    model_a_times: List[float],
+    model_b_times: List[float],
     output_file: str = "processing_time_comparison.png",
-):
+) -> None:
     """処理時間比較チャートを作成"""
 
     # バーチャートを作成
@@ -122,7 +125,7 @@ def create_comparison_chart(
         "Model A vs Model B 処理時間比較", fontsize=14, fontweight="bold", pad=20
     )
     ax.set_xticks(x)
-    ax.set_xticklabels(x)
+    ax.set_xticklabels([str(n) for n in x])
     ax.grid(axis="y", alpha=0.3, linestyle="--")
     ax.legend(fontsize=10)
 
@@ -133,11 +136,11 @@ def create_comparison_chart(
 
 
 def create_statistics_chart(
-    question_numbers,
-    model_a_times,
-    model_b_times,
+    question_numbers: List[int],
+    model_a_times: List[float],
+    model_b_times: List[float],
     output_file: str = "processing_time_statistics.png",
-):
+) -> None:
     """統計チャートを作成"""
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -233,11 +236,11 @@ def create_statistics_chart(
 
 
 def create_summary_table(
-    question_numbers,
-    model_a_times,
-    model_b_times,
+    question_numbers: List[int],
+    model_a_times: List[float],
+    model_b_times: List[float],
     output_file: str = "processing_time_summary.txt",
-):
+) -> None:
     """サマリーテーブルを作成"""
 
     df = pd.DataFrame(

@@ -86,7 +86,7 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def create_score_comparison_chart(
     df: pd.DataFrame, output_file: str = "evaluation_comparison.png"
-):
+) -> None:
     """Model AとModel Bのスコア比較チャートを作成"""
 
     metrics = [
@@ -168,7 +168,7 @@ def create_score_comparison_chart(
 
 def create_score_distribution_chart(
     df: pd.DataFrame, output_file: str = "evaluation_distribution.png"
-):
+) -> None:
     """スコアの分布を表示"""
 
     metrics = [
@@ -219,7 +219,9 @@ def create_score_distribution_chart(
     plt.close()
 
 
-def create_boxplot_chart(df: pd.DataFrame, output_file: str = "evaluation_boxplot.png"):
+def create_boxplot_chart(
+    df: pd.DataFrame, output_file: str = "evaluation_boxplot.png"
+) -> None:
     """箱ひげ図を作成"""
 
     metrics = [
@@ -273,7 +275,9 @@ def create_boxplot_chart(df: pd.DataFrame, output_file: str = "evaluation_boxplo
     plt.close()
 
 
-def create_summary_table(df: pd.DataFrame, output_file: str = "evaluation_summary.txt"):
+def create_summary_table(
+    df: pd.DataFrame, output_file: str = "evaluation_summary.txt"
+) -> None:
     """サマリーテーブルをテキストファイルに出力"""
 
     metrics = [

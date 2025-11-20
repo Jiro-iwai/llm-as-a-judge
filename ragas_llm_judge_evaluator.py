@@ -25,7 +25,7 @@ import argparse
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import pandas as pd
 from datasets import Dataset
@@ -36,6 +36,9 @@ from ragas.metrics import (
     faithfulness,
 )
 from tqdm import tqdm
+
+if TYPE_CHECKING:
+    from langchain_openai import AzureChatOpenAI
 
 from config.model_configs import (
     DEFAULT_MODEL,
@@ -190,7 +193,9 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
     return get_model_config_from_common(model_name)
 
 
-def initialize_azure_openai_for_ragas(model_name: Optional[str] = None):
+def initialize_azure_openai_for_ragas(
+    model_name: Optional[str] = None,
+) -> Tuple["AzureChatOpenAI", AzureOpenAI]:
     """
     Initialize Azure OpenAI client and wrap it for Ragas.
 
@@ -277,7 +282,7 @@ def evaluate_with_ragas(
     questions: List[str],
     answers: List[str],
     contexts_list: List[List[str]],
-    llm,
+    llm: "AzureChatOpenAI",
     model_name: str = "Model",
 ) -> pd.DataFrame:
     """

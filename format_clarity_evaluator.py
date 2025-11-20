@@ -23,7 +23,7 @@ import os
 import re
 import sys
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, Union
 
 import pandas as pd
 from openai import OpenAI, AzureOpenAI
@@ -187,7 +187,7 @@ Provide your evaluation as a JSON object following the specified format."""
 
 
 def call_judge_model(
-    client,
+    client: Union[OpenAI, AzureOpenAI],
     question: str,
     claude_35_answer: str,
     claude_45_answer: str,
