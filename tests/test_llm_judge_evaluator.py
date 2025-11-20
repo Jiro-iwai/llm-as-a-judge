@@ -1,8 +1,11 @@
 """Unit tests for llm_judge_evaluator.py"""
 
+import json
 import pytest
 import sys
 from pathlib import Path
+from unittest.mock import Mock, patch
+from io import StringIO
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -11,6 +14,13 @@ from llm_judge_evaluator import (
     get_model_config,
     is_gpt5,
     create_user_prompt,
+    log_info,
+    log_section,
+    log_warning,
+    log_error,
+    log_success,
+    call_judge_model,
+    extract_scores_from_evaluation,
 )
 
 
@@ -89,4 +99,238 @@ class TestCreateUserPrompt:
         prompt = create_user_prompt("", "", "")
         assert isinstance(prompt, str)
         assert len(prompt) > 0
+
+
+class TestLogFunctions:
+    """Tests for log functions"""
+
+    def test_log_info(self):
+        """Test log_info function"""
+        with patch("sys.stderr", new=StringIO()) as mock_stderr:
+            log_info("Test message")
+            output = mock_stderr.getvalue()
+            assert "Test message" in output
+
+    def test_log_info_with_indent(self):
+        """Test log_info with indentation"""
+        with patch("sys.stderr", new=StringIO()) as mock_stderr:
+            log_info("Test message", indent=2)
+            output = mock_stderr.getvalue()
+            assert "Test message" in output
+            assert output.startswith("    ")  # 2 indents = 4 spaces
+
+    def test_log_section(self):
+        """Test log_section function"""
+        with patch("sys.stderr", new=StringIO()) as mock_stderr:
+            log_section("Test Section")
+            output = mock_stderr.getvalue()
+            assert "Test Section" in output
+            assert "=" * 70 in output
+
+    def test_log_warning(self):
+        """Test log_warning function"""
+        with patch("sys.stderr", new=StringIO()) as mock_stderr:
+            log_warning("Warning message")
+            output = mock_stderr.getvalue()
+            assert "Warning message" in output
+
+    def test_log_error(self):
+        """Test log_error function"""
+        with patch("sys.stderr", new=StringIO()) as mock_stderr:
+            log_error("Error message")
+            output = mock_stderr.getvalue()
+            assert "Error message" in output
+            assert "❌" in output
+
+    def test_log_success(self):
+        """Test log_success function"""
+        with patch("sys.stderr", new=StringIO()) as mock_stderr:
+            log_success("Success message")
+            output = mock_stderr.getvalue()
+            assert "Success message" in output
+            assert "✓" in output
+
+
+class TestCallJudgeModel:
+    """Tests for call_judge_model function"""
+
+    def test_call_judge_model_success(self):
+        """Test successful API call"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [
+            Mock(
+                finish_reason="stop",
+                message=Mock(
+                    content=json.dumps(
+                        {
+                            "model_a_evaluation": {
+                                "overall_score": 4,
+                                "justification": "Good response",
+                            },
+                            "model_b_evaluation": {
+                                "overall_score": 5,
+                                "justification": "Excellent response",
+                            },
+                        }
+                    )
+                ),
+            )
+        ]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "モデルAの回答",
+            "モデルBの回答",
+            model_name="gpt-4-turbo",
+            is_azure=False,
+        )
+
+        assert result is not None
+        assert "model_a_evaluation" in result
+        assert "model_b_evaluation" in result
+
+    def test_call_judge_model_json_decode_error(self):
+        """Test handling JSON decode error"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [Mock(finish_reason="stop", message=Mock(content="invalid json"))]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "モデルAの回答",
+            "モデルBの回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_api_exception(self):
+        """Test handling API exception"""
+        mock_client = Mock()
+        mock_client.chat.completions.create.side_effect = Exception("API Error")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "モデルAの回答",
+            "モデルBの回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_timeout_error(self):
+        """Test handling TimeoutError"""
+        mock_client = Mock()
+        mock_client.chat.completions.create.side_effect = TimeoutError("Request timeout")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "モデルAの回答",
+            "モデルBの回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_max_tokens_error(self):
+        """Test handling max_tokens error"""
+        mock_client = Mock()
+        mock_client.chat.completions.create.side_effect = Exception("max_tokens limit exceeded")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "モデルAの回答",
+            "モデルBの回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_input_too_long_error(self):
+        """Test handling input too long error"""
+        mock_client = Mock()
+        # Simulate ValueError for input too long
+        mock_client.chat.completions.create.side_effect = ValueError("入力トークン数が長すぎます")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "モデルAの回答",
+            "モデルBの回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+
+class TestExtractScoresFromEvaluation:
+    """Tests for extract_scores_from_evaluation function"""
+
+    def test_extract_scores_complete(self):
+        """Test extracting all scores from complete evaluation"""
+        evaluation = {
+            "model_a_evaluation": {
+                "citation_score": {"score": 4, "justification": "Good citations"},
+                "relevance_score": {"score": 5, "justification": "Excellent relevance"},
+                "react_performance_thought_score": {"score": 3, "justification": "OK"},
+                "rag_retrieval_observation_score": {"score": 4, "justification": "Good"},
+                "information_integration_score": {"score": 5, "justification": "Perfect"},
+            },
+            "model_b_evaluation": {
+                "citation_score": {"score": 3, "justification": "OK citations"},
+                "relevance_score": {"score": 4, "justification": "Good relevance"},
+                "react_performance_thought_score": {"score": 4, "justification": "Good"},
+                "rag_retrieval_observation_score": {"score": 3, "justification": "OK"},
+                "information_integration_score": {"score": 4, "justification": "Good"},
+            },
+        }
+
+        result_a = extract_scores_from_evaluation(evaluation, "model_a_evaluation")
+        result_b = extract_scores_from_evaluation(evaluation, "model_b_evaluation")
+
+        assert result_a["citation_score"] == 4
+        assert result_a["relevance_score"] == 5
+        assert result_b["citation_score"] == 3
+        assert result_b["relevance_score"] == 4
+
+    def test_extract_scores_missing_keys(self):
+        """Test extracting scores when some keys are missing"""
+        evaluation = {
+            "model_a_evaluation": {
+                "citation_score": {"score": 4, "justification": "Good"},
+                # Missing other scores
+            },
+        }
+
+        result = extract_scores_from_evaluation(evaluation, "model_a_evaluation")
+
+        assert result["citation_score"] == 4
+        # Missing scores should be None or not present
+        assert "relevance_score" not in result or result.get("relevance_score") is None
+
+    def test_extract_scores_missing_score_field(self):
+        """Test extracting scores when score field is missing"""
+        evaluation = {
+            "model_a_evaluation": {
+                "citation_score": {"justification": "Good but no score"},
+            },
+        }
+
+        result = extract_scores_from_evaluation(evaluation, "model_a_evaluation")
+
+        # Score should be None if not present
+        assert result.get("citation_score") is None or result["citation_score"] is None
 

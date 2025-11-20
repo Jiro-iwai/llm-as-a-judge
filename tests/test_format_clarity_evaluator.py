@@ -1,8 +1,10 @@
 """Unit tests for format_clarity_evaluator.py"""
 
+import json
 import pytest
 import sys
 from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -11,6 +13,8 @@ from format_clarity_evaluator import (
     parse_final_answer,
     get_model_config,
     extract_scores_from_evaluation,
+    create_user_prompt,
+    call_judge_model,
 )
 
 
@@ -139,4 +143,247 @@ class TestExtractScoresFromEvaluation:
         score, justification = extract_scores_from_evaluation(evaluation)
         assert score is None
         assert justification == ""
+
+
+class TestCreateUserPrompt:
+    """Tests for create_user_prompt function"""
+
+    def test_create_user_prompt_basic(self):
+        """Test creating a basic user prompt"""
+        question = "テスト質問"
+        claude_35_answer = "Claude 3.5の回答"
+        claude_45_answer = "Claude 4.5の回答"
+
+        prompt = create_user_prompt(question, claude_35_answer, claude_45_answer)
+
+        assert question in prompt
+        assert claude_35_answer in prompt
+        assert claude_45_answer in prompt
+        assert "Claude 3.5" in prompt
+        assert "Claude 4.5" in prompt
+
+    def test_create_user_prompt_empty_strings(self):
+        """Test creating prompt with empty strings"""
+        prompt = create_user_prompt("", "", "")
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+
+
+class TestCallJudgeModel:
+    """Tests for call_judge_model function"""
+
+    def test_call_judge_model_success(self):
+        """Test successful API call"""
+        # Create a mock client
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [
+            Mock(
+                finish_reason="stop",
+                message=Mock(
+                    content=json.dumps(
+                        {
+                            "format_clarity_evaluation": {
+                                "score": 4,
+                                "justification": "Good formatting match",
+                            }
+                        }
+                    )
+                ),
+            )
+        ]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            is_azure=False,
+        )
+
+        assert result is not None
+        assert "format_clarity_evaluation" in result
+        assert result["format_clarity_evaluation"]["score"] == 4
+
+    def test_call_judge_model_json_decode_error(self):
+        """Test handling JSON decode error"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [Mock(finish_reason="stop", message=Mock(content="invalid json"))]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        # Should return None after retries exhausted
+        assert result is None
+
+    def test_call_judge_model_empty_response(self):
+        """Test handling empty response"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [Mock(finish_reason="stop", message=Mock(content=None))]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_missing_key(self):
+        """Test handling response missing required key"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [
+            Mock(
+                finish_reason="stop",
+                message=Mock(content=json.dumps({"wrong_key": "value"})),
+            )
+        ]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_truncated_response(self):
+        """Test handling truncated response"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [
+            Mock(
+                finish_reason="length",
+                message=Mock(
+                    content=json.dumps(
+                        {
+                            "format_clarity_evaluation": {
+                                "score": 4,
+                                "justification": "Good formatting match",
+                            }
+                        }
+                    )
+                ),
+            )
+        ]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+        )
+
+        assert result is not None
+        assert result["format_clarity_evaluation"]["score"] == 4
+
+    def test_call_judge_model_api_exception(self):
+        """Test handling API exception"""
+        mock_client = Mock()
+        mock_client.chat.completions.create.side_effect = Exception("API Error")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_timeout_error(self):
+        """Test handling timeout error"""
+        import time
+        mock_client = Mock()
+        mock_client.chat.completions.create.side_effect = TimeoutError("Request timeout")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_json_decode_with_debug_info(self):
+        """Test JSON decode error with debug information"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = [Mock(finish_reason="stop", message=Mock(content="invalid json"))]
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_response_without_choices(self):
+        """Test handling response without choices"""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.choices = []
+        mock_client.chat.completions.create.return_value = mock_response
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=1,
+        )
+
+        assert result is None
+
+    def test_call_judge_model_exception_with_backoff(self):
+        """Test exception handling with exponential backoff"""
+        mock_client = Mock()
+        mock_client.chat.completions.create.side_effect = Exception("API Error")
+
+        result = call_judge_model(
+            mock_client,
+            "テスト質問",
+            "Claude 3.5の回答",
+            "Claude 4.5の回答",
+            model_name="gpt-4-turbo",
+            max_retries=2,
+            retry_delay=0.01,  # Short delay for testing
+        )
+
+        assert result is None
+        # Should have retried multiple times
+        assert mock_client.chat.completions.create.call_count == 2
 

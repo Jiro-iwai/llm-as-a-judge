@@ -3,6 +3,7 @@
 import pytest
 import sys
 from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -10,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ragas_llm_judge_evaluator import (
     parse_react_log,
     get_model_config,
+    initialize_azure_openai_for_ragas,
 )
 
 
@@ -113,4 +115,62 @@ class TestGetModelConfig:
         config1 = get_model_config("GPT-5")
         config2 = get_model_config("gpt-5")
         assert config1 == config2
+
+    def test_get_model_config_partial_match(self):
+        """Test partial matching (e.g., 'gpt5' -> 'gpt-5')"""
+        config1 = get_model_config("gpt5")
+        config2 = get_model_config("gpt-5")
+        assert config1 == config2
+
+    def test_get_model_config_unknown_model(self):
+        """Test getting config for unknown model (should return default)"""
+        config = get_model_config("unknown-model")
+        # Should return default (gpt-4.1) config
+        assert config["temperature"] == 0.7
+
+
+class TestInitializeAzureOpenAIForRagas:
+    """Tests for initialize_azure_openai_for_ragas function"""
+
+    @patch("langchain_openai.AzureChatOpenAI")
+    @patch("ragas_llm_judge_evaluator.os.getenv")
+    def test_initialize_azure_openai_for_ragas_success(self, mock_getenv, mock_azure_chat):
+        """Test successful Azure OpenAI initialization"""
+        mock_getenv.side_effect = lambda key, default=None: {
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/",
+            "AZURE_OPENAI_API_KEY": "test-key",
+            "AZURE_OPENAI_API_VERSION": "2024-08-01-preview",
+            "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-4.1",
+        }.get(key, default)
+        
+        mock_client = Mock()
+        mock_ragas_llm = Mock()
+        mock_azure_chat.return_value = mock_client
+
+        result = initialize_azure_openai_for_ragas(model_name="gpt-4.1")
+
+        # Function returns a tuple (ragas_llm, client)
+        assert result is not None
+        mock_azure_chat.assert_called_once()
+
+    @patch("langchain_openai.AzureChatOpenAI")
+    @patch("ragas_llm_judge_evaluator.os.getenv")
+    def test_initialize_azure_openai_for_ragas_with_model_config(self, mock_getenv, mock_azure_chat):
+        """Test initialization with model config"""
+        mock_getenv.side_effect = lambda key, default=None: {
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/",
+            "AZURE_OPENAI_API_KEY": "test-key",
+            "AZURE_OPENAI_API_VERSION": "2024-08-01-preview",
+            "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-5",
+        }.get(key, default)
+        
+        mock_client = Mock()
+        mock_azure_chat.return_value = mock_client
+
+        result = initialize_azure_openai_for_ragas(model_name="gpt-5")
+
+        assert result is not None
+        # Verify that model config is used (gpt-5 has temperature 1.0)
+        call_kwargs = mock_azure_chat.call_args[1]
+        assert call_kwargs["temperature"] == 1.0
 

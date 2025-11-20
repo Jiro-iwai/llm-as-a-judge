@@ -280,6 +280,7 @@ def create_summary_table(
         avg_diff = df["Difference"].mean()
         total_diff = df["Model_A_Time"].sum() - df["Model_B_Time"].sum()
         avg_speedup = df["Speedup"].mean()
+        model_a_total = df["Model_A_Time"].sum()
 
         f.write("比較結果:\n")
         f.write(
@@ -289,9 +290,10 @@ def create_summary_table(
         f.write(
             f"  平均速度比: {avg_speedup:.2f}x (Model Bが{'速い' if avg_speedup > 1 else '遅い'})\n"
         )
-        f.write(
-            f"  時間削減率: {abs(total_diff) / df['Model_A_Time'].sum() * 100:.1f}%\n"
-        )
+        if model_a_total > 0:
+            f.write(f"  時間削減率: {abs(total_diff) / model_a_total * 100:.1f}%\n")
+        else:
+            f.write("  時間削減率: 計算不可（データがありません）\n")
 
     print(f"✓ サマリーテーブルを保存: {output_file}")
 

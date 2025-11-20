@@ -435,20 +435,34 @@ def process_csv(
             # Support both Model_A_Response/Model_B_Response and Claude_35_Raw_Log/Claude_45_Raw_Log
             column_mapping = {}
             for col in df.columns:
-                col_lower = col.lower().replace("_", "").replace("-", "").replace(" ", "")
+                col_lower = (
+                    col.lower().replace("_", "").replace("-", "").replace(" ", "")
+                )
                 if "question" in col_lower or col_lower == "q":
                     column_mapping[col] = "Question"
-                elif ("model" in col_lower and "a" in col_lower) or "claude35" in col_lower or "claude3.5" in col_lower:
+                elif (
+                    ("model" in col_lower and "a" in col_lower)
+                    or "claude35" in col_lower
+                    or "claude3.5" in col_lower
+                ):
                     column_mapping[col] = "Model_A_Response"
-                elif ("model" in col_lower and "b" in col_lower) or "claude45" in col_lower or "claude4.5" in col_lower:
+                elif (
+                    ("model" in col_lower and "b" in col_lower)
+                    or "claude45" in col_lower
+                    or "claude4.5" in col_lower
+                ):
                     column_mapping[col] = "Model_B_Response"
-            
+
             if column_mapping:
                 df = df.rename(columns=column_mapping)
             else:
                 # If no mapping found, assume standard column order
                 if len(df.columns) >= 3:
-                    df.columns = ["Question", "Model_A_Response", "Model_B_Response"] + list(df.columns[3:])
+                    df.columns = [
+                        "Question",
+                        "Model_A_Response",
+                        "Model_B_Response",
+                    ] + list(df.columns[3:])
         else:
             print("⚠️  No header row detected. Treating first row as data.")
             df = pd.read_csv(
