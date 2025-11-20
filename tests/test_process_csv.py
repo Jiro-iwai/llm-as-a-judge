@@ -25,17 +25,19 @@ from ragas_llm_judge_evaluator import process_csv as ragas_process_csv
 class TestFormatClarityProcessCsv:
     """Tests for format_clarity_evaluator.process_csv"""
 
-    @pytest.mark.skip(reason="Complex integration test - requires extensive mocking")
-    @patch("format_clarity_evaluator.AzureOpenAI")
-    @patch("format_clarity_evaluator.OpenAI")
-    @patch("format_clarity_evaluator.call_judge_model")
-    @patch("format_clarity_evaluator.parse_final_answer")
-    @patch("format_clarity_evaluator.tqdm")
-    @patch("format_clarity_evaluator.log_info")
-    @patch("format_clarity_evaluator.log_warning")
-    @patch("builtins.input")
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
-    def test_process_csv_with_header(self, mock_input, mock_log_warning, mock_log_info, mock_tqdm, mock_parse_final, mock_openai, mock_azure, mock_call_judge):
+    @patch("builtins.input")
+    @patch("format_clarity_evaluator.log_error")
+    @patch("format_clarity_evaluator.log_success")
+    @patch("format_clarity_evaluator.log_warning")
+    @patch("format_clarity_evaluator.log_info")
+    @patch("format_clarity_evaluator.tqdm")
+    @patch("format_clarity_evaluator.parse_final_answer")
+    @patch("format_clarity_evaluator.extract_scores_from_evaluation")
+    @patch("format_clarity_evaluator.call_judge_model")
+    @patch("format_clarity_evaluator.OpenAI")
+    @patch("format_clarity_evaluator.AzureOpenAI")
+    def test_process_csv_with_header(self, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_parse_final, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_error, mock_input):
         """Test process_csv with CSV file that has header row"""
         # Mock input to avoid interactive prompt
         mock_input.return_value = "y"
@@ -45,6 +47,9 @@ class TestFormatClarityProcessCsv:
         
         # Mock parse_final_answer to return simple answers
         mock_parse_final.side_effect = lambda x: f"Parsed: {x[:10]}"
+        
+        # Mock extract_scores_from_evaluation
+        mock_extract_scores.return_value = (4, "Good formatting")
         
         # Create test CSV with header
         test_data = pd.DataFrame({
@@ -75,7 +80,7 @@ class TestFormatClarityProcessCsv:
             # Verify output file was created
             assert os.path.exists(output_file)
 
-            # Verify API was called
+            # Verify API was called (limit_rows=2 so should be called twice)
             assert mock_call_judge.call_count == 2
 
         finally:
@@ -223,17 +228,19 @@ class TestFormatClarityProcessCsv:
 class TestLLMJudgeProcessCsv:
     """Tests for llm_judge_evaluator.process_csv"""
 
-    @pytest.mark.skip(reason="Complex integration test - requires extensive mocking")
-    @patch("llm_judge_evaluator.AzureOpenAI")
-    @patch("llm_judge_evaluator.OpenAI")
-    @patch("llm_judge_evaluator.call_judge_model")
-    @patch("llm_judge_evaluator.parse_react_log")
-    @patch("llm_judge_evaluator.tqdm")
-    @patch("llm_judge_evaluator.log_info")
-    @patch("llm_judge_evaluator.log_warning")
-    @patch("builtins.input")
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
-    def test_process_csv_with_header(self, mock_input, mock_log_warning, mock_log_info, mock_tqdm, mock_parse_react, mock_openai, mock_azure, mock_call_judge):
+    @patch("builtins.input")
+    @patch("llm_judge_evaluator.log_error")
+    @patch("llm_judge_evaluator.log_section")
+    @patch("llm_judge_evaluator.log_success")
+    @patch("llm_judge_evaluator.log_warning")
+    @patch("llm_judge_evaluator.log_info")
+    @patch("llm_judge_evaluator.tqdm")
+    @patch("llm_judge_evaluator.extract_scores_from_evaluation")
+    @patch("llm_judge_evaluator.call_judge_model")
+    @patch("llm_judge_evaluator.OpenAI")
+    @patch("llm_judge_evaluator.AzureOpenAI")
+    def test_process_csv_with_header(self, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error, mock_input):
         """Test process_csv with CSV file that has header row"""
         # Mock input to avoid interactive prompt
         mock_input.return_value = "y"
@@ -241,8 +248,35 @@ class TestLLMJudgeProcessCsv:
         # Mock tqdm to return the iterable directly
         mock_tqdm.side_effect = lambda x, **kwargs: x
         
-        # Mock parse_react_log to return simple parsed data
-        mock_parse_react.return_value = ("Final Answer", ["Context1", "Context2"])
+        # Mock extract_scores_from_evaluation - it's called twice (once for model_a, once for model_b)
+        def mock_extract(evaluation, model_key):
+            if model_key == "model_a_evaluation":
+                return {
+                    "citation_score": 4,
+                    "relevance_score": 5,
+                    "citation_justification": "Good",
+                    "relevance_justification": "Excellent",
+                    "react_performance_thought_score": 4,
+                    "react_performance_thought_justification": "Good",
+                    "rag_retrieval_observation_score": 4,
+                    "rag_retrieval_observation_justification": "Good",
+                    "information_integration_score": 4,
+                    "information_integration_justification": "Good",
+                }
+            else:  # model_b_evaluation
+                return {
+                    "citation_score": 3,
+                    "relevance_score": 4,
+                    "citation_justification": "OK",
+                    "relevance_justification": "Good",
+                    "react_performance_thought_score": 3,
+                    "react_performance_thought_justification": "OK",
+                    "rag_retrieval_observation_score": 3,
+                    "rag_retrieval_observation_justification": "OK",
+                    "information_integration_score": 3,
+                    "information_integration_justification": "OK",
+                }
+        mock_extract_scores.side_effect = mock_extract
         
         test_data = pd.DataFrame({
             "Question": ["Q1", "Q2"],
@@ -297,15 +331,17 @@ class TestLLMJudgeProcessCsv:
 class TestRagasProcessCsv:
     """Tests for ragas_llm_judge_evaluator.process_csv"""
 
-    @pytest.mark.skip(reason="Complex integration test - requires extensive mocking")
-    @patch("ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
-    @patch("ragas_llm_judge_evaluator.evaluate_with_ragas")
-    @patch("ragas_llm_judge_evaluator.parse_react_log")
-    @patch("ragas_llm_judge_evaluator.tqdm")
-    @patch("ragas_llm_judge_evaluator.log_info")
-    @patch("ragas_llm_judge_evaluator.log_warning")
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
-    def test_process_csv_with_header(self, mock_log_warning, mock_log_info, mock_tqdm, mock_parse_react, mock_init, mock_evaluate):
+    @patch("ragas_llm_judge_evaluator.log_error")
+    @patch("ragas_llm_judge_evaluator.log_section")
+    @patch("ragas_llm_judge_evaluator.log_success")
+    @patch("ragas_llm_judge_evaluator.log_warning")
+    @patch("ragas_llm_judge_evaluator.log_info")
+    @patch("ragas_llm_judge_evaluator.tqdm")
+    @patch("ragas_llm_judge_evaluator.parse_react_log")
+    @patch("ragas_llm_judge_evaluator.evaluate_with_ragas")
+    @patch("ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
+    def test_process_csv_with_header(self, mock_init, mock_evaluate, mock_parse_react, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error):
         """Test process_csv with CSV file that has header row"""
         # Mock tqdm to return the iterable directly
         mock_tqdm.side_effect = lambda x, **kwargs: x
