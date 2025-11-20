@@ -37,6 +37,12 @@ from ragas.metrics import (
 )
 from tqdm import tqdm
 
+from config.model_configs import (
+    DEFAULT_MODEL,
+    SUPPORTED_MODELS,
+    get_ragas_config as get_model_config_from_common,
+)
+
 # Load environment variables from .env file if it exists
 load_dotenv()
 
@@ -165,43 +171,12 @@ def parse_react_log(log_text: str) -> Tuple[str, List[str]]:
     return final_answer, contexts
 
 
-# Model configuration (shared with other evaluators)
-MODEL_CONFIGS = {
-    "gpt-5": {
-        "max_tokens": 2000,
-        "max_completion_tokens": 2000,
-        "temperature": 1.0,
-        "use_max_completion_tokens": True,
-    },
-    "gpt-4.1": {
-        "max_tokens": 2000,
-        "temperature": 0.7,
-        "use_max_completion_tokens": False,
-    },
-    "gpt-4-turbo": {
-        "max_tokens": 2000,
-        "temperature": 0.7,
-        "use_max_completion_tokens": False,
-    },
-}
-
-DEFAULT_MODEL = "gpt-4.1"  # Ragas推奨はGPT-4系
-SUPPORTED_MODELS = list(MODEL_CONFIGS.keys())
+# Model configuration is now imported from config.model_configs (imported at top)
 
 
-def get_model_config(model_name: str):
-    """Get configuration for a specific model."""
-    model_name_lower = model_name.lower().strip()
-    if model_name_lower in MODEL_CONFIGS:
-        return MODEL_CONFIGS[model_name_lower]
-    for key in MODEL_CONFIGS.keys():
-        if key.replace("-", "").lower() == model_name_lower.replace("-", ""):
-            return MODEL_CONFIGS[key]
-    print(
-        f"⚠️  Warning: Model '{model_name}' not found. Using default ({DEFAULT_MODEL})",
-        file=sys.stderr,
-    )
-    return MODEL_CONFIGS[DEFAULT_MODEL]
+def get_model_config(model_name: str) -> Dict[str, Any]:
+    """Get configuration for a specific model (Ragas-compatible)."""
+    return get_model_config_from_common(model_name)
 
 
 def initialize_azure_openai_for_ragas(model_name: Optional[str] = None):

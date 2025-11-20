@@ -27,6 +27,12 @@ from openai import OpenAI, AzureOpenAI
 from tqdm import tqdm
 from dotenv import load_dotenv
 
+from config.model_configs import (
+    DEFAULT_MODEL,
+    SUPPORTED_MODELS,
+    get_full_config as get_model_config_from_common,
+)
+
 # Load environment variables from .env file if it exists
 load_dotenv()
 
@@ -63,42 +69,8 @@ def log_success(message: str, indent: int = 0) -> None:
     print(f"{prefix}✓ {message}", file=sys.stderr)
 
 
-# Model configuration
-MODEL_CONFIGS = {
-    "gpt-5": {
-        "max_total_tokens": 128000,  # 128K
-        "min_output_tokens": 800,
-        "max_output_tokens": 4000,
-        "safety_margin": 2000,
-        "temperature": 1.0,
-        "use_max_completion_tokens": True,  # GPT-5 uses max_completion_tokens
-        "timeout": 120,
-    },
-    "gpt-4.1": {
-        "max_total_tokens": 128000,  # 128K
-        "min_output_tokens": 800,
-        "max_output_tokens": 4000,
-        "safety_margin": 2000,
-        "temperature": 0.7,
-        "use_max_completion_tokens": False,  # GPT-4.1 uses max_tokens
-        "timeout": 120,
-    },
-    "gpt-4-turbo": {
-        "max_total_tokens": 128000,  # 128K
-        "min_output_tokens": 800,
-        "max_output_tokens": 4000,
-        "safety_margin": 2000,
-        "temperature": 0.7,
-        "use_max_completion_tokens": False,
-        "timeout": 120,
-    },
-}
-
-# Default model
-DEFAULT_MODEL = "gpt-4.1"
-
-# Supported models
-SUPPORTED_MODELS = list(MODEL_CONFIGS.keys())
+# Model configuration is now imported from config.model_configs
+# Use get_model_config_from_common() to get full configuration
 
 
 def get_model_config(model_name: str) -> Dict[str, Any]:
@@ -109,30 +81,25 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
         model_name: Model name (e.g., "gpt-5", "gpt-4.1")
 
     Returns:
-        Model configuration dictionary
-
-    Raises:
-        ValueError: If model is not supported
+        Model configuration dictionary (full configuration)
     """
     # Normalize model name (case-insensitive, handle variations)
     model_name_lower = model_name.lower().strip()
 
-    # Try exact match first
-    if model_name_lower in MODEL_CONFIGS:
-        return MODEL_CONFIGS[model_name_lower]
+    # Try to get config from common module
+    config = get_model_config_from_common(model_name_lower)
 
-    # Try partial match (e.g., "gpt5" -> "gpt-5")
-    for key in MODEL_CONFIGS.keys():
-        if key.replace("-", "").lower() == model_name_lower.replace("-", ""):
-            return MODEL_CONFIGS[key]
+    # If model not found, common module returns default, but we should warn
+    from config.model_configs import _find_model_key
 
-    # If not found, return default config with warning
-    log_warning(
-        f"モデル '{model_name}' の設定が見つかりません。デフォルト設定 ({DEFAULT_MODEL}) を使用します。",
-        indent=0,
-    )
-    log_info(f"サポートされているモデル: {', '.join(SUPPORTED_MODELS)}", indent=1)
-    return MODEL_CONFIGS[DEFAULT_MODEL]
+    if _find_model_key(model_name_lower) is None:
+        log_warning(
+            f"モデル '{model_name}' の設定が見つかりません。デフォルト設定 ({DEFAULT_MODEL}) を使用します。",
+            indent=0,
+        )
+        log_info(f"サポートされているモデル: {', '.join(SUPPORTED_MODELS)}", indent=1)
+
+    return config
 
 
 def is_gpt5(model_name: str) -> bool:

@@ -30,35 +30,20 @@ from openai import OpenAI, AzureOpenAI
 from tqdm import tqdm
 from dotenv import load_dotenv
 
+from config.model_configs import (
+    SUPPORTED_MODELS,
+    get_simple_config as get_model_config_from_common,
+)
+
+# Format clarity evaluator uses gpt-4-turbo as default (different from common default)
+DEFAULT_MODEL = "gpt-4-turbo"
+
 # Load environment variables from .env file if it exists
 load_dotenv()
 
 
-# Model configuration (shared with llm_judge_evaluator.py)
-MODEL_CONFIGS = {
-    "gpt-5": {
-        "max_tokens": 2000,
-        "max_completion_tokens": 2000,
-        "temperature": 1.0,
-        "use_max_completion_tokens": True,
-    },
-    "gpt-4.1": {
-        "max_tokens": 2000,
-        "temperature": 0.7,
-        "use_max_completion_tokens": False,
-    },
-    "gpt-4-turbo": {
-        "max_tokens": 2000,
-        "temperature": 0.7,
-        "use_max_completion_tokens": False,
-    },
-}
-
-# Default model
-DEFAULT_MODEL = "gpt-4-turbo"
-
-# Supported models
-SUPPORTED_MODELS = list(MODEL_CONFIGS.keys())
+# Model configuration is now imported from config.model_configs
+# Use get_model_config_from_common() to get simple configuration
 
 
 def get_model_config(model_name: str) -> Dict[str, Any]:
@@ -69,25 +54,9 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
         model_name: Model name (e.g., "gpt-5", "gpt-4-turbo")
 
     Returns:
-        Model configuration dictionary
+        Model configuration dictionary (simple configuration)
     """
-    model_name_lower = model_name.lower().strip()
-
-    # Try exact match first
-    if model_name_lower in MODEL_CONFIGS:
-        return MODEL_CONFIGS[model_name_lower]
-
-    # Try partial match (e.g., "gpt5" -> "gpt-5")
-    for key in MODEL_CONFIGS.keys():
-        if key.replace("-", "").lower() == model_name_lower.replace("-", ""):
-            return MODEL_CONFIGS[key]
-
-    # If not found, return default config
-    print(
-        f"⚠️  Warning: Model '{model_name}' not found. Using default ({DEFAULT_MODEL})",
-        file=sys.stderr,
-    )
-    return MODEL_CONFIGS[DEFAULT_MODEL]
+    return get_model_config_from_common(model_name)
 
 
 # Format Clarity Judge System Prompt (embedded as per requirements)
