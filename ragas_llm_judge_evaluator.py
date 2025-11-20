@@ -42,9 +42,20 @@ from config.model_configs import (
     SUPPORTED_MODELS,
     get_ragas_config as get_model_config_from_common,
 )
+from utils.logging_config import (
+    log_info,
+    log_error,
+    log_warning,
+    log_success,
+    log_section,
+    setup_logging,
+)
 
 # Load environment variables from .env file if it exists
 load_dotenv()
+
+# Set up logging system
+setup_logging()
 
 
 def parse_react_log(log_text: str) -> Tuple[str, List[str]]:
@@ -198,23 +209,21 @@ def initialize_azure_openai_for_ragas(model_name: Optional[str] = None):
         model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
 
     if not azure_endpoint or not azure_api_key:
-        print("ERROR: Azure OpenAI credentials not found.", file=sys.stderr)
-        print("\nPlease set the following environment variables:", file=sys.stderr)
-        print(
-            "  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'",
-            file=sys.stderr,
+        log_error("Azure OpenAI credentials not found.")
+        log_error("\nPlease set the following environment variables:")
+        log_error(
+            "  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'"
         )
-        print("  export AZURE_OPENAI_API_KEY='your-api-key'", file=sys.stderr)
-        print(
-            "  export MODEL_NAME='gpt-5'  # or your deployment name (e.g., 'gpt-4.1')",
-            file=sys.stderr,
+        log_error("  export AZURE_OPENAI_API_KEY='your-api-key'")
+        log_error(
+            "  export MODEL_NAME='gpt-5'  # or your deployment name (e.g., 'gpt-4.1')"
         )
         sys.exit(1)
 
-    print("Initializing Azure OpenAI for Ragas evaluation (Faithfulness only)")
-    print(f"Endpoint: {azure_endpoint}")
-    print(f"Model/Deployment: {model_name}")
-    print(f"API Version: {azure_api_version}")
+    log_info("Initializing Azure OpenAI for Ragas evaluation (Faithfulness only)")
+    log_info(f"Endpoint: {azure_endpoint}")
+    log_info(f"Model/Deployment: {model_name}")
+    log_info(f"API Version: {azure_api_version}")
 
     # Create Azure OpenAI client for direct API access (if needed)
     client = AzureOpenAI(
@@ -255,7 +264,7 @@ def initialize_azure_openai_for_ragas(model_name: Optional[str] = None):
     token_value = model_config.get("max_completion_tokens") or model_config.get(
         "max_tokens"
     )
-    print(
+    log_info(
         f"LLM Configuration: temperature={llm_params['temperature']}, {token_param}={token_value}"
     )
 
@@ -284,7 +293,7 @@ def evaluate_with_ragas(
     Returns:
         DataFrame with Ragas faithfulness scores
     """
-    print(f"\nEvaluating {model_name} with Ragas (Faithfulness only)...")
+    log_info(f"\nEvaluating {model_name} with Ragas (Faithfulness only)...")
 
     # Prepare dataset for Ragas
     data = {
@@ -322,11 +331,11 @@ def evaluate_with_ragas(
         return results_df
 
     except Exception as e:
-        print(f"ERROR during Ragas evaluation for {model_name}: {e}", file=sys.stderr)
-        print("Traceback:", file=sys.stderr)
+        log_error(f"ERROR during Ragas evaluation for {model_name}: {e}")
+        log_error("Traceback:")
         import traceback
 
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stderr)
 
         # Return empty DataFrame with expected columns
         error_df = pd.DataFrame(
@@ -358,7 +367,7 @@ def process_csv(
     llm, client = initialize_azure_openai_for_ragas(model_name=model_name)
 
     # Read input CSV
-    print(f"\nReading input file: {input_file}")
+    log_info(f"\nReading input file: {input_file}")
     try:
         # Try to detect if there's a header row by reading first line
         with open(input_file, "r", encoding="utf-8") as f:
@@ -369,7 +378,7 @@ def process_csv(
             keyword in first_line
             for keyword in ["question", "model", "answer", "response"]
         ):
-            print("⚠️  Detected header row in input CSV.")
+            log_warning("Detected header row in input CSV.")
             df = pd.read_csv(input_file)
             # Allow both Response and Full_Log naming
             if "Model_A_Full_Log" in df.columns:
@@ -380,7 +389,7 @@ def process_csv(
                     }
                 )
         else:
-            print("⚠️  No header row detected. Treating first row as data.")
+            log_warning("No header row detected. Treating first row as data.")
             df = pd.read_csv(
                 input_file,
                 header=None,
@@ -390,26 +399,26 @@ def process_csv(
         # Validate columns
         expected_columns = ["Question", "Model_A_Response", "Model_B_Response"]
         if not all(col in df.columns for col in expected_columns):
-            print(f"ERROR: CSV must have columns: {expected_columns}", file=sys.stderr)
-            print(f"Found columns: {list(df.columns)}", file=sys.stderr)
+            log_error(f"CSV must have columns: {expected_columns}")
+            log_error(f"Found columns: {list(df.columns)}")
             sys.exit(1)
 
     except FileNotFoundError:
-        print(f"ERROR: Input file '{input_file}' not found.", file=sys.stderr)
+        log_error(f"Input file '{input_file}' not found.")
         sys.exit(1)
     except Exception as e:
-        print(f"ERROR: Failed to read input file: {e}", file=sys.stderr)
+        log_error(f"Failed to read input file: {e}")
         sys.exit(1)
 
-    print(f"Loaded {len(df)} rows from input file.")
+    log_info(f"Loaded {len(df)} rows from input file.")
 
     # Apply row limit if specified
     if limit_rows is not None and limit_rows < len(df):
         df = df.head(limit_rows)
-        print(f"⚠️  LIMITING to first {limit_rows} rows for testing")
+        log_warning(f"LIMITING to first {limit_rows} rows for testing")
 
     # Parse ReAct logs for both models
-    print("\nParsing ReAct logs...")
+    log_info("\nParsing ReAct logs...")
     model_a_answers = []
     model_a_contexts = []
     model_b_answers = []
@@ -448,12 +457,10 @@ def process_csv(
     df["model_B_answer"] = model_b_answers
     df["model_B_contexts"] = model_b_contexts
 
-    print(f"✓ Parsed {len(df)} ReAct logs for both models")
+    log_success(f"Parsed {len(df)} ReAct logs for both models")
 
     # Evaluate Model A with Ragas
-    print("\n" + "=" * 70)
-    print("EVALUATING MODEL A")
-    print("=" * 70)
+    log_section("EVALUATING MODEL A")
     model_a_results = evaluate_with_ragas(
         questions=df["Question"].tolist(),
         answers=model_a_answers,
@@ -463,9 +470,7 @@ def process_csv(
     )
 
     # Evaluate Model B with Ragas
-    print("\n" + "=" * 70)
-    print("EVALUATING MODEL B")
-    print("=" * 70)
+    log_section("EVALUATING MODEL B")
     model_b_results = evaluate_with_ragas(
         questions=df["Question"].tolist(),
         answers=model_b_answers,
@@ -509,23 +514,19 @@ def process_csv(
     # Save to CSV
     output_df.to_csv(output_file, index=False)
 
-    print("\n" + "=" * 70)
-    print("✓ EVALUATION COMPLETE!")
-    print("=" * 70)
-    print(f"✓ Results written to: {output_file}")
-    print(f"✓ Processed {len(output_df)} rows")
+    log_section("✓ EVALUATION COMPLETE!")
+    log_success(f"Results written to: {output_file}")
+    log_success(f"Processed {len(output_df)} rows")
 
     # Print summary statistics
-    print("\n" + "=" * 70)
-    print("SUMMARY STATISTICS")
-    print("=" * 70)
+    log_section("SUMMARY STATISTICS")
 
     for model_name, prefix in [("Model A", "Model_A_"), ("Model B", "Model_B_")]:
-        print(f"\n{model_name}:")
+        log_info(f"\n{model_name}:")
         col_name = f"{prefix}faithfulness_score"
         if col_name in output_df.columns:
             mean_score = output_df[col_name].mean()
-            print(f"  faithfulness        : {mean_score:.4f}")
+            log_info(f"  faithfulness        : {mean_score:.4f}")
 
 
 def main():
@@ -625,14 +626,12 @@ Output:
                 args.model = supported_model
                 break
 
-    print("=" * 70)
-    print("Ragas-Based Evaluation Pipeline for ReAct Chatbot Responses")
-    print("=" * 70)
+    log_section("Ragas-Based Evaluation Pipeline for ReAct Chatbot Responses")
 
     # Determine model name
     model_name = args.model or os.getenv("MODEL_NAME", DEFAULT_MODEL)
     if model_name:
-        print(f"Using model: {model_name}")
+        log_info(f"Using model: {model_name}")
 
     process_csv(
         args.input_csv, args.output, limit_rows=args.limit, model_name=model_name

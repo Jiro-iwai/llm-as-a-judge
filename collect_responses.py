@@ -23,6 +23,18 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
+from utils.logging_config import (
+    log_info,
+    log_error,
+    log_warning,
+    log_success,
+    log_section,
+    setup_logging,
+)
+
+# Set up logging system
+setup_logging()
+
 
 def clean_html(text_block: str) -> str:
     """
@@ -172,7 +184,7 @@ def format_response(response_text: str) -> str:
         return formatted
     except Exception as e:
         # If formatting fails, return original text
-        print(f"  ⚠️  ログ整形エラー: {e}", file=sys.stderr)
+        log_warning(f"ログ整形エラー: {e}")
         return response_text
 
 
@@ -209,13 +221,10 @@ def call_api(
     }
 
     if verbose:
-        print(f"  📤 [{model_name}] API呼び出し開始")
-        print(f"     URL: {url}")
-        print(
-            f"     質問: {question[:60]}..."
-            if len(question) > 60
-            else f"     質問: {question}"
-        )
+        log_info(f"📤 [{model_name}] API呼び出し開始", indent=1)
+        log_info(f"URL: {url}", indent=2)
+        question_preview = question[:60] + "..." if len(question) > 60 else question
+        log_info(f"質問: {question_preview}", indent=2)
 
     start_time = time.time()
     response: Optional[requests.Response] = None
@@ -225,8 +234,9 @@ def call_api(
         elapsed_time = time.time() - start_time
 
         if verbose:
-            print(
-                f"  📥 [{model_name}] HTTPステータス: {response.status_code} (経過時間: {elapsed_time:.2f}秒)"
+            log_info(
+                f"📥 [{model_name}] HTTPステータス: {response.status_code} (経過時間: {elapsed_time:.2f}秒)",
+                indent=1,
             )
 
         response.raise_for_status()
@@ -247,7 +257,7 @@ def call_api(
             parsed = response_data
         else:
             if verbose:
-                print(f"  ⚠️  [{model_name}] 予期しないレスポンス形式")
+                log_warning(f"[{model_name}] 予期しないレスポンス形式", indent=1)
             return response.text
 
         # Extract the answer field (this contains the LLM response)
@@ -255,41 +265,44 @@ def call_api(
             answer = parsed["answer"]
             answer_length = len(answer)
             if verbose:
-                print(
-                    f"  ✅ [{model_name}] レスポンス取得成功 (answer長さ: {answer_length:,}文字)"
+                log_success(
+                    f"[{model_name}] レスポンス取得成功 (answer長さ: {answer_length:,}文字)",
+                    indent=1,
                 )
                 if "urls" in parsed and isinstance(parsed["urls"], list):
-                    print(f"     検索結果URL数: {len(parsed['urls'])}")
+                    log_info(f"検索結果URL数: {len(parsed['urls'])}", indent=2)
             return answer
         else:
             if verbose:
-                print(f"  ⚠️  [{model_name}] 'answer'フィールドが見つかりません")
+                log_warning(
+                    f"[{model_name}] 'answer'フィールドが見つかりません", indent=1
+                )
             return response.text
 
     except requests.exceptions.Timeout:
         elapsed_time = time.time() - start_time
-        print(
-            f"\n  ❌ [{model_name}] API呼び出しタイムアウト (経過時間: {elapsed_time:.2f}秒)",
-            file=sys.stderr,
+        log_error(
+            f"[{model_name}] API呼び出しタイムアウト (経過時間: {elapsed_time:.2f}秒)",
+            indent=1,
         )
-        print(f"     URL: {url}", file=sys.stderr)
+        log_error(f"URL: {url}", indent=2)
         return None
     except requests.exceptions.RequestException as e:
         elapsed_time = time.time() - start_time
-        print(
-            f"\n  ❌ [{model_name}] API呼び出しエラー (経過時間: {elapsed_time:.2f}秒)",
-            file=sys.stderr,
+        log_error(
+            f"[{model_name}] API呼び出しエラー (経過時間: {elapsed_time:.2f}秒)",
+            indent=1,
         )
-        print(f"     エラー: {e}", file=sys.stderr)
-        print(f"     URL: {url}", file=sys.stderr)
+        log_error(f"エラー: {e}", indent=2)
+        log_error(f"URL: {url}", indent=2)
         return None
     except (json.JSONDecodeError, KeyError) as e:
         elapsed_time = time.time() - start_time
-        print(
-            f"\n  ❌ [{model_name}] レスポンス解析エラー (経過時間: {elapsed_time:.2f}秒)",
-            file=sys.stderr,
+        log_error(
+            f"[{model_name}] レスポンス解析エラー (経過時間: {elapsed_time:.2f}秒)",
+            indent=1,
         )
-        print(f"     エラー: {e}", file=sys.stderr)
+        log_error(f"エラー: {e}", indent=2)
         response_text: Optional[str] = None
         if response is not None:
             try:
@@ -298,7 +311,7 @@ def call_api(
                     if hasattr(response, "text")
                     else str(response)[:200]
                 )
-                print(f"     レスポンスプレビュー: {response_text}", file=sys.stderr)
+                log_info(f"レスポンスプレビュー: {response_text}", indent=2)
             except AttributeError:
                 pass
         return response_text
@@ -334,20 +347,18 @@ def collect_responses(
     results = []
     total_start_time = time.time()
 
-    print("=" * 70)
-    print("📋 収集設定")
-    print("=" * 70)
-    print(f"  質問数: {len(questions)}")
-    print(f"  Model A: {model_a}")
-    print(f"  Model B: {model_b}")
-    print(f"  API URL: {api_url}")
-    print(f"  リクエスト間隔: {delay}秒")
-    print(f"  タイムアウト: {timeout}秒")
-    print(
-        f"  予想処理時間: 約{len(questions) * 2 * (delay + 15):.0f}秒 (各API呼び出し15秒想定)"
+    log_section("📋 収集設定")
+    log_info(f"質問数: {len(questions)}", indent=1)
+    log_info(f"Model A: {model_a}", indent=1)
+    log_info(f"Model B: {model_b}", indent=1)
+    log_info(f"API URL: {api_url}", indent=1)
+    log_info(f"リクエスト間隔: {delay}秒", indent=1)
+    log_info(f"タイムアウト: {timeout}秒", indent=1)
+    estimated_time = len(questions) * 2 * (delay + 15)
+    log_info(
+        f"予想処理時間: 約{estimated_time:.0f}秒 (各API呼び出し15秒想定)", indent=1
     )
-    print("=" * 70)
-    print()
+    log_info("")
 
     success_count_a = 0
     success_count_b = 0
@@ -356,17 +367,15 @@ def collect_responses(
 
     for idx, question in enumerate(tqdm(questions, desc="📊 進捗"), 1):
         if verbose:
-            print(f"\n{'=' * 70}")
-            print(f"📝 質問 {idx}/{len(questions)}")
-            print(f"{'=' * 70}")
-            print(f"質問: {question}")
+            log_section(f"📝 質問 {idx}/{len(questions)}")
+            log_info(f"質問: {question}")
             print()
 
         question_start_time = time.time()
 
         # Call Model A
         if verbose:
-            print(f"[{idx}/{len(questions)}] Model A ({model_a}) を呼び出し中...")
+            log_info(f"[{idx}/{len(questions)}] Model A ({model_a}) を呼び出し中...")
         response_a_raw = call_api(
             question, api_url, model_a, identity, timeout, verbose=verbose
         )
@@ -374,7 +383,7 @@ def collect_responses(
         # Format the response using log simplifier
         if response_a_raw:
             if verbose:
-                print("  🔧 Model A レスポンスを整形中...")
+                log_info("🔧 Model A レスポンスを整形中...", indent=1)
             response_a = format_response(response_a_raw)
             success_count_a += 1
         else:
@@ -383,12 +392,12 @@ def collect_responses(
 
         # Wait between Model A and Model B calls
         if verbose:
-            print(f"  ⏸️  Model B呼び出しまで{delay}秒待機中...")
+            log_info(f"⏸️  Model B呼び出しまで{delay}秒待機中...", indent=1)
         time.sleep(delay)  # Rate limiting
 
         # Call Model B
         if verbose:
-            print(f"[{idx}/{len(questions)}] Model B ({model_b}) を呼び出し中...")
+            log_info(f"[{idx}/{len(questions)}] Model B ({model_b}) を呼び出し中...")
         response_b_raw = call_api(
             question, api_url, model_b, identity, timeout, verbose=verbose
         )
@@ -396,7 +405,7 @@ def collect_responses(
         # Format the response using log simplifier
         if response_b_raw:
             if verbose:
-                print("  🔧 Model B レスポンスを整形中...")
+                log_info("🔧 Model B レスポンスを整形中...", indent=1)
             response_b = format_response(response_b_raw)
             success_count_b += 1
         else:
@@ -418,35 +427,47 @@ def collect_responses(
         if verbose:
             status_a = "✅" if response_a else "❌"
             status_b = "✅" if response_b else "❌"
-            print(f"\n  📊 質問 {idx} 完了 (経過時間: {question_elapsed:.2f}秒)")
-            print(f"     Model A: {status_a} | Model B: {status_b}")
-            print(f"     成功数: A={success_count_a}/{idx}, B={success_count_b}/{idx}")
+            log_info(
+                f"\n📊 質問 {idx} 完了 (経過時間: {question_elapsed:.2f}秒)", indent=1
+            )
+            log_info(f"Model A: {status_a} | Model B: {status_b}", indent=2)
+            log_info(
+                f"成功数: A={success_count_a}/{idx}, B={success_count_b}/{idx}",
+                indent=2,
+            )
 
         # Wait before next question (if not the last question)
         if idx < len(questions):
             if verbose:
-                print(f"  ⏸️  次の質問まで{delay}秒待機中...")
+                log_info(f"⏸️  次の質問まで{delay}秒待機中...", indent=1)
             time.sleep(delay)  # Rate limiting
 
     total_elapsed = time.time() - total_start_time
 
     if verbose:
-        print("\n" + "=" * 70)
-        print("📊 収集完了統計")
-        print("=" * 70)
-        print(f"  総処理時間: {total_elapsed:.2f}秒 ({total_elapsed / 60:.2f}分)")
-        print(f"  質問数: {len(questions)}")
-        print(f"  Model A ({model_a}):")
-        print(
-            f"    ✅ 成功: {success_count_a}/{len(questions)} ({success_count_a / len(questions) * 100:.1f}%)"
+        log_section("📊 収集完了統計")
+        log_info(
+            f"総処理時間: {total_elapsed:.2f}秒 ({total_elapsed / 60:.2f}分)", indent=1
         )
-        print(f"    ❌ 失敗: {failed_count_a}/{len(questions)}")
-        print(f"  Model B ({model_b}):")
-        print(
-            f"    ✅ 成功: {success_count_b}/{len(questions)} ({success_count_b / len(questions) * 100:.1f}%)"
+        log_info(f"質問数: {len(questions)}", indent=1)
+        log_info(f"Model A ({model_a}):", indent=1)
+        success_rate_a = (
+            success_count_a / len(questions) * 100 if len(questions) > 0 else 0
         )
-        print(f"    ❌ 失敗: {failed_count_b}/{len(questions)}")
-        print("=" * 70)
+        log_info(
+            f"✅ 成功: {success_count_a}/{len(questions)} ({success_rate_a:.1f}%)",
+            indent=2,
+        )
+        log_info(f"❌ 失敗: {failed_count_a}/{len(questions)}", indent=2)
+        log_info(f"Model B ({model_b}):", indent=1)
+        success_rate_b = (
+            success_count_b / len(questions) * 100 if len(questions) > 0 else 0
+        )
+        log_info(
+            f"✅ 成功: {success_count_b}/{len(questions)} ({success_rate_b:.1f}%)",
+            indent=2,
+        )
+        log_info(f"❌ 失敗: {failed_count_b}/{len(questions)}", indent=2)
 
     return pd.DataFrame(results)
 
@@ -495,10 +516,10 @@ def read_questions(input_file: str) -> List[str]:
                     ):  # Skip empty lines and comments
                         questions.append(line)
     except FileNotFoundError:
-        print(f"ERROR: Input file '{input_file}' not found.", file=sys.stderr)
+        log_error(f"Input file '{input_file}' not found.")
         sys.exit(1)
     except Exception as e:
-        print(f"ERROR: Failed to read input file: {e}", file=sys.stderr)
+        log_error(f"Failed to read input file: {e}")
         sys.exit(1)
 
     return questions
@@ -594,17 +615,15 @@ Input file format:
 
     args = parser.parse_args()
 
-    print("=" * 70)
-    print("LLM Response Collector")
-    print("=" * 70)
+    log_section("LLM Response Collector")
 
     # Read questions
-    print(f"\nReading questions from: {args.input_file}")
+    log_info(f"\nReading questions from: {args.input_file}")
     questions = read_questions(args.input_file)
-    print(f"✓ Loaded {len(questions)} questions")
+    log_success(f"Loaded {len(questions)} questions")
 
     if len(questions) == 0:
-        print("ERROR: No questions found in input file.", file=sys.stderr)
+        log_error("No questions found in input file.")
         sys.exit(1)
 
     # Collect responses
@@ -620,43 +639,42 @@ Input file format:
     )
 
     # Save to CSV
-    print("\n" + "=" * 70)
-    print("💾 CSVファイルに保存中...")
-    print("=" * 70)
+    log_section("💾 CSVファイルに保存中...")
     df.to_csv(args.output, index=False, quoting=csv.QUOTE_ALL)
 
-    print(f"✅ ファイル保存完了: {args.output}")
-    print(f"   行数: {len(df)}")
-    print(f"   列数: {len(df.columns)}")
-    print(f"   列名: {', '.join(df.columns)}")
+    log_success(f"ファイル保存完了: {args.output}")
+    log_info(f"行数: {len(df)}", indent=1)
+    log_info(f"列数: {len(df.columns)}", indent=1)
+    log_info(f"列名: {', '.join(df.columns)}", indent=1)
 
     # Check for errors
     failed_a = df[df["Model_A_Response"] == ""].shape[0]
     failed_b = df[df["Model_B_Response"] == ""].shape[0]
 
-    print("\n" + "=" * 70)
-    print("✅ 収集完了!")
-    print("=" * 70)
-    print(f"📄 出力ファイル: {args.output}")
-    print(f"📊 収集したレスポンス数: {len(df)}")
+    log_section("✅ 収集完了!")
+    log_info(f"📄 出力ファイル: {args.output}")
+    log_info(f"📊 収集したレスポンス数: {len(df)}")
 
     if failed_a > 0 or failed_b > 0:
-        print("\n⚠️  警告:")
+        log_warning("\n警告:")
         if failed_a > 0:
-            print(f"  ❌ Model A ({args.model_a}): {failed_a}件のレスポンス取得に失敗")
+            log_error(
+                f"Model A ({args.model_a}): {failed_a}件のレスポンス取得に失敗",
+                indent=1,
+            )
         if failed_b > 0:
-            print(f"  ❌ Model B ({args.model_b}): {failed_b}件のレスポンス取得に失敗")
+            log_error(
+                f"Model B ({args.model_b}): {failed_b}件のレスポンス取得に失敗",
+                indent=1,
+            )
     else:
-        print("\n✅ すべてのレスポンスが正常に取得されました!")
+        log_success("\nすべてのレスポンスが正常に取得されました!")
 
-    print("\n" + "=" * 70)
-    print("📝 次のステップ")
-    print("=" * 70)
-    print("評価スクリプトを実行:")
-    print(f"  python llm_judge_evaluator.py {args.output} -n 5")
-    print("\nまたは:")
-    print(f"  python ragas_llm_judge_evaluator.py {args.output} -n 5")
-    print("=" * 70)
+    log_section("📝 次のステップ")
+    log_info("評価スクリプトを実行:")
+    log_info(f"  python llm_judge_evaluator.py {args.output} -n 5", indent=1)
+    log_info("\nまたは:")
+    log_info(f"  python ragas_llm_judge_evaluator.py {args.output} -n 5", indent=1)
 
 
 if __name__ == "__main__":

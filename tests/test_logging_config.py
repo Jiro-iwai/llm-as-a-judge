@@ -8,10 +8,8 @@ usage across all scripts.
 import io
 import logging
 import os
-import sys
 from unittest.mock import patch
 
-import pytest
 
 # Import the logging module (will be created)
 # Note: This will fail until we create utils/logging_config.py
@@ -23,7 +21,6 @@ from utils.logging_config import (
     log_success,
     log_section,
     setup_logging,
-    _logger,
 )
 
 

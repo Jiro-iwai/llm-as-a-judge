@@ -1,6 +1,5 @@
 """Unit tests for config.model_configs module"""
 
-import pytest
 import sys
 from pathlib import Path
 

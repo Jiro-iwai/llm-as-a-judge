@@ -4,15 +4,27 @@
 tmp.txtから処理時間を抽出して2つのモデルを比較します。
 """
 
+import platform
 import re
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
 import sys
 
-# 日本語フォントの設定（macOS用）
-import platform
+import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
 
+from utils.logging_config import (
+    log_error,
+    log_info,
+    log_section,
+    log_success,
+    log_warning,
+    setup_logging,
+)
+
+# Set up logging system
+setup_logging()
+
+# 日本語フォントの設定（macOS用）
 if platform.system() == "Darwin":  # macOS
     try:
         matplotlib.rcParams["font.family"] = [
@@ -39,7 +51,7 @@ def extract_processing_times(log_file: str):
         with open(log_file, "r", encoding="utf-8") as f:
             content = f.read()
     except FileNotFoundError:
-        print(f"❌ エラー: ファイル '{log_file}' が見つかりません", file=sys.stderr)
+        log_error(f"ファイル '{log_file}' が見つかりません")
         sys.exit(1)
 
     # Model A (claude3.5-sonnet) の処理時間を抽出
@@ -55,11 +67,11 @@ def extract_processing_times(log_file: str):
     # 質問番号を生成
     question_numbers = list(range(1, len(model_a_times) + 1))
 
-    print(f"✓ Model A (claude3.5-sonnet) の処理時間: {len(model_a_times)}件")
-    print(f"✓ Model B (claude4.5-haiku) の処理時間: {len(model_b_times)}件")
+    log_success(f"Model A (claude3.5-sonnet) の処理時間: {len(model_a_times)}件")
+    log_success(f"Model B (claude4.5-haiku) の処理時間: {len(model_b_times)}件")
 
     if len(model_a_times) != len(model_b_times):
-        print("⚠️  警告: Model AとModel Bのデータ数が一致しません", file=sys.stderr)
+        log_warning("Model AとModel Bのデータ数が一致しません")
         min_len = min(len(model_a_times), len(model_b_times))
         model_a_times = model_a_times[:min_len]
         model_b_times = model_b_times[:min_len]
@@ -110,7 +122,7 @@ def create_comparison_chart(
 
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"✓ 処理時間比較チャートを保存: {output_file}")
+    log_success(f"処理時間比較チャートを保存: {output_file}")
     plt.close()
 
 
@@ -210,7 +222,7 @@ def create_statistics_chart(
     plt.suptitle("処理時間統計分析", fontsize=14, fontweight="bold", y=0.995)
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"✓ 統計チャートを保存: {output_file}")
+    log_success(f"統計チャートを保存: {output_file}")
     plt.close()
 
 
@@ -295,7 +307,7 @@ def create_summary_table(
         else:
             f.write("  時間削減率: 計算不可（データがありません）\n")
 
-    print(f"✓ サマリーテーブルを保存: {output_file}")
+    log_success(f"サマリーテーブルを保存: {output_file}")
 
 
 def main():
@@ -305,34 +317,29 @@ def main():
     if len(sys.argv) > 1:
         log_file = sys.argv[1]
 
-    print("=" * 70)
-    print("処理時間比較分析")
-    print("=" * 70)
-    print()
+    log_section("処理時間比較分析")
 
     # 処理時間を抽出
     question_numbers, model_a_times, model_b_times = extract_processing_times(log_file)
 
     if len(model_a_times) == 0 or len(model_b_times) == 0:
-        print("❌ エラー: 処理時間データが見つかりません", file=sys.stderr)
+        log_error("処理時間データが見つかりません")
         sys.exit(1)
 
-    print()
+    log_info("")
 
     # グラフを作成
-    print("グラフを作成中...")
+    log_info("グラフを作成中...")
     create_comparison_chart(question_numbers, model_a_times, model_b_times)
     create_statistics_chart(question_numbers, model_a_times, model_b_times)
     create_summary_table(question_numbers, model_a_times, model_b_times)
 
-    print()
-    print("=" * 70)
-    print("✓ 分析完了!")
-    print("=" * 70)
-    print("生成されたファイル:")
-    print("  - processing_time_comparison.png: 処理時間比較チャート")
-    print("  - processing_time_statistics.png: 統計チャート")
-    print("  - processing_time_summary.txt: サマリーテーブル")
+    log_info("")
+    log_section("✓ 分析完了!")
+    log_info("生成されたファイル:")
+    log_info("  - processing_time_comparison.png: 処理時間比較チャート", indent=1)
+    log_info("  - processing_time_statistics.png: 統計チャート", indent=1)
+    log_info("  - processing_time_summary.txt: サマリーテーブル", indent=1)
 
 
 if __name__ == "__main__":
