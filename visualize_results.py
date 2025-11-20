@@ -12,6 +12,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from config.app_config import get_output_file_names
 from utils.logging_config import (
     log_error,
     log_info,
@@ -385,20 +386,27 @@ def main():
     log_success(f"有効な評価データ: {len(df_clean)}行")
     log_info("")
 
+    # Get output file names from config
+    output_files = get_output_file_names()
+
     # グラフを作成
     log_info("グラフを作成中...")
-    create_score_comparison_chart(df_clean, "evaluation_comparison.png")
-    create_score_distribution_chart(df_clean, "evaluation_distribution.png")
-    create_boxplot_chart(df_clean, "evaluation_boxplot.png")
-    create_summary_table(df_clean, "evaluation_summary.txt")
+    create_score_comparison_chart(df_clean, output_files["evaluation_comparison"])
+    create_score_distribution_chart(df_clean, output_files["evaluation_distribution"])
+    create_boxplot_chart(df_clean, output_files["evaluation_boxplot"])
+    create_summary_table(df_clean, output_files["evaluation_summary"])
 
     log_info("")
     log_section("✓ 可視化完了!")
     log_info("生成されたファイル:")
-    log_info("  - evaluation_comparison.png: スコア比較チャート", indent=1)
-    log_info("  - evaluation_distribution.png: スコア分布チャート", indent=1)
-    log_info("  - evaluation_boxplot.png: 箱ひげ図", indent=1)
-    log_info("  - evaluation_summary.txt: サマリーテーブル", indent=1)
+    log_info(
+        f"  - {output_files['evaluation_comparison']}: スコア比較チャート", indent=1
+    )
+    log_info(
+        f"  - {output_files['evaluation_distribution']}: スコア分布チャート", indent=1
+    )
+    log_info(f"  - {output_files['evaluation_boxplot']}: 箱ひげ図", indent=1)
+    log_info(f"  - {output_files['evaluation_summary']}: サマリーテーブル", indent=1)
 
 
 if __name__ == "__main__":

@@ -42,6 +42,10 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
+from config.app_config import (
+    get_max_retries,
+    get_retry_delay,
+)
 
 # Format clarity evaluator uses gpt-4-turbo as default (different from common default)
 DEFAULT_MODEL = "gpt-4-turbo"
@@ -189,8 +193,8 @@ def call_judge_model(
     claude_45_answer: str,
     model_name: str = "gpt-4-turbo",
     is_azure: bool = False,
-    max_retries: int = 3,
-    retry_delay: int = 2,
+    max_retries: Optional[int] = None,
+    retry_delay: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Call the OpenAI API to evaluate the format similarity.
@@ -202,12 +206,18 @@ def call_judge_model(
         claude_45_answer: Parsed final answer from Claude 4.5 Sonnet
         model_name: Model name or Azure deployment name
         is_azure: Whether using Azure OpenAI (affects parameter naming)
-        max_retries: Maximum number of retry attempts on failure
-        retry_delay: Delay in seconds between retries
+        max_retries: Maximum number of retry attempts on failure (defaults to config value)
+        retry_delay: Delay in seconds between retries (defaults to config value)
 
     Returns:
         Parsed JSON response from the judge model, or None if all retries fail
     """
+    # Use config values if not provided
+    if max_retries is None:
+        max_retries = get_max_retries()
+    if retry_delay is None:
+        retry_delay = get_retry_delay()
+
     user_prompt = create_user_prompt(question, claude_35_answer, claude_45_answer)
 
     for attempt in range(max_retries):
