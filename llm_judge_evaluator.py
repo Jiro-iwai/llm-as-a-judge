@@ -32,41 +32,20 @@ from config.model_configs import (
     SUPPORTED_MODELS,
     get_full_config as get_model_config_from_common,
 )
+from utils.logging_config import (
+    log_info,
+    log_error,
+    log_warning,
+    log_success,
+    log_section,
+    setup_logging,
+)
 
 # Load environment variables from .env file if it exists
 load_dotenv()
 
-
-# Logging helper functions
-def log_info(message: str, indent: int = 0) -> None:
-    """Print info message with optional indentation."""
-    prefix = "  " * indent
-    print(f"{prefix}{message}", file=sys.stderr)
-
-
-def log_section(title: str) -> None:
-    """Print section header."""
-    print(f"\n{'=' * 70}", file=sys.stderr)
-    print(f"{title}", file=sys.stderr)
-    print(f"{'=' * 70}", file=sys.stderr)
-
-
-def log_warning(message: str, indent: int = 0) -> None:
-    """Print warning message."""
-    prefix = "  " * indent
-    print(f"{prefix}⚠️  {message}", file=sys.stderr)
-
-
-def log_error(message: str, indent: int = 0) -> None:
-    """Print error message."""
-    prefix = "  " * indent
-    print(f"{prefix}❌ {message}", file=sys.stderr)
-
-
-def log_success(message: str, indent: int = 0) -> None:
-    """Print success message."""
-    prefix = "  " * indent
-    print(f"{prefix}✓ {message}", file=sys.stderr)
+# Set up logging system
+setup_logging()
 
 
 # Model configuration is now imported from config.model_configs

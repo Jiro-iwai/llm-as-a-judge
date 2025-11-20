@@ -106,49 +106,121 @@ class TestLogFunctions:
 
     def test_log_info(self):
         """Test log_info function"""
-        with patch("sys.stderr", new=StringIO()) as mock_stderr:
-            log_info("Test message")
-            output = mock_stderr.getvalue()
-            assert "Test message" in output
+        import io
+        import logging
+        from utils.logging_config import setup_logging, reset_logger
+
+        reset_logger()
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger = setup_logging(reset=True)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        log_info("Test message")
+        output = stream.getvalue()
+        assert "Test message" in output
 
     def test_log_info_with_indent(self):
         """Test log_info with indentation"""
-        with patch("sys.stderr", new=StringIO()) as mock_stderr:
-            log_info("Test message", indent=2)
-            output = mock_stderr.getvalue()
-            assert "Test message" in output
-            assert output.startswith("    ")  # 2 indents = 4 spaces
+        import io
+        import logging
+        from utils.logging_config import setup_logging, reset_logger
+
+        reset_logger()
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger = setup_logging(reset=True)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        log_info("Test message", indent=2)
+        output = stream.getvalue()
+        assert "Test message" in output
+        assert output.startswith("    ")  # 2 indents = 4 spaces
 
     def test_log_section(self):
         """Test log_section function"""
-        with patch("sys.stderr", new=StringIO()) as mock_stderr:
-            log_section("Test Section")
-            output = mock_stderr.getvalue()
-            assert "Test Section" in output
-            assert "=" * 70 in output
+        import io
+        import logging
+        from utils.logging_config import setup_logging, reset_logger
+
+        reset_logger()
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger = setup_logging(reset=True)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        log_section("Test Section")
+        output = stream.getvalue()
+        assert "Test Section" in output
+        assert "=" * 70 in output
 
     def test_log_warning(self):
         """Test log_warning function"""
-        with patch("sys.stderr", new=StringIO()) as mock_stderr:
-            log_warning("Warning message")
-            output = mock_stderr.getvalue()
-            assert "Warning message" in output
+        import io
+        import logging
+        from utils.logging_config import setup_logging, reset_logger
+
+        reset_logger()
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger = setup_logging(reset=True)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
+        log_warning("Warning message")
+        output = stream.getvalue()
+        assert "Warning message" in output
 
     def test_log_error(self):
         """Test log_error function"""
-        with patch("sys.stderr", new=StringIO()) as mock_stderr:
-            log_error("Error message")
-            output = mock_stderr.getvalue()
-            assert "Error message" in output
-            assert "❌" in output
+        import io
+        import logging
+        from utils.logging_config import setup_logging, reset_logger
+
+        reset_logger()
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger = setup_logging(reset=True)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.ERROR)
+
+        log_error("Error message")
+        output = stream.getvalue()
+        assert "Error message" in output
+        assert "❌" in output
 
     def test_log_success(self):
         """Test log_success function"""
-        with patch("sys.stderr", new=StringIO()) as mock_stderr:
-            log_success("Success message")
-            output = mock_stderr.getvalue()
-            assert "Success message" in output
-            assert "✓" in output
+        import io
+        import logging
+        from utils.logging_config import setup_logging, reset_logger
+
+        reset_logger()
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger = setup_logging(reset=True)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        log_success("Success message")
+        output = stream.getvalue()
+        assert "Success message" in output
+        assert "✓" in output
 
 
 class TestCallJudgeModel:
