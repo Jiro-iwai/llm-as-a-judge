@@ -32,13 +32,23 @@ env/
 *.swp
 *.swo
 *~
+.cursorrules
 
 # Environment variables - CRITICAL: Never commit this!
 .env
+.env.bak
 
 # Output files
 evaluation_output.csv
 *.csv
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Results directory
+results/
 
 # OS
 .DS_Store

@@ -3,10 +3,21 @@ openai>=1.0.0
 pandas>=2.0.0
 tqdm>=4.65.0
 python-dotenv>=1.0.0
+requests>=2.32.0
+
+# Visualization dependencies
+matplotlib>=3.7.0
+seaborn>=0.12.0
 
 # Ragas dependencies
 ragas>=0.1.0
 datasets>=2.14.0
 langchain-openai>=0.1.0
 langchain>=0.1.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+ruff>=0.1.0
+pyright>=1.1.0
 
