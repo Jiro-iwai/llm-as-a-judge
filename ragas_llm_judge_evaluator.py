@@ -330,12 +330,40 @@ def evaluate_with_ragas(
 
         return results_df
 
-    except Exception as e:
-        log_error(f"ERROR during Ragas evaluation for {model_name}: {e}")
+    except (ValueError, KeyError, AttributeError) as e:
+        # データ構造のエラーは詳細な情報を記録
+        log_error(
+            f"ERROR during Ragas evaluation for {model_name}: {type(e).__name__}: {e}"
+        )
         log_error("Traceback:")
         import traceback
 
         traceback.print_exc(file=sys.stderr)
+        # エラー時は空のDataFrameを返す
+        error_df = pd.DataFrame(
+            {
+                "question": questions,
+                f"{model_name}_faithfulness_score": [None] * len(questions),
+            }
+        )
+        return error_df
+    except Exception as e:
+        # その他の予期しないエラー
+        log_error(
+            f"ERROR during Ragas evaluation for {model_name}: {type(e).__name__}: {e}"
+        )
+        log_error("Traceback:")
+        import traceback
+
+        traceback.print_exc(file=sys.stderr)
+        # エラー時は空のDataFrameを返す
+        error_df = pd.DataFrame(
+            {
+                "question": questions,
+                f"{model_name}_faithfulness_score": [None] * len(questions),
+            }
+        )
+        return error_df
 
         # Return empty DataFrame with expected columns
         error_df = pd.DataFrame(
@@ -406,8 +434,18 @@ def process_csv(
     except FileNotFoundError:
         log_error(f"Input file '{input_file}' not found.")
         sys.exit(1)
-    except Exception as e:
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError) as e:
         log_error(f"Failed to read input file: {e}")
+        log_error(
+            "Please check that the file format is correct and the encoding is valid."
+        )
+        sys.exit(1)
+    except PermissionError as e:
+        log_error(f"Permission denied accessing file: {e}")
+        sys.exit(1)
+    except Exception as e:
+        # 予期しないエラーの場合は詳細な情報を記録
+        log_error(f"Unexpected error occurred: {type(e).__name__}: {e}")
         sys.exit(1)
 
     log_info(f"Loaded {len(df)} rows from input file.")
@@ -481,6 +519,10 @@ def process_csv(
 
     # Merge results back into main DataFrame
     # Only merge the score columns (not the duplicated question/answer/contexts columns)
+    # model_a_results and model_b_results are guaranteed to be DataFrames (not None)
+    assert model_a_results is not None, "Model A evaluation failed"
+    assert model_b_results is not None, "Model B evaluation failed"
+
     score_columns_a = [
         col for col in model_a_results.columns if col.startswith("Model_A_")
     ]

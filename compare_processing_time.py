@@ -33,7 +33,9 @@ if platform.system() == "Darwin":  # macOS
             "Arial Unicode MS",
             "DejaVu Sans",
         ]
-    except Exception:
+    except (OSError, ImportError, ValueError) as e:
+        # フォント設定に失敗した場合はデフォルトフォントを使用
+        log_warning(f"日本語フォントの設定に失敗しました: {e}")
         matplotlib.rcParams["font.family"] = "DejaVu Sans"
 else:
     matplotlib.rcParams["font.family"] = "DejaVu Sans"

@@ -83,8 +83,14 @@ def clean_and_format_llm_log(messy_text: str) -> str:
     except json.JSONDecodeError:
         # If not JSON, treat as plain text
         answer_content = messy_text.replace("\\n", "\n")
+    except (ValueError, TypeError) as e:
+        # Handle value/type errors during JSON parsing
+        return f"Error parsing JSON: {e}"
     except Exception as e:
-        return f"An unexpected error occurred during JSON parsing: {e}"
+        # 予期しないエラーの場合は詳細な情報を記録
+        return (
+            f"An unexpected error occurred during JSON parsing: {type(e).__name__}: {e}"
+        )
 
     # Define all sections we want to extract from the log.
     sections_to_find = [
@@ -187,9 +193,13 @@ def format_response(response_text: str) -> str:
         # Try to format as if it's already the answer content
         formatted = clean_and_format_llm_log(response_text)
         return formatted
+    except (ValueError, KeyError, AttributeError) as e:
+        # Handle specific errors during log formatting
+        log_warning(f"ログ整形エラー ({type(e).__name__}): {e}")
+        return response_text
     except Exception as e:
-        # If formatting fails, return original text
-        log_warning(f"ログ整形エラー: {e}")
+        # 予期しないエラーの場合は詳細な情報を記録
+        log_warning(f"予期しないログ整形エラー: {type(e).__name__}: {e}")
         return response_text
 
 
@@ -537,8 +547,18 @@ def read_questions(input_file: str) -> List[str]:
     except FileNotFoundError:
         log_error(f"Input file '{input_file}' not found.")
         sys.exit(1)
+    except PermissionError as e:
+        log_error(f"Permission denied accessing file: {e}")
+        sys.exit(1)
+    except UnicodeDecodeError as e:
+        log_error(f"Failed to decode file: {e}")
+        log_error("Please check the file encoding (UTF-8 is recommended).")
+        sys.exit(1)
     except Exception as e:
-        log_error(f"Failed to read input file: {e}")
+        # 予期しないエラーの場合は詳細な情報を記録
+        log_error(
+            f"Unexpected error occurred while reading file: {type(e).__name__}: {e}"
+        )
         sys.exit(1)
 
     return questions

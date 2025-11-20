@@ -35,7 +35,9 @@ if platform.system() == "Darwin":  # macOS
             "Arial Unicode MS",
             "DejaVu Sans",
         ]
-    except Exception:
+    except (OSError, ImportError, ValueError) as e:
+        # フォント設定に失敗した場合はデフォルトフォントを使用
+        log_warning(f"日本語フォントの設定に失敗しました: {e}")
         matplotlib.rcParams["font.family"] = "DejaVu Sans"
 else:
     matplotlib.rcParams["font.family"] = "DejaVu Sans"
@@ -51,8 +53,16 @@ def load_data(csv_file: str) -> pd.DataFrame:
     except FileNotFoundError:
         log_error(f"ファイル '{csv_file}' が見つかりません")
         sys.exit(1)
-    except Exception as e:
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError) as e:
         log_error(f"ファイルの読み込みに失敗しました: {e}")
+        log_error("ファイル形式が正しいか、文字エンコーディングを確認してください。")
+        sys.exit(1)
+    except PermissionError as e:
+        log_error(f"ファイルへのアクセス権限がありません: {e}")
+        sys.exit(1)
+    except Exception as e:
+        # 予期しないエラーの場合は詳細な情報を記録
+        log_error(f"予期しないエラーが発生しました: {type(e).__name__}: {e}")
         sys.exit(1)
 
 
