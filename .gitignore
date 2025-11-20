@@ -41,6 +41,9 @@ env/
 # Output files
 evaluation_output.csv
 *.csv
+*_summary.txt
+processing_time_summary.txt
+evaluation_summary.txt
 
 # Test coverage
 .coverage
