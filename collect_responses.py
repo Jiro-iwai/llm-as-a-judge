@@ -31,6 +31,11 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
+from config.app_config import (
+    get_timeout,
+    get_api_delay,
+    get_default_identity,
+)
 
 # Set up logging system
 setup_logging()
@@ -192,8 +197,8 @@ def call_api(
     question: str,
     api_url: str,
     model_name: str,
-    identity: str = "A14804",
-    timeout: int = 120,
+    identity: Optional[str] = None,
+    timeout: Optional[int] = None,
     verbose: bool = True,
 ) -> Optional[str]:
     """
@@ -203,13 +208,19 @@ def call_api(
         question: The question to ask
         api_url: The API endpoint URL
         model_name: The model name (claude3.5-sonnet or claude4.5-haiku)
-        identity: The x-amzn-oidc-identity header value
-        timeout: Request timeout in seconds
+        identity: The x-amzn-oidc-identity header value (defaults to config value)
+        timeout: Request timeout in seconds (defaults to config value)
         verbose: Whether to print detailed logs
 
     Returns:
         The response text, or None if failed
     """
+    # Use config values if not provided
+    if identity is None:
+        identity = get_default_identity()
+    if timeout is None:
+        timeout = get_timeout()
+
     question_uuid = str(uuid.uuid4())
 
     # Prepare the request
@@ -322,9 +333,9 @@ def collect_responses(
     api_url: str,
     model_a: str,
     model_b: str,
-    identity: str = "A14804",
-    timeout: int = 120,
-    delay: float = 1.0,
+    identity: Optional[str] = None,
+    timeout: Optional[int] = None,
+    delay: Optional[float] = None,
     verbose: bool = True,
 ) -> pd.DataFrame:
     """
@@ -335,15 +346,23 @@ def collect_responses(
         api_url: The API endpoint URL
         model_a: Model name for Model A (e.g., claude3.5-sonnet)
         model_b: Model name for Model B (e.g., claude4.5-haiku)
-        identity: The x-amzn-oidc-identity header value
-        timeout: Request timeout in seconds
-        delay: Delay between API calls in seconds
+        identity: The x-amzn-oidc-identity header value (defaults to config value)
+        timeout: Request timeout in seconds (defaults to config value)
+        delay: Delay between API calls in seconds (defaults to config value)
         verbose: Whether to print detailed logs
 
     Returns:
         DataFrame with Question, Model_A_Response, Model_B_Response columns
         (Each response contains only the "answer" field from API)
     """
+    # Use config values if not provided
+    if identity is None:
+        identity = get_default_identity()
+    if timeout is None:
+        timeout = get_timeout()
+    if delay is None:
+        delay = get_api_delay()
+
     results = []
     total_start_time = time.time()
 
@@ -595,22 +614,22 @@ Input file format:
 
     parser.add_argument(
         "--identity",
-        default="A14804",
-        help="x-amzn-oidc-identity header value (default: A14804)",
+        default=None,
+        help=f"x-amzn-oidc-identity header value (default: from config, currently {get_default_identity()})",
     )
 
     parser.add_argument(
         "--timeout",
         type=int,
-        default=120,
-        help="Request timeout in seconds (default: 120)",
+        default=None,
+        help=f"Request timeout in seconds (default: from config, currently {get_timeout()})",
     )
 
     parser.add_argument(
         "--delay",
         type=float,
-        default=1.0,
-        help="Delay between API calls in seconds (default: 1.0)",
+        default=None,
+        help=f"Delay between API calls in seconds (default: from config, currently {get_api_delay()})",
     )
 
     args = parser.parse_args()
@@ -632,9 +651,9 @@ Input file format:
         api_url=args.api_url,
         model_a=args.model_a,
         model_b=args.model_b,
-        identity=args.identity,
-        timeout=args.timeout,
-        delay=args.delay,
+        identity=args.identity if args.identity else None,
+        timeout=args.timeout if args.timeout else None,
+        delay=args.delay if args.delay else None,
         verbose=True,
     )
 

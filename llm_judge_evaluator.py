@@ -40,6 +40,11 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
+from config.app_config import (
+    get_timeout,
+    get_max_retries,
+    get_retry_delay,
+)
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -198,8 +203,8 @@ def call_judge_model(
     model_b_response: str,
     model_name: str = DEFAULT_MODEL,
     is_azure: bool = False,
-    max_retries: int = 3,
-    retry_delay: int = 2,
+    max_retries: Optional[int] = None,
+    retry_delay: Optional[int] = None,
     timeout: Optional[int] = None,  # If None, will use model config default
 ) -> Optional[Dict[str, Any]]:
     """
@@ -212,20 +217,27 @@ def call_judge_model(
         model_b_response: Response from Model B
         model_name: Model name or Azure deployment name
         is_azure: Whether using Azure OpenAI (affects parameter naming)
-        max_retries: Maximum number of retry attempts on failure
-        retry_delay: Delay in seconds between retries
+        max_retries: Maximum number of retry attempts on failure (defaults to config value)
+        retry_delay: Delay in seconds between retries (defaults to config value)
+        timeout: Request timeout in seconds (defaults to model config or app config)
 
     Returns:
         Parsed JSON response from the judge model, or None if all retries fail
     """
+    # Use config values if not provided
+    if max_retries is None:
+        max_retries = get_max_retries()
+    if retry_delay is None:
+        retry_delay = get_retry_delay()
+
     user_prompt = create_user_prompt(question, model_a_response, model_b_response)
 
     # Get model configuration
     model_config = get_model_config(model_name)
 
-    # Use timeout from parameter or model config
+    # Use timeout from parameter, model config, or app config
     if timeout is None:
-        timeout = model_config["timeout"]
+        timeout = model_config.get("timeout", get_timeout())
 
     response: Any = None
     for attempt in range(max_retries):

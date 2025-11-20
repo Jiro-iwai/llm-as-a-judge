@@ -12,6 +12,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from config.app_config import get_output_file_names, get_regex_patterns
 from utils.logging_config import (
     log_error,
     log_info,
@@ -54,13 +55,16 @@ def extract_processing_times(log_file: str):
         log_error(f"ファイル '{log_file}' が見つかりません")
         sys.exit(1)
 
+    # Get regex patterns from config
+    patterns = get_regex_patterns()
+    pattern_a = patterns["model_a_pattern"]
+    pattern_b = patterns["model_b_pattern"]
+
     # Model A (claude3.5-sonnet) の処理時間を抽出
-    pattern_a = r"📥 \[claude3\.5-sonnet\].*?経過時間: ([\d.]+)秒"
     matches_a = re.findall(pattern_a, content)
     model_a_times = [float(t) for t in matches_a]
 
     # Model B (claude4.5-haiku) の処理時間を抽出
-    pattern_b = r"📥 \[claude4\.5-haiku\].*?経過時間: ([\d.]+)秒"
     matches_b = re.findall(pattern_b, content)
     model_b_times = [float(t) for t in matches_b]
 
@@ -328,18 +332,43 @@ def main():
 
     log_info("")
 
+    # Get output file names from config
+    output_files = get_output_file_names()
+
     # グラフを作成
     log_info("グラフを作成中...")
-    create_comparison_chart(question_numbers, model_a_times, model_b_times)
-    create_statistics_chart(question_numbers, model_a_times, model_b_times)
-    create_summary_table(question_numbers, model_a_times, model_b_times)
+    create_comparison_chart(
+        question_numbers,
+        model_a_times,
+        model_b_times,
+        output_files["processing_time_comparison"],
+    )
+    create_statistics_chart(
+        question_numbers,
+        model_a_times,
+        model_b_times,
+        output_files["processing_time_statistics"],
+    )
+    create_summary_table(
+        question_numbers,
+        model_a_times,
+        model_b_times,
+        output_files["processing_time_summary"],
+    )
 
     log_info("")
     log_section("✓ 分析完了!")
     log_info("生成されたファイル:")
-    log_info("  - processing_time_comparison.png: 処理時間比較チャート", indent=1)
-    log_info("  - processing_time_statistics.png: 統計チャート", indent=1)
-    log_info("  - processing_time_summary.txt: サマリーテーブル", indent=1)
+    log_info(
+        f"  - {output_files['processing_time_comparison']}: 処理時間比較チャート",
+        indent=1,
+    )
+    log_info(
+        f"  - {output_files['processing_time_statistics']}: 統計チャート", indent=1
+    )
+    log_info(
+        f"  - {output_files['processing_time_summary']}: サマリーテーブル", indent=1
+    )
 
 
 if __name__ == "__main__":
