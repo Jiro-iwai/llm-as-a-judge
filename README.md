@@ -127,6 +127,13 @@ export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト: 
 
 # 出力ファイル名（オプション）
 export APP_OUTPUT_FILE_PROCESSING_TIME_LOG="custom_time_log.txt"  # 処理時間ログファイル名
+export APP_OUTPUT_FILE_EVALUATION_COMPARISON="custom_comparison.png"  # 評価比較チャートのファイル名
+export APP_OUTPUT_FILE_EVALUATION_DISTRIBUTION="custom_distribution.png"  # 評価分布チャートのファイル名
+export APP_OUTPUT_FILE_EVALUATION_BOXPLOT="custom_boxplot.png"  # 評価箱ひげ図のファイル名
+export APP_OUTPUT_FILE_EVALUATION_SUMMARY="custom_summary.txt"  # 評価サマリーテーブルのファイル名
+export APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON="custom_time_comparison.png"  # 処理時間比較チャートのファイル名
+export APP_OUTPUT_FILE_PROCESSING_TIME_STATISTICS="custom_time_statistics.png"  # 処理時間統計チャートのファイル名
+export APP_OUTPUT_FILE_PROCESSING_TIME_SUMMARY="custom_time_summary.txt"  # 処理時間サマリーテーブルのファイル名
 
 # 設定ファイルのパス
 export APP_CONFIG_FILE=config.yaml  # YAML設定ファイルのパス（オプション）
@@ -853,7 +860,9 @@ python compare_processing_time.py log_file.txt
 - `APP_OUTPUT_FILE_PROCESSING_TIME_STATISTICS`: 統計チャートの出力ファイル名
 - `APP_OUTPUT_FILE_PROCESSING_TIME_SUMMARY`: サマリーテーブルの出力ファイル名
 
-詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
+**出力ファイル名のカスタマイズ：**
+
+出力ファイル名（`processing_time_*.png`、`processing_time_summary.txt`など）は`config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 **入力ファイル形式：**
 
@@ -951,9 +960,10 @@ ls -la evaluation_*.png evaluation_summary.txt
 ```
 
 **注意：**
-- エラーが発生した行（`Evaluation_Error`列に値がある行）は自動的に除外されます
+- **エラー行のフィルタリング**: `Evaluation_Error`列に非空のエラーメッセージがある行は自動的に除外されます。`Evaluation_Error`が空文字列（`""`）または`NaN`の行は正常行として扱われ、可視化に含まれます。
 - 日本語フォントが正しく表示されない場合は、システムの日本語フォント設定を確認してください
 - `--model-a`と`--model-b`オプションでモデル名を指定すると、PNGファイルのタイトル、凡例、サマリーテーブルに実際のモデル名が表示されます。指定しない場合は「Model A」と「Model B」と表示されます
+- **出力ファイル名のカスタマイズ**: 出力ファイル名（`evaluation_*.png`、`evaluation_summary.txt`など）は`config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
 
@@ -1053,7 +1063,8 @@ make pipeline ARGS="questions.txt --evaluator llm-judge --judge-model gpt-5"
 - 可視化は現在`llm-judge`評価の結果のみサポートされています
 - 各ステップでエラーが発生した場合、パイプラインは適切に停止します
 - 可視化ステップでエラーが発生した場合、警告を表示してパイプラインは続行します
-- **非対話実行**: `run_full_pipeline.py`から実行する場合、評価スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`）には自動的に`--yes`フラグが付与され、10行を超える場合でも確認プロンプトが表示されずに実行されます。CI/バッチ環境での自動実行が可能です。
+- **非対話実行**: `run_full_pipeline.py`から実行する場合、評価スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`）には自動的に`--yes`フラグが付与され、10行を超える場合でも確認プロンプトが表示されずに実行されます。これにより、CI/バッチ環境での自動実行が可能です。個別に評価スクリプトを実行する場合は、`--yes`フラグを明示的に指定することで非対話実行できます。
+- **出力ファイル名のカスタマイズ**: 評価結果や処理時間レポートの出力ファイル名（`evaluation_*.png`、`processing_time_*.png`など）は`config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`、`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
 
