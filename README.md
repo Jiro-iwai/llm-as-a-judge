@@ -900,7 +900,7 @@ ls -la processing_time_*.png processing_time_summary.txt
 
 ### `visualize_results.py` - 評価結果の可視化スクリプト
 
-`llm_judge_evaluator.py`の評価結果をグラフやチャートで可視化するスクリプトです。
+すべての評価スクリプト（`llm_judge_evaluator.py`、`ragas_llm_judge_evaluator.py`、`format_clarity_evaluator.py`）の評価結果をグラフやチャートで可視化するスクリプトです。評価スクリプトの種類は自動検出されます。
 
 **主な機能：**
 - Model AとModel Bのスコア比較チャート
@@ -911,7 +911,7 @@ ls -la processing_time_*.png processing_time_summary.txt
 **使用方法：**
 
 ```bash
-# デフォルトのevaluation_output.csvを使用
+# デフォルトのevaluation_output.csvを使用（llm-judge形式）
 python visualize_results.py
 
 # カスタムCSVファイルを指定
@@ -922,19 +922,33 @@ python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --m
 
 # ragas_evaluation_output.csvを可視化
 python visualize_results.py ragas_evaluation_output.csv
+
+# format_clarity_output.csvを可視化
+python visualize_results.py format_clarity_output.csv
 ```
 
 **入力CSV形式：**
 
-`llm_judge_evaluator.py`の出力CSV（`evaluation_output.csv`）を想定しています。以下の列が必要です：
+以下の評価スクリプトの出力CSVに対応しています：
 
-- `Question`
-- `Model_A_Citation_Score`, `Model_B_Citation_Score`
-- `Model_A_Relevance_Score`, `Model_B_Relevance_Score`
-- `Model_A_ReAct_Performance_Thought_Score`, `Model_B_ReAct_Performance_Thought_Score`
-- `Model_A_RAG_Retrieval_Observation_Score`, `Model_B_RAG_Retrieval_Observation_Score`
-- `Model_A_Information_Integration_Score`, `Model_B_Information_Integration_Score`
-- `Evaluation_Error` (オプション)
+1. **llm-judge** (`llm_judge_evaluator.py`の出力):
+   - `Question`
+   - `Model_A_Citation_Score`, `Model_B_Citation_Score`
+   - `Model_A_Relevance_Score`, `Model_B_Relevance_Score`
+   - `Model_A_ReAct_Performance_Thought_Score`, `Model_B_ReAct_Performance_Thought_Score`
+   - `Model_A_RAG_Retrieval_Observation_Score`, `Model_B_RAG_Retrieval_Observation_Score`
+   - `Model_A_Information_Integration_Score`, `Model_B_Information_Integration_Score`
+   - `Evaluation_Error` (オプション)
+
+2. **ragas** (`ragas_llm_judge_evaluator.py`の出力):
+   - `Question`
+   - `Model_A_faithfulness_score`, `Model_B_faithfulness_score`
+   - `Evaluation_Error` (オプション)
+
+3. **format-clarity** (`format_clarity_evaluator.py`の出力):
+   - `Question`
+   - `Format_Clarity_Score`
+   - `Evaluation_Error` (オプション)
 
 **出力ファイル：**
 
@@ -1033,8 +1047,10 @@ python run_full_pipeline.py questions.txt --judge-model gpt-5
    - 選択された評価スクリプトを実行
    - 出力: `evaluation_output.csv`（llm-judge）、`ragas_evaluation_output.csv`（ragas）、`format_clarity_output.csv`（format-clarity）
 
-3. **Step 3: 結果可視化**（`--skip-visualize`が指定されていない場合、llm-judgeのみ）
+3. **Step 3: 結果可視化**（`--skip-visualize`が指定されていない場合）
    - `visualize_results.py`を実行
+   - すべての評価スクリプト（llm-judge、ragas、format-clarity）の出力に対応
+   - 評価スクリプトの種類は自動検出されます
    - 出力: `evaluation_comparison.png`、`evaluation_distribution.png`、`evaluation_boxplot.png`、`evaluation_summary.txt`
 
 **使用例：**

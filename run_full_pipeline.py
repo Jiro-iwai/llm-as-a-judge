@@ -423,30 +423,14 @@ Examples:
 
     # Step 3: Visualize results (unless skipped)
     if not args.skip_visualize:
-        # Only visualize llm-judge output for now
-        if args.evaluator == "llm-judge" or (
-            args.evaluator == "all" and eval_output_file == DEFAULT_LLM_JUDGE_OUTPUT
-        ):
-            visualize_success = run_visualize_step(
-                eval_output_file,
-                model_a_name=actual_model_a,
-                model_b_name=actual_model_b,
-            )
-            if not visualize_success:
-                log_warning("Visualization failed, but pipeline completed")
-        elif args.evaluator == "all":
-            # For 'all', visualize llm-judge output
-            visualize_success = run_visualize_step(
-                DEFAULT_LLM_JUDGE_OUTPUT,
-                model_a_name=actual_model_a,
-                model_b_name=actual_model_b,
-            )
-            if not visualize_success:
-                log_warning("Visualization failed, but pipeline completed")
-        else:
-            log_info(
-                f"Visualization skipped for {args.evaluator} evaluator (only supported for llm-judge)"
-            )
+        # Visualize output for all evaluator types
+        visualize_success = run_visualize_step(
+            eval_output_file,
+            model_a_name=actual_model_a,
+            model_b_name=actual_model_b,
+        )
+        if not visualize_success:
+            log_warning("Visualization failed, but pipeline completed")
     else:
         log_info("Skipping visualization step")
 
