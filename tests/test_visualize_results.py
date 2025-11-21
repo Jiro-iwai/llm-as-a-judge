@@ -222,11 +222,6 @@ class TestCreateScoreComparisonChart:
     @patch("visualize_results.plt")
     def test_create_score_comparison_chart_no_scores(self, mock_plt):
         """Test creating chart with no score columns"""
-        # Mock plt.subplots to return figure and axes
-        mock_fig = MagicMock()
-        mock_ax = MagicMock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        
         df = pd.DataFrame({
             "Question": ["Q1", "Q2"],
         })
@@ -235,9 +230,10 @@ class TestCreateScoreComparisonChart:
             temp_file = f.name
 
         try:
-            create_score_comparison_chart(df, temp_file)
+            create_score_comparison_chart(df, temp_file, evaluator_type="llm-judge")
 
             # Should not crash even if no score columns
+            # plt.close() should be called when no valid scores are found
             mock_plt.close.assert_called_once()
         finally:
             if os.path.exists(temp_file):

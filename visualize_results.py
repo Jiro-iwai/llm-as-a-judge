@@ -79,6 +79,36 @@ def load_data(csv_file: str) -> pd.DataFrame:
         sys.exit(1)
 
 
+def detect_evaluator_type(df: pd.DataFrame) -> str:
+    """
+    Detect the type of evaluator based on the columns in the DataFrame.
+
+    Args:
+        df: DataFrame containing evaluation results.
+
+    Returns:
+        Evaluator type: 'llm-judge', 'ragas', 'format-clarity', or 'unknown'.
+    """
+    columns = set(df.columns)
+
+    # Check for llm-judge format (multiple score columns)
+    if "Model_A_Citation_Score" in columns and "Model_B_Citation_Score" in columns:
+        return "llm-judge"
+
+    # Check for ragas format (faithfulness_score columns)
+    if (
+        "Model_A_faithfulness_score" in columns
+        and "Model_B_faithfulness_score" in columns
+    ):
+        return "ragas"
+
+    # Check for format-clarity format (single Format_Clarity_Score column)
+    if "Format_Clarity_Score" in columns:
+        return "format-clarity"
+
+    return "unknown"
+
+
 def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepare evaluation data by removing rows with errors.
@@ -118,36 +148,94 @@ def create_score_comparison_chart(
     output_file: str = "evaluation_comparison.png",
     model_a_name: Optional[str] = None,
     model_b_name: Optional[str] = None,
+    evaluator_type: str = "llm-judge",
 ) -> None:
     """
     Create a bar chart comparing average scores between Model A and Model B.
 
-    The chart compares the following metrics:
-    - Citation Score
-    - Relevance Score
-    - ReAct Performance Thought Score
-    - RAG Retrieval Observation Score
-    - Information Integration Score
+    Supports multiple evaluator types:
+    - llm-judge: Multiple metrics (Citation, Relevance, etc.)
+    - ragas: Faithfulness score (0-1 range)
+    - format-clarity: Single Format Clarity Score (1-5 range)
 
     Args:
-        df: DataFrame containing evaluation results with columns like
-            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        df: DataFrame containing evaluation results.
         output_file: Path to save the output PNG file. Defaults to
             "evaluation_comparison.png".
         model_a_name: Optional name for Model A. If None, uses "Model A".
         model_b_name: Optional name for Model B. If None, uses "Model B".
+        evaluator_type: Type of evaluator ('llm-judge', 'ragas', 'format-clarity').
 
     Returns:
         None. The chart is saved to the specified output file.
     """
 
-    metrics = [
-        ("Citation", "Citation_Score"),
-        ("Relevance", "Relevance_Score"),
-        ("ReAct Performance\nThought", "ReAct_Performance_Thought_Score"),
-        ("RAG Retrieval\nObservation", "RAG_Retrieval_Observation_Score"),
-        ("Information\nIntegration", "Information_Integration_Score"),
-    ]
+    # モデル名を決定（指定されない場合は汎用的なラベルを使用）
+    label_a = model_a_name if model_a_name else "Model A"
+    label_b = model_b_name if model_b_name else "Model B"
+
+    if evaluator_type == "llm-judge":
+        metrics = [
+            ("Citation", "Citation_Score"),
+            ("Relevance", "Relevance_Score"),
+            ("ReAct Performance\nThought", "ReAct_Performance_Thought_Score"),
+            ("RAG Retrieval\nObservation", "RAG_Retrieval_Observation_Score"),
+            ("Information\nIntegration", "Information_Integration_Score"),
+        ]
+        y_max = 5.5
+        y_ticks = range(0, 6)
+    elif evaluator_type == "ragas":
+        metrics = [
+            ("Faithfulness", "faithfulness_score"),
+        ]
+        y_max = 1.1
+        y_ticks = [i / 10 for i in range(0, 12, 2)]
+    elif evaluator_type == "format-clarity":
+        # Format clarity has a single score column, not Model_A/Model_B format
+        # We'll create a simple comparison showing the score distribution
+        if "Format_Clarity_Score" not in df.columns:
+            log_error("Format_Clarity_Score column not found")
+            plt.close()
+            return
+
+        # Convert to numeric, handling empty strings
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
+        if len(scores) == 0:
+            log_error("No valid Format_Clarity_Score values found")
+            plt.close()
+            return
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        mean_score = float(scores.mean())
+        ax.bar(
+            ["Format Clarity Score"],
+            [mean_score],
+            alpha=0.8,
+            color="#3498db",
+        )
+        ax.set_ylabel("平均スコア", fontsize=12, fontweight="bold")
+        ax.set_title("Format Clarity Score", fontsize=14, fontweight="bold", pad=20)
+        ax.set_ylim(0, 5.5)
+        ax.set_yticks(range(0, 6))
+        ax.grid(axis="y", alpha=0.3, linestyle="--")
+        ax.text(
+            0,
+            mean_score,
+            f"{mean_score:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=12,
+            fontweight="bold",
+        )
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        log_success(f"スコア比較チャートを保存: {output_file}")
+        plt.close()
+        return
+    else:
+        log_error(f"Unknown evaluator type: {evaluator_type}")
+        return
 
     model_a_scores = []
     model_b_scores = []
@@ -158,16 +246,24 @@ def create_score_comparison_chart(
         model_b_col = f"Model_B_{score_col}"
 
         if model_a_col in df.columns and model_b_col in df.columns:
-            model_a_avg = df[model_a_col].mean()
-            model_b_avg = df[model_b_col].mean()
+            # Convert to numeric, handling empty strings
+            model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+            model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+            model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+            model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
-            model_a_scores.append(model_a_avg)
-            model_b_scores.append(model_b_avg)
-            metric_names.append(metric_name)
+            if len(model_a_values) > 0 and len(model_b_values) > 0:
+                model_a_avg = float(model_a_values.mean())
+                model_b_avg = float(model_b_values.mean())
 
-    # モデル名を決定（指定されない場合は汎用的なラベルを使用）
-    label_a = model_a_name if model_a_name else "Model A"
-    label_b = model_b_name if model_b_name else "Model B"
+                model_a_scores.append(model_a_avg)
+                model_b_scores.append(model_b_avg)
+                metric_names.append(metric_name)
+
+    if len(metric_names) == 0:
+        log_error("No valid score columns found for comparison")
+        plt.close()
+        return
 
     # バーチャートを作成
     x = range(len(metric_names))
@@ -198,8 +294,8 @@ def create_score_comparison_chart(
     )
     ax.set_xticks(x)
     ax.set_xticklabels(metric_names, rotation=0, ha="center")
-    ax.set_ylim(0, 5.5)
-    ax.set_yticks(range(0, 6))
+    ax.set_ylim(0, y_max)
+    ax.set_yticks(y_ticks)
     ax.grid(axis="y", alpha=0.3, linestyle="--")
     ax.legend(fontsize=10)
 
@@ -227,24 +323,23 @@ def create_score_distribution_chart(
     output_file: str = "evaluation_distribution.png",
     model_a_name: Optional[str] = None,
     model_b_name: Optional[str] = None,
+    evaluator_type: str = "llm-judge",
 ) -> None:
     """
     Create histogram charts showing score distributions for each metric.
 
-    The chart displays histograms for the following metrics:
-    - Citation Score
-    - Relevance Score
-    - ReAct Performance Thought Score
-    - RAG Retrieval Observation Score
-    - Information Integration Score
+    Supports multiple evaluator types:
+    - llm-judge: Multiple metrics (Citation, Relevance, etc.)
+    - ragas: Faithfulness score (0-1 range)
+    - format-clarity: Single Format Clarity Score (1-5 range)
 
     Args:
-        df: DataFrame containing evaluation results with columns like
-            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        df: DataFrame containing evaluation results.
         output_file: Path to save the output PNG file. Defaults to
             "evaluation_distribution.png".
         model_a_name: Optional name for Model A. If None, uses "Model A".
         model_b_name: Optional name for Model B. If None, uses "Model B".
+        evaluator_type: Type of evaluator ('llm-judge', 'ragas', 'format-clarity').
 
     Returns:
         None. The chart is saved to the specified output file.
@@ -254,16 +349,61 @@ def create_score_distribution_chart(
     label_a = model_a_name if model_a_name else "Model A"
     label_b = model_b_name if model_b_name else "Model B"
 
-    metrics = [
-        ("Citation", "Citation_Score"),
-        ("Relevance", "Relevance_Score"),
-        ("ReAct Performance Thought", "ReAct_Performance_Thought_Score"),
-        ("RAG Retrieval Observation", "RAG_Retrieval_Observation_Score"),
-        ("Information Integration", "Information_Integration_Score"),
-    ]
+    if evaluator_type == "llm-judge":
+        metrics = [
+            ("Citation", "Citation_Score"),
+            ("Relevance", "Relevance_Score"),
+            ("ReAct Performance Thought", "ReAct_Performance_Thought_Score"),
+            ("RAG Retrieval Observation", "RAG_Retrieval_Observation_Score"),
+            ("Information Integration", "Information_Integration_Score"),
+        ]
+        x_ticks = range(1, 6)
+        x_lim = (0.5, 5.5)
+        bins = 5
+        fig_size = (15, 10)
+        subplot_layout = (2, 3)
+    elif evaluator_type == "ragas":
+        metrics = [
+            ("Faithfulness", "faithfulness_score"),
+        ]
+        x_ticks = [i / 10 for i in range(0, 12, 2)]
+        x_lim = (-0.05, 1.05)
+        bins = 10
+        fig_size = (8, 6)
+        subplot_layout = (1, 1)
+    elif evaluator_type == "format-clarity":
+        if "Format_Clarity_Score" not in df.columns:
+            log_error("Format_Clarity_Score column not found")
+            return
 
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    axes = axes.flatten()
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
+        if len(scores) == 0:
+            log_error("No valid Format_Clarity_Score values found")
+            return
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.hist(scores, bins=5, alpha=0.7, color="#3498db", edgecolor="black")
+        ax.set_xlabel("スコア", fontsize=12)
+        ax.set_ylabel("頻度", fontsize=12)
+        ax.set_title("Format Clarity Score 分布", fontsize=14, fontweight="bold")
+        ax.set_xticks(range(1, 6))
+        ax.set_xlim(0.5, 5.5)
+        ax.grid(axis="y", alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        log_success(f"スコア分布チャートを保存: {output_file}")
+        plt.close()
+        return
+    else:
+        log_error(f"Unknown evaluator type: {evaluator_type}")
+        return
+
+    fig, axes = plt.subplots(*subplot_layout, figsize=fig_size)
+    if evaluator_type == "ragas":
+        axes = [axes]
+    else:
+        axes = axes.flatten()
 
     for idx, (metric_name, score_col) in enumerate(metrics):
         ax = axes[idx]
@@ -271,27 +411,31 @@ def create_score_distribution_chart(
         model_b_col = f"Model_B_{score_col}"
 
         if model_a_col in df.columns and model_b_col in df.columns:
-            model_a_scores = df[model_a_col].dropna()
-            model_b_scores = df[model_b_col].dropna()
+            model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+            model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+            model_a_scores: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+            model_b_scores: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
-            ax.hist(
-                [model_a_scores, model_b_scores],
-                bins=5,
-                alpha=0.7,
-                label=[label_a, label_b],
-                color=["#3498db", "#e74c3c"],
-                edgecolor="black",
-            )
-            ax.set_xlabel("スコア", fontsize=10)
-            ax.set_ylabel("頻度", fontsize=10)
-            ax.set_title(metric_name, fontsize=11, fontweight="bold")
-            ax.set_xticks(range(1, 6))
-            ax.set_xlim(0.5, 5.5)
-            ax.legend(fontsize=9)
-            ax.grid(axis="y", alpha=0.3)
+            if len(model_a_scores) > 0 and len(model_b_scores) > 0:
+                ax.hist(
+                    [model_a_scores, model_b_scores],
+                    bins=bins,
+                    alpha=0.7,
+                    label=[label_a, label_b],
+                    color=["#3498db", "#e74c3c"],
+                    edgecolor="black",
+                )
+                ax.set_xlabel("スコア", fontsize=10)
+                ax.set_ylabel("頻度", fontsize=10)
+                ax.set_title(metric_name, fontsize=11, fontweight="bold")
+                ax.set_xticks(x_ticks)
+                ax.set_xlim(x_lim)
+                ax.legend(fontsize=9)
+                ax.grid(axis="y", alpha=0.3)
 
-    # 最後のサブプロットを非表示
-    axes[5].axis("off")
+    # 最後のサブプロットを非表示（llm-judgeの場合のみ）
+    if evaluator_type == "llm-judge" and len(metrics) < len(axes):
+        axes[5].axis("off")
 
     plt.suptitle(
         f"スコア分布（{label_a} vs {label_b}）", fontsize=14, fontweight="bold", y=0.995
@@ -307,24 +451,23 @@ def create_boxplot_chart(
     output_file: str = "evaluation_boxplot.png",
     model_a_name: Optional[str] = None,
     model_b_name: Optional[str] = None,
+    evaluator_type: str = "llm-judge",
 ) -> None:
     """
     Create box plots comparing score distributions between Model A and Model B.
 
-    The chart displays box plots for the following metrics:
-    - Citation Score
-    - Relevance Score
-    - ReAct Performance Thought Score
-    - RAG Retrieval Observation Score
-    - Information Integration Score
+    Supports multiple evaluator types:
+    - llm-judge: Multiple metrics (Citation, Relevance, etc.)
+    - ragas: Faithfulness score (0-1 range)
+    - format-clarity: Single Format Clarity Score (1-5 range)
 
     Args:
-        df: DataFrame containing evaluation results with columns like
-            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        df: DataFrame containing evaluation results.
         output_file: Path to save the output PNG file. Defaults to
             "evaluation_boxplot.png".
         model_a_name: Optional name for Model A. If None, uses "Model A".
         model_b_name: Optional name for Model B. If None, uses "Model B".
+        evaluator_type: Type of evaluator ('llm-judge', 'ragas', 'format-clarity').
 
     Returns:
         None. The chart is saved to the specified output file.
@@ -334,13 +477,59 @@ def create_boxplot_chart(
     label_a = model_a_name if model_a_name else "Model A"
     label_b = model_b_name if model_b_name else "Model B"
 
-    metrics = [
-        ("Citation", "Citation_Score"),
-        ("Relevance", "Relevance_Score"),
-        ("ReAct Performance\nThought", "ReAct_Performance_Thought_Score"),
-        ("RAG Retrieval\nObservation", "RAG_Retrieval_Observation_Score"),
-        ("Information\nIntegration", "Information_Integration_Score"),
-    ]
+    if evaluator_type == "llm-judge":
+        metrics = [
+            ("Citation", "Citation_Score"),
+            ("Relevance", "Relevance_Score"),
+            ("ReAct Performance\nThought", "ReAct_Performance_Thought_Score"),
+            ("RAG Retrieval\nObservation", "RAG_Retrieval_Observation_Score"),
+            ("Information\nIntegration", "Information_Integration_Score"),
+        ]
+        y_lim = (0.5, 5.5)
+        y_ticks = range(1, 6)
+    elif evaluator_type == "ragas":
+        metrics = [
+            ("Faithfulness", "faithfulness_score"),
+        ]
+        y_lim = (-0.05, 1.05)
+        y_ticks = [i / 10 for i in range(0, 12, 2)]
+    elif evaluator_type == "format-clarity":
+        if "Format_Clarity_Score" not in df.columns:
+            log_error("Format_Clarity_Score column not found")
+            return
+
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
+        if len(scores) == 0:
+            log_error("No valid Format_Clarity_Score values found")
+            return
+
+        fig, ax = plt.subplots(figsize=(6, 8))
+        scores_array = scores.values
+        bp = ax.boxplot(
+            [scores_array],  # type: ignore[arg-type]
+            tick_labels=["Format Clarity Score"],
+            patch_artist=True,
+            showmeans=True,
+            meanline=True,
+        )
+        bp["boxes"][0].set_facecolor("#3498db")
+        bp["boxes"][0].set_alpha(0.7)
+        ax.set_ylabel("スコア", fontsize=12, fontweight="bold")
+        ax.set_title(
+            "Format Clarity Score 分布", fontsize=14, fontweight="bold", pad=20
+        )
+        ax.set_ylim(0.5, 5.5)
+        ax.set_yticks(range(1, 6))
+        ax.grid(axis="y", alpha=0.3, linestyle="--")
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        log_success(f"箱ひげ図を保存: {output_file}")
+        plt.close()
+        return
+    else:
+        log_error(f"Unknown evaluator type: {evaluator_type}")
+        return
 
     # データを準備
     plot_data = []
@@ -351,10 +540,20 @@ def create_boxplot_chart(
         model_b_col = f"Model_B_{score_col}"
 
         if model_a_col in df.columns and model_b_col in df.columns:
-            plot_data.append(df[model_a_col].dropna().values)
-            plot_data.append(df[model_b_col].dropna().values)
-            labels.append(f"{metric_name}\n{label_a}")
-            labels.append(f"{metric_name}\n{label_b}")
+            model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+            model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+            model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+            model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
+
+            if len(model_a_values) > 0 and len(model_b_values) > 0:
+                plot_data.append(model_a_values.values)
+                plot_data.append(model_b_values.values)
+                labels.append(f"{metric_name}\n{label_a}")
+                labels.append(f"{metric_name}\n{label_b}")
+
+    if len(plot_data) == 0:
+        log_error("No valid score columns found for boxplot")
+        return
 
     fig, ax = plt.subplots(figsize=(14, 6))
     bp = ax.boxplot(
@@ -374,8 +573,8 @@ def create_boxplot_chart(
         fontweight="bold",
         pad=20,
     )
-    ax.set_ylim(0.5, 5.5)
-    ax.set_yticks(range(1, 6))
+    ax.set_ylim(y_lim)
+    ax.set_yticks(y_ticks)
     ax.grid(axis="y", alpha=0.3, linestyle="--")
     plt.xticks(rotation=45, ha="right")
 
@@ -390,22 +589,23 @@ def create_summary_table(
     output_file: str = "evaluation_summary.txt",
     model_a_name: Optional[str] = None,
     model_b_name: Optional[str] = None,
+    evaluator_type: str = "llm-judge",
 ) -> None:
     """
     Create a summary table with evaluation statistics in text format.
 
-    The table includes:
-    - Average scores for each metric (Model A vs Model B)
-    - Difference between Model A and Model B scores
-    - Overall statistics (mean, min, max, standard deviation)
+    Supports multiple evaluator types:
+    - llm-judge: Multiple metrics (Citation, Relevance, etc.)
+    - ragas: Faithfulness score (0-1 range)
+    - format-clarity: Single Format Clarity Score (1-5 range)
 
     Args:
-        df: DataFrame containing evaluation results with columns like
-            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        df: DataFrame containing evaluation results.
         output_file: Path to save the output text file. Defaults to
             "evaluation_summary.txt".
         model_a_name: Optional name for Model A. If None, uses "Model A".
         model_b_name: Optional name for Model B. If None, uses "Model B".
+        evaluator_type: Type of evaluator ('llm-judge', 'ragas', 'format-clarity').
 
     Returns:
         None. The summary table is saved to the specified output file.
@@ -415,13 +615,50 @@ def create_summary_table(
     label_a = model_a_name if model_a_name else "Model A"
     label_b = model_b_name if model_b_name else "Model B"
 
-    metrics = [
-        ("Citation", "Citation_Score"),
-        ("Relevance", "Relevance_Score"),
-        ("ReAct Performance Thought", "ReAct_Performance_Thought_Score"),
-        ("RAG Retrieval Observation", "RAG_Retrieval_Observation_Score"),
-        ("Information Integration", "Information_Integration_Score"),
-    ]
+    if evaluator_type == "llm-judge":
+        metrics = [
+            ("Citation", "Citation_Score"),
+            ("Relevance", "Relevance_Score"),
+            ("ReAct Performance Thought", "ReAct_Performance_Thought_Score"),
+            ("RAG Retrieval Observation", "RAG_Retrieval_Observation_Score"),
+            ("Information Integration", "Information_Integration_Score"),
+        ]
+    elif evaluator_type == "ragas":
+        metrics = [
+            ("Faithfulness", "faithfulness_score"),
+        ]
+    elif evaluator_type == "format-clarity":
+        if "Format_Clarity_Score" not in df.columns:
+            log_error("Format_Clarity_Score column not found")
+            return
+
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
+        if len(scores) == 0:
+            log_error("No valid Format_Clarity_Score values found")
+            return
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("=" * 70 + "\n")
+            f.write("評価結果サマリー (Format Clarity)\n")
+            f.write("=" * 70 + "\n\n")
+            f.write(f"評価対象行数: {len(df)}行\n\n")
+
+            f.write("-" * 70 + "\n")
+            f.write("Format Clarity Score 統計\n")
+            f.write("-" * 70 + "\n")
+            f.write(f"平均: {scores.mean():.2f}\n")
+            f.write(f"最小: {scores.min():.0f}\n")
+            f.write(f"最大: {scores.max():.0f}\n")
+            f.write(f"標準偏差: {scores.std():.2f}\n")
+            f.write(f"中央値: {scores.median():.2f}\n")
+            f.write("-" * 70 + "\n")
+
+        log_success(f"サマリーテーブルを保存: {output_file}")
+        return
+    else:
+        log_error(f"Unknown evaluator type: {evaluator_type}")
+        return
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("=" * 70 + "\n")
@@ -441,13 +678,19 @@ def create_summary_table(
             model_b_col = f"Model_B_{score_col}"
 
             if model_a_col in df.columns and model_b_col in df.columns:
-                model_a_avg = df[model_a_col].mean()
-                model_b_avg = df[model_b_col].mean()
-                diff = model_b_avg - model_a_avg
+                model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+                model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+                model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+                model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
-                f.write(
-                    f"{metric_name:<30} {model_a_avg:<15.2f} {model_b_avg:<15.2f} {diff:+.2f}\n"
-                )
+                if len(model_a_values) > 0 and len(model_b_values) > 0:
+                    model_a_avg = float(model_a_values.mean())
+                    model_b_avg = float(model_b_values.mean())
+                    diff = model_b_avg - model_a_avg
+
+                    f.write(
+                        f"{metric_name:<30} {model_a_avg:<15.2f} {model_b_avg:<15.2f} {diff:+.2f}\n"
+                    )
 
         f.write("-" * 70 + "\n\n")
 
@@ -460,19 +703,25 @@ def create_summary_table(
             model_b_col = f"Model_B_{score_col}"
 
             if model_a_col in df.columns and model_b_col in df.columns:
-                f.write(f"{metric_name}:\n")
-                f.write(
-                    f"  {label_a}: 平均={df[model_a_col].mean():.2f}, "
-                    f"最小={df[model_a_col].min():.0f}, "
-                    f"最大={df[model_a_col].max():.0f}, "
-                    f"標準偏差={df[model_a_col].std():.2f}\n"
-                )
-                f.write(
-                    f"  {label_b}: 平均={df[model_b_col].mean():.2f}, "
-                    f"最小={df[model_b_col].min():.0f}, "
-                    f"最大={df[model_b_col].max():.0f}, "
-                    f"標準偏差={df[model_b_col].std():.2f}\n\n"
-                )
+                model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+                model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+                model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+                model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
+
+                if len(model_a_values) > 0 and len(model_b_values) > 0:
+                    f.write(f"{metric_name}:\n")
+                    f.write(
+                        f"  {label_a}: 平均={float(model_a_values.mean()):.2f}, "
+                        f"最小={float(model_a_values.min()):.2f}, "
+                        f"最大={float(model_a_values.max()):.2f}, "
+                        f"標準偏差={float(model_a_values.std()):.2f}\n"
+                    )
+                    f.write(
+                        f"  {label_b}: 平均={float(model_b_values.mean()):.2f}, "
+                        f"最小={float(model_b_values.min()):.2f}, "
+                        f"最大={float(model_b_values.max()):.2f}, "
+                        f"標準偏差={float(model_b_values.std()):.2f}\n\n"
+                    )
 
     log_success(f"サマリーテーブルを保存: {output_file}")
 
@@ -497,15 +746,28 @@ def main():
     python visualize_results.py ragas_evaluation_output.csv
 
 入力CSV形式:
-    llm_judge_evaluator.pyの出力CSV（evaluation_output.csv）を想定しています。
-    以下の列が必要です:
-    - Question
-    - Model_A_Citation_Score, Model_B_Citation_Score
-    - Model_A_Relevance_Score, Model_B_Relevance_Score
-    - Model_A_ReAct_Performance_Thought_Score, Model_B_ReAct_Performance_Thought_Score
-    - Model_A_RAG_Retrieval_Observation_Score, Model_B_RAG_Retrieval_Observation_Score
-    - Model_A_Information_Integration_Score, Model_B_Information_Integration_Score
-    - Evaluation_Error (オプション)
+    以下の評価スクリプトの出力CSVに対応しています:
+    
+    1. llm-judge (llm_judge_evaluator.py):
+       - Question
+       - Model_A_Citation_Score, Model_B_Citation_Score
+       - Model_A_Relevance_Score, Model_B_Relevance_Score
+       - Model_A_ReAct_Performance_Thought_Score, Model_B_ReAct_Performance_Thought_Score
+       - Model_A_RAG_Retrieval_Observation_Score, Model_B_RAG_Retrieval_Observation_Score
+       - Model_A_Information_Integration_Score, Model_B_Information_Integration_Score
+       - Evaluation_Error (オプション)
+    
+    2. ragas (ragas_llm_judge_evaluator.py):
+       - Question
+       - Model_A_faithfulness_score, Model_B_faithfulness_score
+       - Evaluation_Error (オプション)
+    
+    3. format-clarity (format_clarity_evaluator.py):
+       - Question
+       - Format_Clarity_Score
+       - Evaluation_Error (オプション)
+    
+    評価スクリプトの種類は自動検出されます。
 
 出力ファイル:
     - evaluation_comparison.png: Model AとModel Bのスコア比較チャート
@@ -552,6 +814,18 @@ def main():
     log_success(f"有効な評価データ: {len(df_clean)}行")
     log_info("")
 
+    # 評価スクリプトの種類を自動検出
+    evaluator_type = detect_evaluator_type(df_clean)
+    log_info(f"評価スクリプトタイプを検出: {evaluator_type}")
+
+    if evaluator_type == "unknown":
+        log_warning(
+            "評価スクリプトタイプを検出できませんでした。llm-judge形式として処理します。"
+        )
+        evaluator_type = "llm-judge"
+
+    log_info("")
+
     # Get output file names from config
     output_files = get_output_file_names()
 
@@ -562,24 +836,28 @@ def main():
         output_files["evaluation_comparison"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
+        evaluator_type=evaluator_type,
     )
     create_score_distribution_chart(
         df_clean,
         output_files["evaluation_distribution"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
+        evaluator_type=evaluator_type,
     )
     create_boxplot_chart(
         df_clean,
         output_files["evaluation_boxplot"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
+        evaluator_type=evaluator_type,
     )
     create_summary_table(
         df_clean,
         output_files["evaluation_summary"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
+        evaluator_type=evaluator_type,
     )
 
     log_info("")

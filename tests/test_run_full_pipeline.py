@@ -53,7 +53,7 @@ class TestPipelineBasicFunctionality:
         mock_subprocess_run.side_effect = [
             Mock(returncode=0),  # collect_responses.py
             Mock(returncode=0),  # ragas_llm_judge_evaluator.py
-            # Visualization is skipped for ragas (only llm-judge is visualized)
+            Mock(returncode=0),  # visualize_results.py
         ]
 
         from run_full_pipeline import main
@@ -61,8 +61,8 @@ class TestPipelineBasicFunctionality:
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "ragas"]):
             main()
 
-        # Should only call collect and evaluation (visualization skipped for ragas)
-        assert mock_subprocess_run.call_count == 2
+        # Should call collect, evaluation, and visualization
+        assert mock_subprocess_run.call_count == 3
 
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
@@ -73,7 +73,7 @@ class TestPipelineBasicFunctionality:
         mock_subprocess_run.side_effect = [
             Mock(returncode=0),  # collect_responses.py
             Mock(returncode=0),  # format_clarity_evaluator.py
-            # Visualization is skipped for format-clarity (only llm-judge is visualized)
+            Mock(returncode=0),  # visualize_results.py
         ]
 
         from run_full_pipeline import main
@@ -81,8 +81,8 @@ class TestPipelineBasicFunctionality:
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "format-clarity"]):
             main()
 
-        # Should only call collect and evaluation (visualization skipped for format-clarity)
-        assert mock_subprocess_run.call_count == 2
+        # Should call collect, evaluation, and visualization
+        assert mock_subprocess_run.call_count == 3
 
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
@@ -364,6 +364,7 @@ class TestPipelineJudgeModelOption:
         mock_subprocess_run.side_effect = [
             Mock(returncode=0),  # collect_responses.py
             Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
         ]
 
         from run_full_pipeline import main
