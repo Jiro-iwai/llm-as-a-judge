@@ -11,11 +11,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from collect_responses import (
-    clean_html,
-    clean_and_format_llm_log,
     format_response,
     call_api,
     read_questions,
+)
+from utils.log_output_simplifier import (
+    clean_html,
+    clean_and_format_llm_log,
 )
 
 

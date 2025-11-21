@@ -493,7 +493,7 @@ python llm_judge_evaluator.py my_test_data.csv
 
 **注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出します。
 
-#### 期待されるReActログの構造（フォーマット済み - `log-output-simplifier.py` を使用）
+#### 期待されるReActログの構造（フォーマット済み - `utils/log_output_simplifier.py` を使用）
 
 スクリプトは、これらのセクションを持つログを期待します：
 

@@ -21,7 +21,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_value_error(self):
         """Test clean_and_format_llm_log handles ValueError."""
-        from collect_responses import clean_and_format_llm_log
+        from utils.log_output_simplifier import clean_and_format_llm_log
 
         # Mock json.loads to raise ValueError
         with patch("json.loads", side_effect=ValueError("Invalid value")):
@@ -30,7 +30,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_type_error(self):
         """Test clean_and_format_llm_log handles TypeError."""
-        from collect_responses import clean_and_format_llm_log
+        from utils.log_output_simplifier import clean_and_format_llm_log
 
         # Mock json.loads to raise TypeError
         with patch("json.loads", side_effect=TypeError("Invalid type")):
@@ -39,7 +39,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_generic_exception(self):
         """Test clean_and_format_llm_log handles generic Exception."""
-        from collect_responses import clean_and_format_llm_log
+        from utils.log_output_simplifier import clean_and_format_llm_log
 
         # Mock json.loads to raise a generic exception
         with patch("json.loads", side_effect=Exception("Unexpected error")):
@@ -48,7 +48,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_empty_section(self):
         """Test clean_and_format_llm_log skips empty sections."""
-        from collect_responses import clean_and_format_llm_log
+        from utils.log_output_simplifier import clean_and_format_llm_log
 
         # Create log with empty section
         log_text = "思考：\n\n回答：Answer here"
@@ -65,9 +65,10 @@ class TestFormatResponseEdgeCases:
         from collect_responses import format_response
 
         # Mock clean_and_format_llm_log to raise exception
+        # Note: We need to patch it where it's imported in collect_responses
         with patch("collect_responses.clean_and_format_llm_log", side_effect=Exception("Test error")):
             result = format_response("test response")
-            # Should return original response_text on exception
+            # Should return original response_text on exception (format_response catches exceptions)
             assert result == "test response"
 
     def test_format_response_generic_exception(self):
