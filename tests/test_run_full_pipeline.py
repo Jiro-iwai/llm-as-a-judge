@@ -455,3 +455,71 @@ class TestPipelineJudgeModelOption:
         # We just verify the script was called
         assert "llm_judge_evaluator.py" in eval_cmd
 
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_passes_yes_flag_to_evaluation_scripts(
+        self, mock_exists, mock_subprocess_run
+    ):
+        """Test that --yes flag is automatically passed to evaluation scripts from pipeline."""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "llm-judge",
+            ],
+        ):
+            main()
+
+        # Verify that --yes flag was passed to evaluation script
+        eval_call = mock_subprocess_run.call_args_list[1]
+        eval_cmd = eval_call[0][0]
+        assert "--yes" in eval_cmd, "Pipeline should pass --yes flag to evaluation script for non-interactive execution"
+        assert "llm_judge_evaluator.py" in eval_cmd
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_passes_yes_flag_to_all_evaluators(
+        self, mock_exists, mock_subprocess_run
+    ):
+        """Test that --yes flag is passed to all evaluators when --evaluator all."""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+            Mock(returncode=0),  # format_clarity_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "all",
+            ],
+        ):
+            main()
+
+        # Verify that --yes flag was passed to all evaluation scripts
+        eval_calls = mock_subprocess_run.call_args_list[1:4]  # Skip collect, get 3 evaluators
+        for eval_call in eval_calls:
+            eval_cmd = eval_call[0][0]
+            assert "--yes" in eval_cmd, "All evaluators should receive --yes flag from pipeline"
+

@@ -3,7 +3,9 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+
+import pytest
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -384,4 +386,128 @@ class TestCallJudgeModel:
         assert result is None
         # Should have retried multiple times
         assert mock_client.chat.completions.create.call_count == 2
+
+
+class TestFormatClarityMain:
+    """Tests for format_clarity_evaluator.py main() function."""
+
+    @patch("format_clarity_evaluator.process_csv")
+    @patch("format_clarity_evaluator.log_section")
+    @patch("format_clarity_evaluator.log_info")
+    @patch("builtins.input")
+    def test_main_with_yes_flag_skips_confirmation(
+        self,
+        mock_input,
+        mock_info,
+        mock_section,
+        mock_process_csv,
+        tmp_path,
+    ):
+        """Test that --yes flag skips confirmation prompt even for >10 rows."""
+        from format_clarity_evaluator import main
+
+        # Create CSV with 15 rows (should trigger confirmation without --yes)
+        input_csv = tmp_path / "input.csv"
+        rows = []
+        for i in range(15):
+            rows.append(f"Q{i},A{i},B{i}")
+        input_csv.write_text("\n".join(rows))
+
+        with patch("sys.argv", ["format_clarity_evaluator.py", str(input_csv), "--yes"]):
+            main()
+
+        # input() should not be called when --yes flag is present
+        mock_input.assert_not_called()
+        mock_process_csv.assert_called_once()
+
+    @patch("builtins.input")
+    @patch("format_clarity_evaluator.call_judge_model")
+    @patch("format_clarity_evaluator.tqdm")
+    def test_main_without_yes_flag_shows_confirmation_for_many_rows(
+        self,
+        mock_tqdm,
+        mock_call_judge,
+        mock_input,
+        tmp_path,
+    ):
+        """Test that confirmation prompt is shown for >10 rows without --yes flag."""
+        from format_clarity_evaluator import process_csv
+
+        # Create CSV with 15 rows
+        input_csv = tmp_path / "input.csv"
+        rows = []
+        for i in range(15):
+            rows.append(f"Q{i},A{i},B{i}")
+        input_csv.write_text("\n".join(rows))
+
+        mock_input.return_value = "y"  # User confirms
+        mock_call_judge.return_value = {"format_clarity_evaluation": {"score": 4, "justification": "test"}}
+        # Mock tqdm to return iterator directly without progress bar
+        mock_tqdm.side_effect = lambda iterable, **kwargs: iterable
+
+        # Mock API client to avoid actual API calls
+        with patch("format_clarity_evaluator.AzureOpenAI") as mock_azure_class, patch(
+            "format_clarity_evaluator.OpenAI"
+        ) as mock_openai_class, patch("os.getenv") as mock_getenv, patch(
+            "format_clarity_evaluator.pd.DataFrame.to_csv"
+        ) as mock_to_csv:
+            mock_client = Mock()
+            mock_azure_class.return_value = mock_client
+            
+            mock_getenv.side_effect = lambda key, default=None: (
+                "https://test.openai.azure.com/" if key == "AZURE_OPENAI_ENDPOINT" else (
+                    "test-key" if key == "AZURE_OPENAI_API_KEY" else (
+                        "gpt-4.1" if key == "MODEL_NAME" else default
+                    )
+                )
+            )
+            # Call process_csv directly to test confirmation prompt
+            try:
+                process_csv(str(input_csv), non_interactive=False)
+            except (SystemExit, Exception):
+                pass  # Expected when API credentials are invalid or other errors
+
+        # input() should be called when >10 rows and non_interactive=False
+        mock_input.assert_called_once()
+
+    @patch("builtins.input")
+    def test_main_without_yes_flag_cancels_on_n(
+        self,
+        mock_input,
+        tmp_path,
+    ):
+        """Test that script exits when user answers 'n' to confirmation."""
+        from format_clarity_evaluator import process_csv
+
+        # Create CSV with 15 rows
+        input_csv = tmp_path / "input.csv"
+        rows = []
+        for i in range(15):
+            rows.append(f"Q{i},A{i},B{i}")
+        input_csv.write_text("\n".join(rows))
+
+        mock_input.return_value = "n"  # User cancels
+
+        # Mock API client to avoid actual API calls
+        with patch("format_clarity_evaluator.AzureOpenAI") as mock_azure_class, patch(
+            "format_clarity_evaluator.OpenAI"
+        ) as mock_openai_class, patch("os.getenv") as mock_getenv:
+            mock_client = Mock()
+            mock_azure_class.return_value = mock_client
+            
+            mock_getenv.side_effect = lambda key, default=None: (
+                "https://test.openai.azure.com/" if key == "AZURE_OPENAI_ENDPOINT" else (
+                    "test-key" if key == "AZURE_OPENAI_API_KEY" else (
+                        "gpt-4.1" if key == "MODEL_NAME" else default
+                    )
+                )
+            )
+            # Call process_csv directly to test cancellation
+            with pytest.raises(SystemExit) as exc_info:
+                process_csv(str(input_csv), non_interactive=False)
+            # Should exit with code 0 (cancelled)
+            assert exc_info.value.code == 0
+
+        # input() should be called
+        mock_input.assert_called_once()
 

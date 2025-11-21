@@ -579,6 +579,7 @@ def process_csv(
     output_file: str = "evaluation_output.csv",
     limit_rows: Optional[int] = None,
     model_name: Optional[str] = None,
+    non_interactive: bool = False,
 ) -> None:
     """
     Main processing function that reads the input CSV, evaluates each row,
@@ -701,8 +702,8 @@ def process_csv(
             indent=0,
         )
 
-        # Prompt for confirmation if processing many rows
-        if len(df) > 10:
+        # Prompt for confirmation if processing many rows (unless non-interactive mode)
+        if len(df) > 10 and not non_interactive:
             try:
                 response = (
                     input(f"\n🤔 {len(df)}回のAPI呼び出しを実行しますか？ [y/N]: ")
@@ -967,6 +968,12 @@ You can specify the model via:
         help=f"Model to use for evaluation (default: {DEFAULT_MODEL}). Supported models: {', '.join(SUPPORTED_MODELS)}",
     )
 
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompt and run non-interactively (useful for CI/batch execution)",
+    )
+
     args = parser.parse_args()
 
     # Normalize model name if provided
@@ -1001,7 +1008,11 @@ You can specify the model via:
             )
 
     process_csv(
-        args.input_csv, args.output, limit_rows=args.limit, model_name=model_name
+        args.input_csv,
+        args.output,
+        limit_rows=args.limit,
+        model_name=model_name,
+        non_interactive=args.yes,
     )
 
 
