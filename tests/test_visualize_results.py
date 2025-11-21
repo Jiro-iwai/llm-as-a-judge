@@ -85,6 +85,29 @@ class TestPrepareData:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
 
+    def test_prepare_data_with_empty_string_errors(self):
+        """Test preparing data with empty string in Evaluation_Error (normal rows from llm_judge_evaluator.py)"""
+        # llm_judge_evaluator.py outputs empty string ("") for normal rows, not NaN
+        df = pd.DataFrame({
+            "Question": ["Q1", "Q2", "Q3"],
+            "Model_A_Citation_Score": [4, 5, 3],
+            "Evaluation_Error": ["", "", "Some error"],  # Empty string means normal row
+        })
+        result = prepare_data(df)
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 2  # Empty string rows should be kept, error row should be excluded
+
+    def test_prepare_data_with_mixed_empty_string_and_nan(self):
+        """Test preparing data with both empty string and NaN in Evaluation_Error"""
+        df = pd.DataFrame({
+            "Question": ["Q1", "Q2", "Q3", "Q4"],
+            "Model_A_Citation_Score": [4, 5, 3, 2],
+            "Evaluation_Error": ["", pd.NA, "Some error", None],  # Empty string and NaN are both normal
+        })
+        result = prepare_data(df)
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 3  # Empty string, NaN, and None rows should be kept, error row excluded
+
     def test_prepare_data_empty_dataframe(self):
         """Test preparing empty dataframe"""
         df = pd.DataFrame()
