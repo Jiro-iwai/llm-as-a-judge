@@ -7,7 +7,6 @@ Originally adapted from log-output-simplifier/main.py, now integrated into this 
 
 import json
 import re
-from typing import Optional
 
 
 def clean_html(text_block: str) -> str:
