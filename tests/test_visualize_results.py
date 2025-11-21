@@ -6,6 +6,7 @@ import tempfile
 import os
 import pandas as pd
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -14,6 +15,9 @@ from visualize_results import (
     load_data,
     prepare_data,
     create_summary_table,
+    create_score_comparison_chart,
+    create_score_distribution_chart,
+    create_boxplot_chart,
 )
 
 
@@ -155,6 +159,125 @@ class TestCreateSummaryTable:
 
             assert os.path.exists(temp_file)
             # Should not crash even if columns are missing
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+
+class TestCreateScoreComparisonChart:
+    """Tests for create_score_comparison_chart function"""
+
+    @patch("visualize_results.plt")
+    def test_create_score_comparison_chart_success(self, mock_plt):
+        """Test successful creation of score comparison chart"""
+        # Mock plt.subplots to return figure and axes
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        
+        df = pd.DataFrame({
+            "Question": ["Q1", "Q2"],
+            "Model_A_Citation_Score": [4.0, 5.0],
+            "Model_B_Citation_Score": [3.0, 4.0],
+            "Model_A_Relevance_Score": [4.5, 4.8],
+            "Model_B_Relevance_Score": [3.5, 4.2],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".png") as f:
+            temp_file = f.name
+
+        try:
+            create_score_comparison_chart(df, temp_file)
+
+            # Verify plt.savefig was called
+            mock_plt.savefig.assert_called_once()
+            mock_plt.close.assert_called_once()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    @patch("visualize_results.plt")
+    def test_create_score_comparison_chart_no_scores(self, mock_plt):
+        """Test creating chart with no score columns"""
+        # Mock plt.subplots to return figure and axes
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        
+        df = pd.DataFrame({
+            "Question": ["Q1", "Q2"],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".png") as f:
+            temp_file = f.name
+
+        try:
+            create_score_comparison_chart(df, temp_file)
+
+            # Should not crash even if no score columns
+            mock_plt.close.assert_called_once()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+
+class TestCreateScoreDistributionChart:
+    """Tests for create_score_distribution_chart function"""
+
+    @patch("visualize_results.plt")
+    def test_create_score_distribution_chart_success(self, mock_plt):
+        """Test successful creation of score distribution chart"""
+        # Mock plt.subplots to return figure and axes
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        
+        df = pd.DataFrame({
+            "Question": ["Q1", "Q2", "Q3"],
+            "Model_A_Citation_Score": [4.0, 5.0, 3.0],
+            "Model_B_Citation_Score": [3.0, 4.0, 4.0],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".png") as f:
+            temp_file = f.name
+
+        try:
+            create_score_distribution_chart(df, temp_file)
+
+            # Verify plt.savefig was called
+            mock_plt.savefig.assert_called_once()
+            mock_plt.close.assert_called_once()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+
+class TestCreateBoxplotChart:
+    """Tests for create_boxplot_chart function"""
+
+    @patch("visualize_results.plt")
+    def test_create_boxplot_chart_success(self, mock_plt):
+        """Test successful creation of boxplot chart"""
+        # Mock plt.subplots to return figure and axes
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        
+        df = pd.DataFrame({
+            "Question": ["Q1", "Q2", "Q3"],
+            "Model_A_Citation_Score": [4.0, 5.0, 3.0],
+            "Model_B_Citation_Score": [3.0, 4.0, 4.0],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".png") as f:
+            temp_file = f.name
+
+        try:
+            create_boxplot_chart(df, temp_file)
+
+            # Verify plt.savefig was called
+            mock_plt.savefig.assert_called_once()
+            mock_plt.close.assert_called_once()
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
