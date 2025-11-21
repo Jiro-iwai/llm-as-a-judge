@@ -125,6 +125,9 @@ export APP_RETRY_DELAY=3           # リトライ間隔（秒、デフォルト:
 export APP_API_DELAY=2.0           # API呼び出し間隔（秒、デフォルト: 1.0）
 export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト: A14804）
 
+# 出力ファイル名（オプション）
+export APP_OUTPUT_FILE_PROCESSING_TIME_LOG="custom_time_log.txt"  # 処理時間ログファイル名
+
 # 設定ファイルのパス
 export APP_CONFIG_FILE=config.yaml  # YAML設定ファイルのパス（オプション）
 ```
@@ -150,6 +153,7 @@ output_files:
   processing_time_comparison: "processing_time_comparison.png"
   processing_time_statistics: "processing_time_statistics.png"
   processing_time_summary: "processing_time_summary.txt"
+  processing_time_log: "processing_time_log.txt"
 
 # 正規表現パターン（compare_processing_time.py用）
 regex_patterns:
@@ -735,6 +739,7 @@ LLMジャッジは詳細な5段階のスケールを使用します：
 - APIから応答を収集（2つのモデルに同じ質問を送信）
 - ログの整形・フォーマット（ReActログ形式に変換）
 - CSVファイルの生成（評価スクリプト用の形式）
+- 処理時間ログの自動記録と比較チャートの自動生成
 
 **使用方法：**
 
@@ -750,11 +755,16 @@ python collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b c
 
 # カスタムidentity、timeout、delayを指定（デフォルト値は設定ファイルまたは環境変数から読み込まれます）
 python collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
+
+# カスタム処理時間ログファイルを指定
+python collect_responses.py questions.txt --time-log custom_time_log.txt
 ```
 
 **設定値の外部化：**
 
 `identity`、`timeout`、`delay`のデフォルト値は、環境変数（`APP_DEFAULT_IDENTITY`、`APP_TIMEOUT`、`APP_API_DELAY`）または設定ファイルから読み込まれます。コマンドライン引数で明示的に指定した場合は、それが優先されます。
+
+処理時間ログの出力先は `APP_OUTPUT_FILE_PROCESSING_TIME_LOG` または `--time-log` オプションで変更できます。
 
 **入力ファイル形式：**
 - **テキストファイル（.txt）**: 1行に1つの質問。`#`で始まる行はコメントとして無視されます
@@ -762,6 +772,8 @@ python collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150
 
 **出力：**
 - `collected_responses.csv`（デフォルト）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
+- `processing_time_log.txt`: 各API呼び出しの処理時間ログ
+- `processing_time_comparison.png`, `processing_time_statistics.png`, `processing_time_summary.txt`: 処理時間比較チャートと統計サマリー
 
 **注意：**
 - このスクリプトの出力は`llm_judge_evaluator.py`、`ragas_llm_judge_evaluator.py`、`format_clarity_evaluator.py`の入力として使用可能です
@@ -773,10 +785,13 @@ python collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150
 # 1. 質問ファイルを準備
 echo "会社の休暇制度について教えてください" > questions.txt
 
-# 2. 応答を収集
+# 2. 応答を収集（処理時間ログとチャートが自動生成されます）
 python collect_responses.py questions.txt -o responses.csv
 
-# 3. 収集したデータを評価
+# 3. 処理時間レポートを確認
+ls -la processing_time_*.png processing_time_summary.txt processing_time_log.txt
+
+# 4. 収集したデータを評価
 python llm_judge_evaluator.py responses.csv -n 5
 ```
 
@@ -786,7 +801,7 @@ python llm_judge_evaluator.py responses.csv -n 5
 
 ### `compare_processing_time.py` - 処理時間比較スクリプト
 
-ログファイルから2つのモデルの処理時間を抽出し、比較チャートや統計情報を生成するスクリプトです。
+ログファイルから2つのモデルの処理時間を抽出し、比較チャートや統計情報を生成するスクリプトです。`collect_responses.py`を実行すると処理時間ログとレポートが自動生成されますが、既存のログを再分析したい場合やカスタムログを扱いたい場合には本スクリプトを直接実行できます。
 
 **主な機能：**
 - ログファイルから処理時間を抽出（正規表現パターンを使用）

@@ -43,6 +43,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "processing_time_comparison": "processing_time_comparison.png",
         "processing_time_statistics": "processing_time_statistics.png",
         "processing_time_summary": "processing_time_summary.txt",
+        "processing_time_log": "processing_time_log.txt",
     },
     "regex_patterns": {
         "model_a_pattern": r"📥 \[claude3\.5-sonnet\].*?経過時間: ([\d.]+)秒",

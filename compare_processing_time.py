@@ -7,7 +7,7 @@ tmp.txtから処理時間を抽出して2つのモデルを比較します。
 import platform
 import re
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -46,12 +46,18 @@ plt.rcParams["figure.figsize"] = (14, 8)
 
 def extract_processing_times(
     log_file: str,
+    model_a_name: Optional[str] = None,
+    model_b_name: Optional[str] = None,
 ) -> Tuple[List[int], List[float], List[float]]:
     """
     Extract processing times for two models from a log file.
 
     Args:
         log_file: Path to the log file containing processing time information.
+        model_a_name: Optional model name for Model A. If provided, generates
+            dynamic regex pattern. If None, uses pattern from config.
+        model_b_name: Optional model name for Model B. If provided, generates
+            dynamic regex pattern. If None, uses pattern from config.
 
     Returns:
         A tuple containing:
@@ -74,24 +80,34 @@ def extract_processing_times(
         log_error(f"ファイル '{log_file}' が見つかりません")
         sys.exit(1)
 
-    # Get regex patterns from config
-    patterns = get_regex_patterns()
-    pattern_a = patterns["model_a_pattern"]
-    pattern_b = patterns["model_b_pattern"]
+    # Generate regex patterns dynamically if model names are provided
+    if model_a_name and model_b_name:
+        # Escape special regex characters in model names
+        escaped_a = re.escape(model_a_name)
+        escaped_b = re.escape(model_b_name)
+        pattern_a = rf"📥 \[{escaped_a}\].*?経過時間: ([\d.]+)秒"
+        pattern_b = rf"📥 \[{escaped_b}\].*?経過時間: ([\d.]+)秒"
+    else:
+        # Use patterns from config (for backward compatibility)
+        patterns = get_regex_patterns()
+        pattern_a = patterns["model_a_pattern"]
+        pattern_b = patterns["model_b_pattern"]
 
-    # Model A (claude3.5-sonnet) の処理時間を抽出
+    # Model A の処理時間を抽出
     matches_a = re.findall(pattern_a, content)
     model_a_times = [float(t) for t in matches_a]
 
-    # Model B (claude4.5-haiku) の処理時間を抽出
+    # Model B の処理時間を抽出
     matches_b = re.findall(pattern_b, content)
     model_b_times = [float(t) for t in matches_b]
 
     # 質問番号を生成
     question_numbers = list(range(1, len(model_a_times) + 1))
 
-    log_success(f"Model A (claude3.5-sonnet) の処理時間: {len(model_a_times)}件")
-    log_success(f"Model B (claude4.5-haiku) の処理時間: {len(model_b_times)}件")
+    display_a = model_a_name or "claude3.5-sonnet"
+    display_b = model_b_name or "claude4.5-haiku"
+    log_success(f"Model A ({display_a}) の処理時間: {len(model_a_times)}件")
+    log_success(f"Model B ({display_b}) の処理時間: {len(model_b_times)}件")
 
     if len(model_a_times) != len(model_b_times):
         log_warning("Model AとModel Bのデータ数が一致しません")
