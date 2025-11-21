@@ -591,7 +591,9 @@ def collect_responses(
         log_info(f"❌ 失敗: {failed_count_b}/{len(questions)}", indent=2)
 
     # Generate processing time comparison assets
-    generate_processing_time_reports(time_log_path)
+    generate_processing_time_reports(
+        time_log_path, model_a_name=model_a, model_b_name=model_b
+    )
 
     return pd.DataFrame(results)
 
@@ -659,9 +661,20 @@ def read_questions(input_file: str) -> List[str]:
     return questions
 
 
-def generate_processing_time_reports(log_file: Optional[str]) -> None:
+def generate_processing_time_reports(
+    log_file: Optional[str],
+    model_a_name: Optional[str] = None,
+    model_b_name: Optional[str] = None,
+) -> None:
     """
     Generate comparison charts and summary tables from the processing time log.
+
+    Args:
+        log_file: Path to the processing time log file.
+        model_a_name: Optional model name for Model A. If provided, uses
+            dynamic regex pattern matching.
+        model_b_name: Optional model name for Model B. If provided, uses
+            dynamic regex pattern matching.
     """
     if not log_file:
         log_warning(
@@ -678,7 +691,7 @@ def generate_processing_time_reports(log_file: Optional[str]) -> None:
 
     try:
         question_numbers, model_a_times, model_b_times = extract_processing_times(
-            log_file
+            log_file, model_a_name=model_a_name, model_b_name=model_b_name
         )
     except SystemExit:
         # extract_processing_times already reported an error

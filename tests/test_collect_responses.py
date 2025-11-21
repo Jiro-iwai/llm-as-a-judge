@@ -363,5 +363,9 @@ class TestCollectResponsesIntegration:
 
         assert len(df) == 2
         assert mock_call_api.call_count == 4  # two models per question
-        mock_generate_reports.assert_called_once_with(str(log_file))
+        mock_generate_reports.assert_called_once_with(
+            str(log_file),
+            model_a_name="claude3.5-sonnet",
+            model_b_name="claude4.5-haiku",
+        )
 
