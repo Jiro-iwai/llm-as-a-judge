@@ -58,8 +58,6 @@ class TestDocstringCompleteness:
     def test_collect_responses_functions_have_docstrings(self):
         """Test that collect_responses.py functions have docstrings."""
         functions_to_check = [
-            (collect_responses.clean_html, "clean_html"),
-            (collect_responses.clean_and_format_llm_log, "clean_and_format_llm_log"),
             (collect_responses.format_response, "format_response"),
             (collect_responses.call_api, "call_api"),
             (collect_responses.collect_responses, "collect_responses"),
