@@ -933,6 +933,98 @@ ls -la evaluation_*.png evaluation_summary.txt
 
 -----
 
+## 一気通貫パイプライン
+
+### `run_full_pipeline.py` - 一気通貫パイプラインスクリプト
+
+モデルのAPIからの情報収集、評価、可視化を一気通貫で実行する統合スクリプトです。
+
+**主な機能：**
+- `collect_responses.py`を実行してAPIから応答を収集
+- 評価スクリプトを実行（`llm_judge_evaluator.py`、`ragas_llm_judge_evaluator.py`、`format_clarity_evaluator.py`から選択）
+- `visualize_results.py`を実行して結果を可視化
+- 各ステップの成功/失敗を追跡し、エラー時は適切に処理
+
+**使用方法：**
+
+```bash
+# デフォルトでllm-judge評価を使用してパイプラインを実行
+python run_full_pipeline.py questions.txt
+
+# ragas評価を使用
+python run_full_pipeline.py questions.txt --evaluator ragas
+
+# 全ての評価スクリプトを実行
+python run_full_pipeline.py questions.txt --evaluator all
+
+# 収集ステップをスキップ（既存のCSVファイルを使用）
+python run_full_pipeline.py questions.txt --skip-collect
+
+# 可視化ステップをスキップ
+python run_full_pipeline.py questions.txt --skip-visualize
+
+# カスタムモデルとAPI URLを指定
+python run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
+
+# 評価行数を制限
+python run_full_pipeline.py questions.txt --limit 5
+```
+
+**コマンドライン引数：**
+
+- `questions_file`: 質問ファイル（必須、`.txt`または`.csv`形式）
+- `--evaluator`: 評価スクリプトの選択
+  - `llm-judge`: `llm_judge_evaluator.py`を実行（デフォルト）
+  - `ragas`: `ragas_llm_judge_evaluator.py`を実行
+  - `format-clarity`: `format_clarity_evaluator.py`を実行
+  - `all`: 全ての評価スクリプトを実行
+- `--model-a`, `--model-b`: モデル名（`collect_responses.py`に渡される）
+- `--api-url`: API URL（`collect_responses.py`に渡される）
+- `--limit`: 評価行数の制限（評価スクリプトに渡される）
+- `--skip-collect`: 収集ステップをスキップ（既存の`collected_responses.csv`を使用）
+- `--skip-visualize`: 可視化ステップをスキップ
+- `--collect-output`: 収集ステップの出力ファイル名（デフォルト: `collected_responses.csv`）
+
+**実行フロー：**
+
+1. **Step 1: 応答収集**（`--skip-collect`が指定されていない場合）
+   - `collect_responses.py`を実行
+   - 出力: `collected_responses.csv`（デフォルト）
+
+2. **Step 2: 評価実行**
+   - 選択された評価スクリプトを実行
+   - 出力: `evaluation_output.csv`（llm-judge）、`ragas_evaluation_output.csv`（ragas）、`format_clarity_output.csv`（format-clarity）
+
+3. **Step 3: 結果可視化**（`--skip-visualize`が指定されていない場合、llm-judgeのみ）
+   - `visualize_results.py`を実行
+   - 出力: `evaluation_comparison.png`、`evaluation_distribution.png`、`evaluation_boxplot.png`、`evaluation_summary.txt`
+
+**使用例：**
+
+```bash
+# 1. 基本的な使用方法（llm-judge評価）
+python run_full_pipeline.py questions.txt
+
+# 2. ragas評価を使用
+python run_full_pipeline.py questions.txt --evaluator ragas
+
+# 3. 全ての評価スクリプトを実行
+python run_full_pipeline.py questions.txt --evaluator all
+
+# 4. 既存のCSVファイルを使用して評価と可視化のみ実行
+python run_full_pipeline.py questions.txt --skip-collect
+
+# 5. Makefileを使用
+make pipeline ARGS="questions.txt --evaluator llm-judge"
+```
+
+**注意：**
+- 可視化は現在`llm-judge`評価の結果のみサポートされています
+- 各ステップでエラーが発生した場合、パイプラインは適切に停止します
+- 可視化ステップでエラーが発生した場合、警告を表示してパイプラインは続行します
+
+-----
+
 ## エラーハンドリング
 
 すべてのスクリプトには、堅牢なエラーハンドリングが含まれています：

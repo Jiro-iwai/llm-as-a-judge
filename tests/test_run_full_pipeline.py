@@ -1,0 +1,320 @@
+"""
+Unit tests for run_full_pipeline.py
+
+This module tests the full pipeline that integrates:
+- collect_responses.py
+- Evaluation scripts (llm_judge_evaluator.py, ragas_llm_judge_evaluator.py, format_clarity_evaluator.py)
+- visualize_results.py
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+# Add parent directory to path to import modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+
+class TestPipelineBasicFunctionality:
+    """Tests for basic pipeline functionality"""
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_run_pipeline_with_llm_judge(self, mock_exists, mock_subprocess_run):
+        """Test that pipeline runs successfully with llm-judge evaluator"""
+        # Mock file existence
+        mock_exists.side_effect = lambda: True if str(mock_exists.call_count) == "1" else False
+
+        # Mock subprocess.run calls
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        # Import and run pipeline
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+            main()
+
+        # Verify subprocess.run was called 3 times
+        assert mock_subprocess_run.call_count == 3
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_run_pipeline_with_ragas(self, mock_exists, mock_subprocess_run):
+        """Test that pipeline runs successfully with ragas evaluator"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+            # Visualization is skipped for ragas (only llm-judge is visualized)
+        ]
+
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "ragas"]):
+            main()
+
+        # Should only call collect and evaluation (visualization skipped for ragas)
+        assert mock_subprocess_run.call_count == 2
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_run_pipeline_with_format_clarity(self, mock_exists, mock_subprocess_run):
+        """Test that pipeline runs successfully with format-clarity evaluator"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # format_clarity_evaluator.py
+            # Visualization is skipped for format-clarity (only llm-judge is visualized)
+        ]
+
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "format-clarity"]):
+            main()
+
+        # Should only call collect and evaluation (visualization skipped for format-clarity)
+        assert mock_subprocess_run.call_count == 2
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_run_pipeline_with_all_evaluators(self, mock_exists, mock_subprocess_run):
+        """Test that pipeline runs all evaluators when --evaluator all is specified"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+            Mock(returncode=0),  # format_clarity_evaluator.py
+            Mock(returncode=0),  # visualize_results.py (for llm-judge)
+        ]
+
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "all"]):
+            main()
+
+        # Should call collect once, then 3 evaluators, then visualize
+        assert mock_subprocess_run.call_count >= 4
+
+
+class TestPipelineOptions:
+    """Tests for pipeline options"""
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_skip_collect(self, mock_exists, mock_subprocess_run):
+        """Test that --skip-collect option skips the collect step"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--skip-collect",
+                "--evaluator",
+                "llm-judge",
+            ],
+        ):
+            main()
+
+        # Should skip collect, so only 2 calls
+        assert mock_subprocess_run.call_count == 2
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_skip_visualize(self, mock_exists, mock_subprocess_run):
+        """Test that --skip-visualize option skips the visualize step"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--skip-visualize",
+                "--evaluator",
+                "llm-judge",
+            ],
+        ):
+            main()
+
+        # Should skip visualize, so only 2 calls
+        assert mock_subprocess_run.call_count == 2
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_custom_models(self, mock_exists, mock_subprocess_run):
+        """Test that --model-a and --model-b options are passed correctly"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--model-a",
+                "claude4.5-sonnet",
+                "--model-b",
+                "claude4.5-haiku",
+                "--evaluator",
+                "llm-judge",
+            ],
+        ):
+            main()
+
+        # Verify that model arguments were passed to collect_responses.py
+        collect_call = mock_subprocess_run.call_args_list[0]
+        assert "--model-a" in str(collect_call) or "claude4.5-sonnet" in str(collect_call)
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_limit(self, mock_exists, mock_subprocess_run):
+        """Test that --limit option is passed correctly to evaluation script"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--limit",
+                "5",
+                "--evaluator",
+                "llm-judge",
+            ],
+        ):
+            main()
+
+        # Verify that limit was passed to evaluation script
+        eval_call = mock_subprocess_run.call_args_list[1]
+        assert "--limit" in str(eval_call) or "5" in str(eval_call)
+
+
+class TestPipelineErrorHandling:
+    """Tests for error handling"""
+
+    @patch("subprocess.run")
+    @patch("run_full_pipeline.Path")
+    def test_pipeline_fails_on_collect_error(self, mock_path_class, mock_subprocess_run):
+        """Test that pipeline fails appropriately when collect step errors"""
+        # Mock Path.exists() to return True for questions.txt
+        mock_path_instance = MagicMock()
+        mock_path_instance.exists.return_value = True
+        mock_path_class.return_value = mock_path_instance
+
+        # Mock subprocess.run to raise CalledProcessError
+        mock_subprocess_run.side_effect = subprocess.CalledProcessError(
+            returncode=1, cmd=["python", "collect_responses.py"], stderr="Error occurred"
+        )
+
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 1
+
+    @patch("subprocess.run")
+    @patch("run_full_pipeline.Path")
+    def test_pipeline_fails_on_evaluation_error(self, mock_path_class, mock_subprocess_run):
+        """Test that pipeline fails appropriately when evaluation step errors"""
+        # Mock Path.exists() to return True for questions.txt
+        mock_path_instance = MagicMock()
+        mock_path_instance.exists.return_value = True
+        mock_path_class.return_value = mock_path_instance
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0, stdout="", stderr=""),  # collect_responses.py succeeds
+            subprocess.CalledProcessError(
+                returncode=1, cmd=["python", "llm_judge_evaluator.py"], stderr="Evaluation error"
+            ),  # llm_judge_evaluator.py fails
+        ]
+
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 1
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_continues_on_visualize_error(self, mock_exists, mock_subprocess_run):
+        """Test that pipeline continues (with warning) when visualize step errors"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py succeeds
+            Mock(returncode=0),  # llm_judge_evaluator.py succeeds
+            Mock(returncode=1),  # visualize_results.py fails
+        ]
+
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+            # Should not raise SystemExit, but log warning
+            main()
+
+
+class TestPipelineCommandLineArguments:
+    """Tests for command line argument parsing"""
+
+    def test_pipeline_help_option(self):
+        """Test that --help option works correctly"""
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "--help"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            # argparse exits with code 0 for --help
+            assert exc_info.value.code == 0
+
+    def test_pipeline_invalid_evaluator(self):
+        """Test that invalid --evaluator value raises error"""
+        from run_full_pipeline import main
+
+        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "invalid"]):
+            with pytest.raises(SystemExit):
+                main()
+
