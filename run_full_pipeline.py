@@ -212,6 +212,9 @@ def run_single_evaluation(
     if model_name:
         cmd.extend(["-m", model_name])
 
+    # Always add --yes flag for non-interactive execution from pipeline
+    cmd.append("--yes")
+
     # Add any additional kwargs as command-line arguments
     for key, value in kwargs.items():
         if value is not None:

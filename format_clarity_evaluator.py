@@ -349,6 +349,7 @@ def process_csv(
     output_file: str = "format_clarity_output.csv",
     limit_rows: Optional[int] = None,
     model_name: Optional[str] = None,
+    non_interactive: bool = False,
 ) -> None:
     """
     Main processing function that reads the input CSV, parses logs, evaluates format similarity,
@@ -358,6 +359,8 @@ def process_csv(
         input_file: Path to the input CSV file
         output_file: Path to the output CSV file (default: format_clarity_output.csv)
         limit_rows: Optional limit on number of rows to process (for cost control)
+        model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
+        non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
     """
     # Check if using Azure OpenAI or standard OpenAI
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -492,8 +495,8 @@ def process_csv(
             f"Estimated cost: ${len(df) * 0.05:.2f} - ${len(df) * 0.20:.2f} (rough estimate)"
         )
 
-        # Prompt for confirmation if processing many rows
-        if len(df) > 10:
+        # Prompt for confirmation if processing many rows (unless non-interactive mode)
+        if len(df) > 10 and not non_interactive:
             try:
                 response = (
                     input(f"\n🤔 Proceed with {len(df)} API calls? [y/N]: ")
@@ -705,6 +708,12 @@ How It Works:
         help=f"Model to use for evaluation (default: {DEFAULT_MODEL}). Supported models: {', '.join(SUPPORTED_MODELS)}",
     )
 
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompt and run non-interactively (useful for CI/batch execution)",
+    )
+
     args = parser.parse_args()
 
     # Normalize model name if provided
@@ -728,7 +737,11 @@ How It Works:
         log_info(f"Using model: {model_name}")
 
     process_csv(
-        args.input_csv, args.output, limit_rows=args.limit, model_name=model_name
+        args.input_csv,
+        args.output,
+        limit_rows=args.limit,
+        model_name=model_name,
+        non_interactive=args.yes,
     )
 
 
