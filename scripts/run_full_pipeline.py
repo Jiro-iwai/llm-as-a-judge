@@ -16,18 +16,14 @@ Usage:
 import argparse
 import subprocess
 import sys
-# Add project root to Python path (must be before other imports)
-from pathlib import Path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 from pathlib import Path
 from typing import Optional, Tuple
 
-# Add project root to Python path
+# Add project root to Python path (must be before other imports)
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.utils.logging_config import (
+from src.utils.logging_config import (  # noqa: E402
     log_error,
     log_info,
     log_section,

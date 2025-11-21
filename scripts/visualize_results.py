@@ -7,10 +7,6 @@ evaluation_output.csvの評価結果をグラフで表示します。
 import argparse
 import platform
 import sys
-# Add project root to Python path (must be before other imports)
-from pathlib import Path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 from pathlib import Path
 from typing import Optional
 

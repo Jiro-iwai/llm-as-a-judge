@@ -28,13 +28,13 @@ import pandas as pd  # noqa: E402
 import requests  # noqa: E402
 from tqdm import tqdm  # noqa: E402
 
-from compare_processing_time import (
+from compare_processing_time import (  # noqa: E402
     create_comparison_chart,
     create_statistics_chart,
     create_summary_table,
     extract_processing_times,
 )
-from src.utils.logging_config import (
+from src.utils.logging_config import (  # noqa: E402
     log_info,
     log_error,
     log_warning,
@@ -42,10 +42,10 @@ from src.utils.logging_config import (
     log_section,
     setup_logging,
 )
-from src.utils.log_output_simplifier import (
+from src.utils.log_output_simplifier import (  # noqa: E402
     clean_and_format_llm_log,
 )
-from src.config.app_config import (
+from src.config.app_config import (  # noqa: E402
     get_timeout,
     get_api_delay,
     get_default_identity,
