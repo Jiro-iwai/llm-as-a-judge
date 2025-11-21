@@ -492,7 +492,7 @@ def process_csv(
     else:
         log_warning(f"WARNING: This will make {len(df)} API calls to {model_name}")
         log_warning(
-            f"Estimated cost: ${len(df) * 0.05:.2f} - ${len(df) * 0.20:.2f} (rough estimate)"
+            "API costs will be incurred. It is recommended to test with a small number of rows first using the -n flag."
         )
 
         # Prompt for confirmation if processing many rows (unless non-interactive mode)
