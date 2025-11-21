@@ -7,6 +7,7 @@ evaluation_output.csvの評価結果をグラフで表示します。
 import argparse
 import platform
 import sys
+from typing import Optional
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -107,7 +108,10 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_score_comparison_chart(
-    df: pd.DataFrame, output_file: str = "evaluation_comparison.png"
+    df: pd.DataFrame,
+    output_file: str = "evaluation_comparison.png",
+    model_a_name: Optional[str] = None,
+    model_b_name: Optional[str] = None,
 ) -> None:
     """
     Create a bar chart comparing average scores between Model A and Model B.
@@ -124,6 +128,8 @@ def create_score_comparison_chart(
             "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
         output_file: Path to save the output PNG file. Defaults to
             "evaluation_comparison.png".
+        model_a_name: Optional name for Model A. If None, uses "Model A".
+        model_b_name: Optional name for Model B. If None, uses "Model B".
 
     Returns:
         None. The chart is saved to the specified output file.
@@ -153,6 +159,10 @@ def create_score_comparison_chart(
             model_b_scores.append(model_b_avg)
             metric_names.append(metric_name)
 
+    # モデル名を決定（指定されない場合は汎用的なラベルを使用）
+    label_a = model_a_name if model_a_name else "Model A"
+    label_b = model_b_name if model_b_name else "Model B"
+
     # バーチャートを作成
     x = range(len(metric_names))
     width = 0.35
@@ -162,7 +172,7 @@ def create_score_comparison_chart(
         [i - width / 2 for i in x],
         model_a_scores,
         width,
-        label="Model A (claude3.5-sonnet)",
+        label=label_a,
         alpha=0.8,
         color="#3498db",
     )
@@ -170,7 +180,7 @@ def create_score_comparison_chart(
         [i + width / 2 for i in x],
         model_b_scores,
         width,
-        label="Model B (claude4.5-haiku)",
+        label=label_b,
         alpha=0.8,
         color="#e74c3c",
     )
@@ -178,7 +188,7 @@ def create_score_comparison_chart(
     ax.set_xlabel("評価メトリクス", fontsize=12, fontweight="bold")
     ax.set_ylabel("平均スコア", fontsize=12, fontweight="bold")
     ax.set_title(
-        "Model A vs Model B スコア比較", fontsize=14, fontweight="bold", pad=20
+        f"{label_a} vs {label_b} スコア比較", fontsize=14, fontweight="bold", pad=20
     )
     ax.set_xticks(x)
     ax.set_xticklabels(metric_names, rotation=0, ha="center")
@@ -207,7 +217,10 @@ def create_score_comparison_chart(
 
 
 def create_score_distribution_chart(
-    df: pd.DataFrame, output_file: str = "evaluation_distribution.png"
+    df: pd.DataFrame,
+    output_file: str = "evaluation_distribution.png",
+    model_a_name: Optional[str] = None,
+    model_b_name: Optional[str] = None,
 ) -> None:
     """
     Create histogram charts showing score distributions for each metric.
@@ -224,10 +237,16 @@ def create_score_distribution_chart(
             "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
         output_file: Path to save the output PNG file. Defaults to
             "evaluation_distribution.png".
+        model_a_name: Optional name for Model A. If None, uses "Model A".
+        model_b_name: Optional name for Model B. If None, uses "Model B".
 
     Returns:
         None. The chart is saved to the specified output file.
     """
+
+    # モデル名を決定（指定されない場合は汎用的なラベルを使用）
+    label_a = model_a_name if model_a_name else "Model A"
+    label_b = model_b_name if model_b_name else "Model B"
 
     metrics = [
         ("Citation", "Citation_Score"),
@@ -253,7 +272,7 @@ def create_score_distribution_chart(
                 [model_a_scores, model_b_scores],
                 bins=5,
                 alpha=0.7,
-                label=["Model A", "Model B"],
+                label=[label_a, label_b],
                 color=["#3498db", "#e74c3c"],
                 edgecolor="black",
             )
@@ -269,7 +288,7 @@ def create_score_distribution_chart(
     axes[5].axis("off")
 
     plt.suptitle(
-        "スコア分布（Model A vs Model B）", fontsize=14, fontweight="bold", y=0.995
+        f"スコア分布（{label_a} vs {label_b}）", fontsize=14, fontweight="bold", y=0.995
     )
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
@@ -278,7 +297,10 @@ def create_score_distribution_chart(
 
 
 def create_boxplot_chart(
-    df: pd.DataFrame, output_file: str = "evaluation_boxplot.png"
+    df: pd.DataFrame,
+    output_file: str = "evaluation_boxplot.png",
+    model_a_name: Optional[str] = None,
+    model_b_name: Optional[str] = None,
 ) -> None:
     """
     Create box plots comparing score distributions between Model A and Model B.
@@ -295,10 +317,16 @@ def create_boxplot_chart(
             "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
         output_file: Path to save the output PNG file. Defaults to
             "evaluation_boxplot.png".
+        model_a_name: Optional name for Model A. If None, uses "Model A".
+        model_b_name: Optional name for Model B. If None, uses "Model B".
 
     Returns:
         None. The chart is saved to the specified output file.
     """
+
+    # モデル名を決定（指定されない場合は汎用的なラベルを使用）
+    label_a = model_a_name if model_a_name else "Model A"
+    label_b = model_b_name if model_b_name else "Model B"
 
     metrics = [
         ("Citation", "Citation_Score"),
@@ -319,8 +347,8 @@ def create_boxplot_chart(
         if model_a_col in df.columns and model_b_col in df.columns:
             plot_data.append(df[model_a_col].dropna().values)
             plot_data.append(df[model_b_col].dropna().values)
-            labels.append(f"{metric_name}\nModel A")
-            labels.append(f"{metric_name}\nModel B")
+            labels.append(f"{metric_name}\n{label_a}")
+            labels.append(f"{metric_name}\n{label_b}")
 
     fig, ax = plt.subplots(figsize=(14, 6))
     bp = ax.boxplot(
@@ -335,7 +363,7 @@ def create_boxplot_chart(
 
     ax.set_ylabel("スコア", fontsize=12, fontweight="bold")
     ax.set_title(
-        "スコア分布の箱ひげ図（Model A vs Model B）",
+        f"スコア分布の箱ひげ図（{label_a} vs {label_b}）",
         fontsize=14,
         fontweight="bold",
         pad=20,
@@ -352,7 +380,10 @@ def create_boxplot_chart(
 
 
 def create_summary_table(
-    df: pd.DataFrame, output_file: str = "evaluation_summary.txt"
+    df: pd.DataFrame,
+    output_file: str = "evaluation_summary.txt",
+    model_a_name: Optional[str] = None,
+    model_b_name: Optional[str] = None,
 ) -> None:
     """
     Create a summary table with evaluation statistics in text format.
@@ -367,10 +398,16 @@ def create_summary_table(
             "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
         output_file: Path to save the output text file. Defaults to
             "evaluation_summary.txt".
+        model_a_name: Optional name for Model A. If None, uses "Model A".
+        model_b_name: Optional name for Model B. If None, uses "Model B".
 
     Returns:
         None. The summary table is saved to the specified output file.
     """
+
+    # モデル名を決定（指定されない場合は汎用的なラベルを使用）
+    label_a = model_a_name if model_a_name else "Model A"
+    label_b = model_b_name if model_b_name else "Model B"
 
     metrics = [
         ("Citation", "Citation_Score"),
@@ -389,7 +426,7 @@ def create_summary_table(
 
         f.write("-" * 70 + "\n")
         f.write(
-            f"{'メトリクス':<30} {'Model A平均':<15} {'Model B平均':<15} {'差分':<10}\n"
+            f"{'メトリクス':<30} {label_a + '平均':<15} {label_b + '平均':<15} {'差分':<10}\n"
         )
         f.write("-" * 70 + "\n")
 
@@ -419,13 +456,13 @@ def create_summary_table(
             if model_a_col in df.columns and model_b_col in df.columns:
                 f.write(f"{metric_name}:\n")
                 f.write(
-                    f"  Model A: 平均={df[model_a_col].mean():.2f}, "
+                    f"  {label_a}: 平均={df[model_a_col].mean():.2f}, "
                     f"最小={df[model_a_col].min():.0f}, "
                     f"最大={df[model_a_col].max():.0f}, "
                     f"標準偏差={df[model_a_col].std():.2f}\n"
                 )
                 f.write(
-                    f"  Model B: 平均={df[model_b_col].mean():.2f}, "
+                    f"  {label_b}: 平均={df[model_b_col].mean():.2f}, "
                     f"最小={df[model_b_col].min():.0f}, "
                     f"最大={df[model_b_col].max():.0f}, "
                     f"標準偏差={df[model_b_col].std():.2f}\n\n"
@@ -446,6 +483,9 @@ def main():
     
     # カスタムCSVファイルを指定
     python visualize_results.py my_evaluation_results.csv
+    
+    # モデル名を指定して可視化
+    python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
     
     # ragas_evaluation_output.csvを可視化
     python visualize_results.py ragas_evaluation_output.csv
@@ -476,6 +516,20 @@ def main():
         help="評価結果のCSVファイル（デフォルト: evaluation_output.csv）",
     )
 
+    parser.add_argument(
+        "--model-a",
+        type=str,
+        default=None,
+        help="Model Aの名前（例: claude4.5-sonnet）。指定しない場合は「Model A」と表示されます。",
+    )
+
+    parser.add_argument(
+        "--model-b",
+        type=str,
+        default=None,
+        help="Model Bの名前（例: claude4.5-haiku）。指定しない場合は「Model B」と表示されます。",
+    )
+
     args = parser.parse_args()
     csv_file = args.input_csv
 
@@ -497,10 +551,30 @@ def main():
 
     # グラフを作成
     log_info("グラフを作成中...")
-    create_score_comparison_chart(df_clean, output_files["evaluation_comparison"])
-    create_score_distribution_chart(df_clean, output_files["evaluation_distribution"])
-    create_boxplot_chart(df_clean, output_files["evaluation_boxplot"])
-    create_summary_table(df_clean, output_files["evaluation_summary"])
+    create_score_comparison_chart(
+        df_clean,
+        output_files["evaluation_comparison"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
+    create_score_distribution_chart(
+        df_clean,
+        output_files["evaluation_distribution"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
+    create_boxplot_chart(
+        df_clean,
+        output_files["evaluation_boxplot"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
+    create_summary_table(
+        df_clean,
+        output_files["evaluation_summary"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
 
     log_info("")
     log_section("✓ 可視化完了!")
