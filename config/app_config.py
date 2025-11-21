@@ -35,7 +35,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "max_retries": 3,
     "retry_delay": 2,
     "api_delay": 1.0,
-    "default_identity": "A14804",
+    "default_identity": "USER",
     "output_files": {
         "evaluation_comparison": "evaluation_comparison.png",
         "evaluation_distribution": "evaluation_distribution.png",

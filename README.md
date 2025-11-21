@@ -123,7 +123,7 @@ export APP_TIMEOUT=150              # リクエストタイムアウト（秒、
 export APP_MAX_RETRIES=5           # 最大リトライ回数（デフォルト: 3）
 export APP_RETRY_DELAY=3           # リトライ間隔（秒、デフォルト: 2）
 export APP_API_DELAY=2.0           # API呼び出し間隔（秒、デフォルト: 1.0）
-export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト: A14804）
+export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト値は設定ファイルまたはコード内のデフォルト値を参照）
 
 # 出力ファイル名（オプション）
 export APP_OUTPUT_FILE_PROCESSING_TIME_LOG="custom_time_log.txt"  # 処理時間ログファイル名
