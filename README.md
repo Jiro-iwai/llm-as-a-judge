@@ -650,7 +650,7 @@ python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 2.  **Model_A_Response**: モデルAの完全な応答（ReActログ形式）
 3.  **Model_B_Response**: モデルBの完全な応答（ReActログ形式）
 
-**注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出し、ヘッダー行がない場合は最初の行をデータとして扱います。カラム名は`Model_A_Response`/`Model_B_Response`または`Claude_35_Raw_Log`/`Claude_45_Raw_Log`のいずれもサポートされます。評価するモデルは固定されておらず、任意の2つのモデルを比較できます。
+**注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出し、ヘッダー行がない場合は最初の行をデータとして扱います。カラム名は`Model_A_Response`/`Model_B_Response`または`Claude_35_Raw_Log`/`Claude_45_Raw_Log`のいずれもサポートされます。評価するモデルは固定されておらず、任意の2つのモデルを比較できます。なお、出力CSVの列名（`Claude_3.5_Final_Answer`、`Claude_4.5_Final_Answer`）は実装上の都合で固定されていますが、実際のモデル名とは無関係です。
 
 ### 使用方法
 
@@ -724,8 +724,8 @@ python format_clarity_evaluator.py input.csv
 | 列 | 説明 |
 |--------|-------------|
 | `Question` | 元の質問 |
-| `Claude_3.5_Final_Answer` | モデルAのログから解析された最終回答（列名は互換性のため固定） |
-| `Claude_4.5_Final_Answer` | モデルBのログから解析された最終回答（列名は互換性のため固定） |
+| `Claude_3.5_Final_Answer` | モデルAのログから解析された最終回答（**注意**: 列名は実装上の都合で固定されていますが、実際のモデル名とは無関係です。任意のモデルAの回答が格納されます） |
+| `Claude_4.5_Final_Answer` | モデルBのログから解析された最終回答（**注意**: 列名は実装上の都合で固定されていますが、実際のモデル名とは無関係です。任意のモデルBの回答が格納されます） |
 | `Format_Clarity_Score` | 1～5のスコア |
 | `Format_Clarity_Justification` | スコアの詳細な説明 |
 | `Evaluation_Error` | 評価が失敗した場合のエラーメッセージ |
