@@ -13,14 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-class TestProcessCsvEdgeCases:
-    """Tests for process_csv edge cases."""
-
-    # Note: process_csv tests are complex and require full environment setup
-    # These edge cases are better tested through integration tests
-    pass
-
-
 class TestExtractScoresEdgeCases:
     """Tests for extract_scores_from_evaluation edge cases."""
 
