@@ -8,7 +8,7 @@ LLM-as-a-JudgeとRagasフレームワークを使用した、CyChat SDの応答�
 
 1.  **`llm_judge_evaluator.py`**: 詳細な5メトリックのルーブリックを持つカスタムLLM-as-a-Judge
 2.  **`ragas_llm_judge_evaluator.py`**: Ragasフレームワークベースの評価
-3.  **`format_clarity_evaluator.py`**: Claude 3.5とClaude 4.5 Sonnetの応答のフォーマット/スタイルの類似性を比較
+3.  **`format_clarity_evaluator.py`**: 2つのモデルの応答のフォーマット/スタイルの類似性を比較
 
 すべてのスクリプトは、LLM-as-a-Judgeとして**Azure OpenAI (GPT-5, GPT-4.1)とStandard OpenAI (GPT-4 Turbo)**をサポートしています。
 
@@ -624,7 +624,7 @@ python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 
 ## Format Clarity Evaluator
 
-`format_clarity_evaluator.py` スクリプトは、Claude 4.5 Sonnetの応答フォーマットが（ゴールデンスタンダードとして使用される）Claude 3.5 Sonnetのフォーマットにどれだけ近いかを評価するための専用ツールです。
+`format_clarity_evaluator.py` スクリプトは、2つのモデルの応答フォーマットの類似性を評価するための専用ツールです。モデルAの応答フォーマットが、ゴールデンスタンダードとして使用されるモデルBのフォーマットにどれだけ近いかを評価します。
 
 ### 主な機能
 
@@ -647,10 +647,10 @@ python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 入力CSVファイルには、この順序で正確に3つの列が含まれている必要があります：
 
 1.  **Question**: 元のユーザーの質問
-2.  **Model_A_Response**: モデルAの完全な応答（Claude 3.5 Sonnetの完全なReActログ）
-3.  **Model_B_Response**: モデルBの完全な応答（Claude 4.5 Sonnetの完全なReActログ）
+2.  **Model_A_Response**: モデルAの完全な応答（ReActログ形式）
+3.  **Model_B_Response**: モデルBの完全な応答（ReActログ形式）
 
-**注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出し、ヘッダー行がない場合は最初の行をデータとして扱います。カラム名は`Model_A_Response`/`Model_B_Response`または`Claude_35_Raw_Log`/`Claude_45_Raw_Log`のいずれもサポートされます。
+**注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出し、ヘッダー行がない場合は最初の行をデータとして扱います。カラム名は`Model_A_Response`/`Model_B_Response`または`Claude_35_Raw_Log`/`Claude_45_Raw_Log`のいずれもサポートされます。評価するモデルは固定されておらず、任意の2つのモデルを比較できます。
 
 ### 使用方法
 
@@ -724,8 +724,8 @@ python format_clarity_evaluator.py input.csv
 | 列 | 説明 |
 |--------|-------------|
 | `Question` | 元の質問 |
-| `Claude_3.5_Final_Answer` | Claude 3.5のログから解析された最終回答 |
-| `Claude_4.5_Final_Answer` | Claude 4.5のログから解析された最終回答 |
+| `Claude_3.5_Final_Answer` | モデルAのログから解析された最終回答（列名は互換性のため固定） |
+| `Claude_4.5_Final_Answer` | モデルBのログから解析された最終回答（列名は互換性のため固定） |
 | `Format_Clarity_Score` | 1～5のスコア |
 | `Format_Clarity_Justification` | スコアの詳細な説明 |
 | `Evaluation_Error` | 評価が失敗した場合のエラーメッセージ |
@@ -737,7 +737,7 @@ LLMジャッジは詳細な5段階のスケールを使用します：
   - **5 (優秀)**：ほぼ同一のフォーマット。マークダウン、リスト、構造を完璧に反映している
   - **4 (良い)**：ほとんど同様だが、わずかな逸脱がある（例：箇条書き vs 番号付き）
   - **3 (許容)**：いくつかの類似点はあるが、重大な違いもある（例：リスト vs 段落）
-  - **2 (悪い)**：ほとんどが異なり、3.5モデルの構造に似ていない
+  - **2 (悪い)**：ほとんどが異なり、ゴールデンスタンダード（モデルB）の構造に似ていない
   - **1 (非常に悪い)**：完全に異なるフォーマット（例：構造化 vs 単一のテキストブロック）
 
 ### 出力例
@@ -764,7 +764,7 @@ LLMジャッジは詳細な5段階のスケールを使用します：
 
 ### `collect_responses.py` - LLM応答収集スクリプト
 
-評価用のデータを収集するためのスクリプトです。2つのモデル（Claude 3.5 SonnetとClaude 4.5 Haiku）にAPI経由で質問を送信し、応答を収集してCSVファイルに保存します。
+評価用のデータを収集するためのスクリプトです。2つのモデルにAPI経由で質問を送信し、応答を収集してCSVファイルに保存します。評価するモデルは任意に指定できます（例: Claude 3.5 SonnetとClaude 4.5 Haiku）。
 
 **主な機能：**
 - APIから応答を収集（2つのモデルに同じ質問を送信）
