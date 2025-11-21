@@ -44,6 +44,7 @@ evaluation_output.csv
 *_summary.txt
 processing_time_summary.txt
 evaluation_summary.txt
+processing_time_log.txt
 
 # Test coverage
 .coverage
