@@ -399,6 +399,18 @@ python llm_judge_evaluator.py my_test_data.csv -n 50 -o test_results.csv
 python llm_judge_evaluator.py my_test_data.csv -n 10 -m gpt-5
 ```
 
+**非対話実行（CI/バッチ環境用）：**
+
+```bash
+# --yesフラグで確認プロンプトをスキップ（10行超でも自動実行）
+python llm_judge_evaluator.py my_test_data.csv --yes
+
+# 通常実行（10行超の場合は確認プロンプトが表示される）
+python llm_judge_evaluator.py my_test_data.csv
+```
+
+**注意**: 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
+
 ### モデル指定オプション
 
 モデルは以下の3つの方法で指定できます：
@@ -672,6 +684,18 @@ python format_clarity_evaluator.py input.csv -n 5 -m gpt-5
 ```bash
 python format_clarity_evaluator.py input.csv -o my_format_results.csv
 ```
+
+**非対話実行（CI/バッチ環境用）：**
+
+```bash
+# --yesフラグで確認プロンプトをスキップ（10行超でも自動実行）
+python format_clarity_evaluator.py input.csv --yes
+
+# 通常実行（10行超の場合は確認プロンプトが表示される）
+python format_clarity_evaluator.py input.csv
+```
+
+**注意**: 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
 
 ### モデル指定オプション
 
@@ -1029,6 +1053,7 @@ make pipeline ARGS="questions.txt --evaluator llm-judge --judge-model gpt-5"
 - 可視化は現在`llm-judge`評価の結果のみサポートされています
 - 各ステップでエラーが発生した場合、パイプラインは適切に停止します
 - 可視化ステップでエラーが発生した場合、警告を表示してパイプラインは続行します
+- **非対話実行**: `run_full_pipeline.py`から実行する場合、評価スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`）には自動的に`--yes`フラグが付与され、10行を超える場合でも確認プロンプトが表示されずに実行されます。CI/バッチ環境での自動実行が可能です。
 
 -----
 

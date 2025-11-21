@@ -359,6 +359,8 @@ def process_csv(
         input_file: Path to the input CSV file
         output_file: Path to the output CSV file (default: format_clarity_output.csv)
         limit_rows: Optional limit on number of rows to process (for cost control)
+        model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
+        non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
     """
     # Check if using Azure OpenAI or standard OpenAI
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")

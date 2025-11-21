@@ -659,6 +659,12 @@ Output:
         help=f"Model to use for evaluation (default: {DEFAULT_MODEL}). Supported models: {', '.join(SUPPORTED_MODELS)}",
     )
 
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompt and run non-interactively (useful for CI/batch execution). Note: This script does not show confirmation prompts, but this flag is accepted for consistency with other evaluators.",
+    )
+
     args = parser.parse_args()
 
     # Normalize model name if provided
