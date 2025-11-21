@@ -650,7 +650,7 @@ python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 2.  **Model_A_Response**: モデルAの完全な応答（ReActログ形式）
 3.  **Model_B_Response**: モデルBの完全な応答（ReActログ形式）
 
-**注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出し、ヘッダー行がない場合は最初の行をデータとして扱います。カラム名は`Model_A_Response`/`Model_B_Response`または`Claude_35_Raw_Log`/`Claude_45_Raw_Log`のいずれもサポートされます。評価するモデルは固定されておらず、任意の2つのモデルを比較できます。なお、出力CSVの列名（`Claude_3.5_Final_Answer`、`Claude_4.5_Final_Answer`）は実装上の都合で固定されていますが、実際のモデル名とは無関係です。
+**注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出し、ヘッダー行がない場合は最初の行をデータとして扱います。カラム名は`Model_A_Response`/`Model_B_Response`または`Claude_35_Raw_Log`/`Claude_45_Raw_Log`のいずれもサポートされます（後者は互換性のためのエイリアスで、実際のモデル名とは無関係です）。評価するモデルは固定されておらず、任意の2つのモデルを比較できます。なお、出力CSVの列名（`Claude_3.5_Final_Answer`、`Claude_4.5_Final_Answer`）は実装上の都合で固定されていますが、実際のモデル名とは無関係です。
 
 ### 使用方法
 
