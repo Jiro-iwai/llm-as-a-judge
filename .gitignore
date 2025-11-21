@@ -39,7 +39,7 @@ env/
 .env.bak
 
 # Output files
-evaluation_output.csv
+output/
 *.csv
 *_summary.txt
 processing_time_summary.txt
@@ -50,9 +50,6 @@ processing_time_log.txt
 .coverage
 htmlcov/
 .pytest_cache/
-
-# Results directory
-results/
 
 # Generated image files
 *.png

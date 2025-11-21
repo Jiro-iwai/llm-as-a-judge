@@ -32,7 +32,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test main() function with --model argument."""
-        from llm_judge_evaluator import main
+        from scripts.llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -62,7 +62,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test main() function uses MODEL_NAME env var when no --model argument."""
-        from llm_judge_evaluator import main
+        from scripts.llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -91,7 +91,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test main() function warns about unsupported model."""
-        from llm_judge_evaluator import main
+        from scripts.llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -115,7 +115,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test main() function with --limit argument."""
-        from llm_judge_evaluator import main
+        from scripts.llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -138,7 +138,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test main() function normalizes model names (gpt5 -> gpt-5)."""
-        from llm_judge_evaluator import main
+        from scripts.llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -164,7 +164,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test that --yes flag skips confirmation prompt even for >10 rows."""
-        from llm_judge_evaluator import main
+        from scripts.llm_judge_evaluator import main
 
         # Create CSV with 15 rows (should trigger confirmation without --yes)
         input_csv = tmp_path / "input.csv"
@@ -191,7 +191,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test that confirmation prompt is shown for >10 rows without --yes flag."""
-        from llm_judge_evaluator import process_csv
+        from scripts.llm_judge_evaluator import process_csv
 
         # Create CSV with 15 data rows (plus header = 16 total lines)
         input_csv = tmp_path / "input.csv"
@@ -239,7 +239,7 @@ class TestLLMJudgeMain:
         tmp_path,
     ):
         """Test that script exits when user answers 'n' to confirmation."""
-        from llm_judge_evaluator import process_csv
+        from scripts.llm_judge_evaluator import process_csv
 
         # Create CSV with 15 rows
         input_csv = tmp_path / "input.csv"

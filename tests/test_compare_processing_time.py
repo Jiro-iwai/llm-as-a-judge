@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from compare_processing_time import (
+from scripts.compare_processing_time import (
     extract_processing_times,
     create_summary_table,
     create_comparison_chart,

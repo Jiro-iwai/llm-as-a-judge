@@ -189,14 +189,14 @@ export APP_CONFIG_FILE=/path/to/config.yaml
 ```bash
 # 環境変数でタイムアウトを変更
 export APP_TIMEOUT=200
-python llm_judge_evaluator.py data.csv
+python scripts/llm_judge_evaluator.py data.csv
 
 # 設定ファイルを使用
 export APP_CONFIG_FILE=my_config.yaml
-python collect_responses.py questions.txt
+python scripts/collect_responses.py questions.txt
 
 # コマンドライン引数で上書き（一部のスクリプトのみ）
-python collect_responses.py questions.txt --timeout 150 --delay 2.5
+python scripts/collect_responses.py questions.txt --timeout 150 --delay 2.5
 ```
 
 **注意**: コマンドライン引数が指定された場合は、それが環境変数や設定ファイルよりも優先されます。
@@ -365,55 +365,55 @@ make help-all
 
 ```bash
 # 最初に5行だけでテストします（推奨！）
-python llm_judge_evaluator.py my_test_data.csv -n 5
+python scripts/llm_judge_evaluator.py my_test_data.csv -n 5
 ```
 
 **基本的な使用方法：**
 
 ```bash
-python llm_judge_evaluator.py my_test_data.csv
+python scripts/llm_judge_evaluator.py my_test_data.csv
 ```
 
 **モデルを指定して実行：**
 
 ```bash
 # GPT-5を使用
-python llm_judge_evaluator.py my_test_data.csv -m gpt-5
+python scripts/llm_judge_evaluator.py my_test_data.csv -m gpt-5
 
 # GPT-4.1を使用（デフォルト）
-python llm_judge_evaluator.py my_test_data.csv -m gpt-4.1
+python scripts/llm_judge_evaluator.py my_test_data.csv -m gpt-4.1
 
 # GPT-4 Turboを使用
-python llm_judge_evaluator.py my_test_data.csv -m gpt-4-turbo
+python scripts/llm_judge_evaluator.py my_test_data.csv -m gpt-4-turbo
 ```
 
 **カスタム出力ファイルを指定：**
 
 ```bash
-python llm_judge_evaluator.py my_test_data.csv -o my_results.csv
+python scripts/llm_judge_evaluator.py my_test_data.csv -o my_results.csv
 ```
 
 **最初のN行のみを処理（コスト管理）：**
 
 ```bash
 # 最初の10行のみを処理
-python llm_judge_evaluator.py my_test_data.csv -n 10
+python scripts/llm_judge_evaluator.py my_test_data.csv -n 10
 
 # 最初の50行をカスタム出力で処理
-python llm_judge_evaluator.py my_test_data.csv -n 50 -o test_results.csv
+python scripts/llm_judge_evaluator.py my_test_data.csv -n 50 -o test_results.csv
 
 # モデルを指定して最初の10行を処理
-python llm_judge_evaluator.py my_test_data.csv -n 10 -m gpt-5
+python scripts/llm_judge_evaluator.py my_test_data.csv -n 10 -m gpt-5
 ```
 
 **非対話実行（CI/バッチ環境用）：**
 
 ```bash
 # --yesフラグで確認プロンプトをスキップ（10行超でも自動実行）
-python llm_judge_evaluator.py my_test_data.csv --yes
+python scripts/llm_judge_evaluator.py my_test_data.csv --yes
 
 # 通常実行（10行超の場合は確認プロンプトが表示される）
-python llm_judge_evaluator.py my_test_data.csv
+python scripts/llm_judge_evaluator.py my_test_data.csv
 ```
 
 **注意**: 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
@@ -433,7 +433,7 @@ python llm_judge_evaluator.py my_test_data.csv
 
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `evaluation_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `output/evaluation_output.csv`）には以下が含まれます：
 
   - すべての元の列（Question, Model_A_Response, Model_B_Response）
   - 各モデル（AとB）について：
@@ -555,33 +555,33 @@ https://example.com/doc2
 **基本的な使用方法：**
 
 ```bash
-python ragas_llm_judge_evaluator.py test_5_rows.csv
+python scripts/ragas_llm_judge_evaluator.py test_5_rows.csv
 ```
 
 **モデルを指定して実行：**
 
 ```bash
 # GPT-4.1を使用（デフォルト、推奨）
-python ragas_llm_judge_evaluator.py my_data.csv -m gpt-4.1
+python scripts/ragas_llm_judge_evaluator.py my_data.csv -m gpt-4.1
 
 # GPT-5を使用（非推奨：Temperature制御の問題）
-python ragas_llm_judge_evaluator.py my_data.csv -m gpt-5
+python scripts/ragas_llm_judge_evaluator.py my_data.csv -m gpt-5
 ```
 
 **カスタム出力ファイルを指定：**
 
 ```bash
-python ragas_llm_judge_evaluator.py my_data.csv -o ragas_results.csv
+python scripts/ragas_llm_judge_evaluator.py my_data.csv -o ragas_results.csv
 ```
 
 **最初のN行でテスト：**
 
 ```bash
 # 最初に3行だけでテスト
-python ragas_llm_judge_evaluator.py my_data.csv -n 3
+python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3
 
 # モデルを指定して最初の3行をテスト
-python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
+python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 ```
 
 ### モデル指定オプション
@@ -601,7 +601,7 @@ python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `ragas_evaluation_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `ragas_output/evaluation_output.csv`）には以下が含まれます：
 
   - **元の列**：Question, Model\_A\_Response, Model\_B\_Response
   - **解析された列**：
@@ -657,49 +657,49 @@ python ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 **基本的な使用方法：**
 
 ```bash
-python format_clarity_evaluator.py input.csv
+python scripts/format_clarity_evaluator.py input.csv
 ```
 
 **モデルを指定して実行：**
 
 ```bash
 # GPT-5を使用
-python format_clarity_evaluator.py input.csv -m gpt-5
+python scripts/format_clarity_evaluator.py input.csv -m gpt-5
 
 # GPT-4-turboを使用（デフォルト）
-python format_clarity_evaluator.py input.csv -m gpt-4-turbo
+python scripts/format_clarity_evaluator.py input.csv -m gpt-4-turbo
 
 # GPT-4.1を使用
-python format_clarity_evaluator.py input.csv -m gpt-4.1
+python scripts/format_clarity_evaluator.py input.csv -m gpt-4.1
 ```
 
 **行数を制限してテスト：**
 
 ```bash
 # 最初の5行のみを処理
-python format_clarity_evaluator.py input.csv -n 5
+python scripts/format_clarity_evaluator.py input.csv -n 5
 
 # 最初の10行をカスタム出力で処理
-python format_clarity_evaluator.py input.csv -n 10 -o test_results.csv
+python scripts/format_clarity_evaluator.py input.csv -n 10 -o test_results.csv
 
 # モデルを指定して最初の5行を処理
-python format_clarity_evaluator.py input.csv -n 5 -m gpt-5
+python scripts/format_clarity_evaluator.py input.csv -n 5 -m gpt-5
 ```
 
 **カスタム出力ファイルを指定：**
 
 ```bash
-python format_clarity_evaluator.py input.csv -o my_format_results.csv
+python scripts/format_clarity_evaluator.py input.csv -o my_format_results.csv
 ```
 
 **非対話実行（CI/バッチ環境用）：**
 
 ```bash
 # --yesフラグで確認プロンプトをスキップ（10行超でも自動実行）
-python format_clarity_evaluator.py input.csv --yes
+python scripts/format_clarity_evaluator.py input.csv --yes
 
 # 通常実行（10行超の場合は確認プロンプトが表示される）
-python format_clarity_evaluator.py input.csv
+python scripts/format_clarity_evaluator.py input.csv
 ```
 
 **注意**: 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
@@ -719,7 +719,7 @@ python format_clarity_evaluator.py input.csv
 
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `format_clarity_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `output/format_clarity_output.csv`）には以下が含まれます：
 
 | 列 | 説明 |
 |--------|-------------|
@@ -746,7 +746,7 @@ LLMジャッジは詳細な5段階のスケールを使用します：
 
 ```
 ✓ 評価完了！
-✓ 結果を format_clarity_output.csv に書き込みました
+✓ 結果を output/format_clarity_output.csv に書き込みました
 ✓ 50行を処理しました
 
 📊 平均フォーマット明瞭性スコア： 3.84/5.0
@@ -776,19 +776,19 @@ LLMジャッジは詳細な5段階のスケールを使用します：
 
 ```bash
 # 基本的な使用方法
-python collect_responses.py questions.txt -o responses.csv
+python scripts/collect_responses.py questions.txt -o responses.csv
 
 # カスタムAPI URLを指定
-python collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls
+python scripts/collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls
 
 # カスタムモデルを指定
-python collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+python scripts/collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
 
 # カスタムidentity、timeout、delayを指定（デフォルト値は設定ファイルまたは環境変数から読み込まれます）
-python collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
+python scripts/collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
 
 # カスタム処理時間ログファイルを指定
-python collect_responses.py questions.txt --time-log custom_time_log.txt
+python scripts/collect_responses.py questions.txt --time-log custom_time_log.txt
 ```
 
 **設定値の外部化：**
@@ -802,7 +802,7 @@ python collect_responses.py questions.txt --time-log custom_time_log.txt
 - **CSVファイル（.csv）**: 最初の列に質問（ヘッダー行は任意）
 
 **出力：**
-- `collected_responses.csv`（デフォルト）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
+- `output/collected_responses.csv`（デフォルト）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
 - `processing_time_log.txt`: 各API呼び出しの処理時間ログ
 - `processing_time_comparison.png`, `processing_time_statistics.png`, `processing_time_summary.txt`: 処理時間比較チャートと統計サマリー
 
@@ -817,13 +817,13 @@ python collect_responses.py questions.txt --time-log custom_time_log.txt
 echo "会社の休暇制度について教えてください" > questions.txt
 
 # 2. 応答を収集（処理時間ログとチャートが自動生成されます）
-python collect_responses.py questions.txt -o responses.csv
+python scripts/collect_responses.py questions.txt -o responses.csv
 
 # 3. 処理時間レポートを確認
 ls -la processing_time_*.png processing_time_summary.txt processing_time_log.txt
 
 # 4. 収集したデータを評価
-python llm_judge_evaluator.py responses.csv -n 5
+python scripts/llm_judge_evaluator.py responses.csv -n 5
 ```
 
 -----
@@ -844,10 +844,10 @@ python llm_judge_evaluator.py responses.csv -n 5
 
 ```bash
 # 基本的な使用方法（デフォルトのログファイル名: tmp.txt）
-python compare_processing_time.py
+python scripts/compare_processing_time.py
 
 # カスタムログファイルを指定
-python compare_processing_time.py log_file.txt
+python scripts/compare_processing_time.py log_file.txt
 ```
 
 **設定値の外部化：**
@@ -884,7 +884,7 @@ python compare_processing_time.py log_file.txt
 ```bash
 # 1. ログファイルを準備（API呼び出しのログなど）
 # 2. 処理時間を抽出して比較
-python compare_processing_time.py api_logs.txt
+python scripts/compare_processing_time.py api_logs.txt
 
 # 3. 生成されたファイルを確認
 ls -la processing_time_*.png processing_time_summary.txt
@@ -911,20 +911,20 @@ ls -la processing_time_*.png processing_time_summary.txt
 **使用方法：**
 
 ```bash
-# デフォルトのevaluation_output.csvを使用（llm-judge形式）
-python visualize_results.py
+# デフォルトのoutput/evaluation_output.csvを使用（llm-judge形式）
+python scripts/visualize_results.py
 
 # カスタムCSVファイルを指定
-python visualize_results.py my_evaluation_results.csv
+python scripts/visualize_results.py my_evaluation_results.csv
 
 # モデル名を指定して可視化（PNGファイルに実際のモデル名が表示されます）
-python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
+python scripts/visualize_results.py output/evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
 
-# ragas_evaluation_output.csvを可視化
-python visualize_results.py ragas_evaluation_output.csv
+# ragas_output/evaluation_output.csvを可視化
+python scripts/visualize_results.py ragas_output/evaluation_output.csv
 
-# format_clarity_output.csvを可視化
-python visualize_results.py format_clarity_output.csv
+# output/format_clarity_output.csvを可視化
+python scripts/visualize_results.py output/format_clarity_output.csv
 ```
 
 **入力CSV形式：**
@@ -961,13 +961,13 @@ python visualize_results.py format_clarity_output.csv
 
 ```bash
 # 1. 評価を実行
-python llm_judge_evaluator.py responses.csv -o evaluation_output.csv
+python scripts/llm_judge_evaluator.py responses.csv -o output/evaluation_output.csv
 
 # 2. 結果を可視化（モデル名を指定するとPNGファイルに実際のモデル名が表示されます）
-python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
+python scripts/visualize_results.py output/evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
 
 # または、モデル名を指定しない場合（デフォルトで「Model A」と「Model B」と表示）
-python visualize_results.py evaluation_output.csv
+python scripts/visualize_results.py output/evaluation_output.csv
 
 # 3. 生成されたファイルを確認
 ls -la evaluation_*.png evaluation_summary.txt
@@ -997,28 +997,28 @@ ls -la evaluation_*.png evaluation_summary.txt
 
 ```bash
 # デフォルトでllm-judge評価を使用してパイプラインを実行
-python run_full_pipeline.py questions.txt
+python scripts/run_full_pipeline.py questions.txt
 
 # ragas評価を使用
-python run_full_pipeline.py questions.txt --evaluator ragas
+python scripts/run_full_pipeline.py questions.txt --evaluator ragas
 
 # 全ての評価スクリプトを実行
-python run_full_pipeline.py questions.txt --evaluator all
+python scripts/run_full_pipeline.py questions.txt --evaluator all
 
 # 収集ステップをスキップ（既存のCSVファイルを使用）
-python run_full_pipeline.py questions.txt --skip-collect
+python scripts/run_full_pipeline.py questions.txt --skip-collect
 
 # 可視化ステップをスキップ
-python run_full_pipeline.py questions.txt --skip-visualize
+python scripts/run_full_pipeline.py questions.txt --skip-visualize
 
 # カスタムモデルとAPI URLを指定
-python run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
+python scripts/run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
 
 # 評価行数を制限
-python run_full_pipeline.py questions.txt --limit 5
+python scripts/run_full_pipeline.py questions.txt --limit 5
 
 # 評価用のモデルを指定（評価スクリプトの--modelオプションに渡される）
-python run_full_pipeline.py questions.txt --judge-model gpt-5
+python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
 ```
 
 **コマンドライン引数：**
@@ -1033,19 +1033,19 @@ python run_full_pipeline.py questions.txt --judge-model gpt-5
 - `--api-url`: API URL（`collect_responses.py`に渡される）
 - `--limit`: 評価行数の制限（評価スクリプトに渡される）
 - `--judge-model`: 評価用のモデル名（評価スクリプトの`--model`オプションに渡される）
-- `--skip-collect`: 収集ステップをスキップ（既存の`collected_responses.csv`を使用）
+- `--skip-collect`: 収集ステップをスキップ（既存の`output/collected_responses.csv`を使用）
 - `--skip-visualize`: 可視化ステップをスキップ
-- `--collect-output`: 収集ステップの出力ファイル名（デフォルト: `collected_responses.csv`）
+- `--collect-output`: 収集ステップの出力ファイル名（デフォルト: `output/collected_responses.csv`）
 
 **実行フロー：**
 
 1. **Step 1: 応答収集**（`--skip-collect`が指定されていない場合）
    - `collect_responses.py`を実行
-   - 出力: `collected_responses.csv`（デフォルト）
+   - 出力: `output/collected_responses.csv`（デフォルト）
 
 2. **Step 2: 評価実行**
    - 選択された評価スクリプトを実行
-   - 出力: `evaluation_output.csv`（llm-judge）、`ragas_evaluation_output.csv`（ragas）、`format_clarity_output.csv`（format-clarity）
+   - 出力: `output/evaluation_output.csv`（llm-judge）、`ragas_output/evaluation_output.csv`（ragas）、`output/format_clarity_output.csv`（format-clarity）
 
 3. **Step 3: 結果可視化**（`--skip-visualize`が指定されていない場合）
    - `visualize_results.py`を実行
@@ -1057,19 +1057,19 @@ python run_full_pipeline.py questions.txt --judge-model gpt-5
 
 ```bash
 # 1. 基本的な使用方法（llm-judge評価）
-python run_full_pipeline.py questions.txt
+python scripts/run_full_pipeline.py questions.txt
 
 # 2. ragas評価を使用
-python run_full_pipeline.py questions.txt --evaluator ragas
+python scripts/run_full_pipeline.py questions.txt --evaluator ragas
 
 # 3. 全ての評価スクリプトを実行
-python run_full_pipeline.py questions.txt --evaluator all
+python scripts/run_full_pipeline.py questions.txt --evaluator all
 
 # 4. 既存のCSVファイルを使用して評価と可視化のみ実行
-python run_full_pipeline.py questions.txt --skip-collect
+python scripts/run_full_pipeline.py questions.txt --skip-collect
 
 # 5. 評価用モデルを指定して実行
-python run_full_pipeline.py questions.txt --judge-model gpt-5
+python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
 
 # 6. Makefileを使用
 make pipeline ARGS="questions.txt --evaluator llm-judge --judge-model gpt-5"

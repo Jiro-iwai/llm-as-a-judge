@@ -6,7 +6,7 @@ from pathlib import Path
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config.model_configs import (
+from src.config.model_configs import (
     MODEL_CONFIGS,
     DEFAULT_MODEL,
     SUPPORTED_MODELS,

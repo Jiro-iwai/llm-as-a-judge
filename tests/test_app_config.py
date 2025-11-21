@@ -15,7 +15,7 @@ import yaml
 
 # Import the config module (will be created)
 # Note: This will fail until we create config/app_config.py
-from config.app_config import (
+from src.config.app_config import (
     DEFAULT_CONFIG,
     get_app_config,
     get_timeout,

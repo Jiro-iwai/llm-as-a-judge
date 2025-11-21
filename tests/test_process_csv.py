@@ -17,9 +17,9 @@ import pytest
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from format_clarity_evaluator import process_csv as format_process_csv
-from llm_judge_evaluator import process_csv as llm_process_csv
-from ragas_llm_judge_evaluator import process_csv as ragas_process_csv
+from scripts.format_clarity_evaluator import process_csv as format_process_csv
+from scripts.llm_judge_evaluator import process_csv as llm_process_csv
+from scripts.ragas_llm_judge_evaluator import process_csv as ragas_process_csv
 
 
 class TestFormatClarityProcessCsv:

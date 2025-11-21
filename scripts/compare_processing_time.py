@@ -7,14 +7,23 @@ tmp.txtから処理時間を抽出して2つのモデルを比較します。
 import platform
 import re
 import sys
+# Add project root to Python path (must be before other imports)
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+from pathlib import Path
 from typing import List, Optional, Tuple
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from config.app_config import get_output_file_names, get_regex_patterns
-from utils.logging_config import (
+from src.config.app_config import get_output_file_names, get_regex_patterns
+from src.utils.logging_config import (
     log_error,
     log_info,
     log_section,

@@ -22,19 +22,28 @@ import json
 import os
 import re
 import sys
+# Add project root to Python path (must be before other imports)
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Union
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 import pandas as pd
 from openai import OpenAI, AzureOpenAI
 from tqdm import tqdm
 from dotenv import load_dotenv
 
-from config.model_configs import (
+from src.config.model_configs import (
     SUPPORTED_MODELS,
     get_simple_config as get_model_config_from_common,
 )
-from utils.logging_config import (
+from src.utils.logging_config import (
     log_info,
     log_error,
     log_warning,
@@ -42,7 +51,7 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
-from config.app_config import (
+from src.config.app_config import (
     get_max_retries,
     get_retry_delay,
 )

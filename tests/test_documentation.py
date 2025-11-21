@@ -14,12 +14,12 @@ import pytest
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import collect_responses
-import compare_processing_time
-import format_clarity_evaluator
-import llm_judge_evaluator
-import ragas_llm_judge_evaluator
-import visualize_results
+import scripts.collect_responses as collect_responses
+import scripts.compare_processing_time as compare_processing_time
+import scripts.format_clarity_evaluator as format_clarity_evaluator
+import scripts.llm_judge_evaluator as llm_judge_evaluator
+import scripts.ragas_llm_judge_evaluator as ragas_llm_judge_evaluator
+import scripts.visualize_results as visualize_results
 
 
 class TestDocstringCompleteness:

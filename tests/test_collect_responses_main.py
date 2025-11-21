@@ -21,14 +21,14 @@ class TestInitializeProcessingTimeLog:
 
     def test_initialize_processing_time_log_empty_log_file(self, tmp_path):
         """Test that initialize_processing_time_log handles empty log_file."""
-        from collect_responses import initialize_processing_time_log
+        from scripts.collect_responses import initialize_processing_time_log
 
         # Should not raise an error
         initialize_processing_time_log("")
 
     def test_initialize_processing_time_log_creates_directory(self, tmp_path):
         """Test that initialize_processing_time_log creates parent directories."""
-        from collect_responses import initialize_processing_time_log
+        from scripts.collect_responses import initialize_processing_time_log
 
         log_file = tmp_path / "subdir" / "time.log"
         initialize_processing_time_log(str(log_file))
@@ -38,7 +38,7 @@ class TestInitializeProcessingTimeLog:
 
     def test_initialize_processing_time_log_handles_oserror(self, tmp_path):
         """Test that initialize_processing_time_log handles OSError gracefully."""
-        from collect_responses import initialize_processing_time_log
+        from scripts.collect_responses import initialize_processing_time_log
 
         # Create a path that will cause OSError (e.g., invalid path)
         invalid_path = "/invalid/path/to/file.log"
@@ -54,14 +54,14 @@ class TestLogProcessingTimeEntry:
 
     def test_log_processing_time_entry_empty_log_file(self):
         """Test that log_processing_time_entry handles empty log_file."""
-        from collect_responses import log_processing_time_entry
+        from scripts.collect_responses import log_processing_time_entry
 
         # Should not raise an error
         log_processing_time_entry("model", 1.0, "")
 
     def test_log_processing_time_entry_writes_to_file(self, tmp_path):
         """Test that log_processing_time_entry writes to file correctly."""
-        from collect_responses import log_processing_time_entry
+        from scripts.collect_responses import log_processing_time_entry
 
         log_file = tmp_path / "time.log"
         log_file.write_text("# Header\n")
@@ -82,7 +82,7 @@ class TestLogProcessingTimeEntry:
 
     def test_log_processing_time_entry_handles_oserror(self, tmp_path):
         """Test that log_processing_time_entry handles OSError gracefully."""
-        from collect_responses import log_processing_time_entry
+        from scripts.collect_responses import log_processing_time_entry
 
         invalid_path = "/invalid/path/to/file.log"
 
@@ -113,7 +113,7 @@ class TestCollectResponsesMain:
         tmp_path,
     ):
         """Test main() function with successful execution."""
-        from collect_responses import main
+        from scripts.collect_responses import main
         import pandas as pd
 
         # Setup mocks
@@ -141,7 +141,7 @@ class TestCollectResponsesMain:
     @patch("collect_responses.log_error")
     def test_main_empty_questions_file(self, mock_error, mock_read_questions, tmp_path):
         """Test main() function exits when no questions found."""
-        from collect_responses import main
+        from scripts.collect_responses import main
 
         questions_file = tmp_path / "questions.txt"
         questions_file.write_text("")
@@ -174,7 +174,7 @@ class TestCollectResponsesMain:
         tmp_path,
     ):
         """Test main() function handles failed responses correctly."""
-        from collect_responses import main
+        from scripts.collect_responses import main
         import pandas as pd
 
         questions_file = tmp_path / "questions.txt"
@@ -213,7 +213,7 @@ class TestCollectResponsesMain:
         tmp_path,
     ):
         """Test main() function saves CSV with proper quoting."""
-        from collect_responses import main
+        from scripts.collect_responses import main
         import pandas as pd
 
         questions_file = tmp_path / "questions.txt"

@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ragas_llm_judge_evaluator import (
+from scripts.ragas_llm_judge_evaluator import (
     parse_react_log,
     get_model_config,
     initialize_azure_openai_for_ragas,

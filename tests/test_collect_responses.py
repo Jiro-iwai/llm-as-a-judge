@@ -10,12 +10,12 @@ import pytest
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from collect_responses import (
+from scripts.collect_responses import (
     format_response,
     call_api,
     read_questions,
 )
-from utils.log_output_simplifier import (
+from src.utils.log_output_simplifier import (
     clean_html,
     clean_and_format_llm_log,
 )
@@ -350,7 +350,7 @@ class TestCollectResponsesIntegration:
         self, mock_call_api, mock_format_response, mock_generate_reports, tmp_path
     ):
         """Test that collect_responses triggers processing time reports."""
-        from collect_responses import collect_responses
+        from scripts.collect_responses import collect_responses
 
         log_file = tmp_path / "time.log"
         df = collect_responses(

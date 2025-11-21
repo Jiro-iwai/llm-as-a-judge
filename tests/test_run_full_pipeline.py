@@ -36,7 +36,7 @@ class TestPipelineBasicFunctionality:
         ]
 
         # Import and run pipeline
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             main()
@@ -56,7 +56,7 @@ class TestPipelineBasicFunctionality:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "ragas"]):
             main()
@@ -76,7 +76,7 @@ class TestPipelineBasicFunctionality:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "format-clarity"]):
             main()
@@ -98,7 +98,7 @@ class TestPipelineBasicFunctionality:
             Mock(returncode=0),  # visualize_results.py (for llm-judge)
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "all"]):
             main()
@@ -121,7 +121,7 @@ class TestPipelineOptions:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -149,7 +149,7 @@ class TestPipelineOptions:
             Mock(returncode=0),  # llm_judge_evaluator.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -178,7 +178,7 @@ class TestPipelineOptions:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -211,7 +211,7 @@ class TestPipelineOptions:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -248,7 +248,7 @@ class TestPipelineErrorHandling:
             returncode=1, cmd=["python", "collect_responses.py"], stderr="Error occurred"
         )
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             with pytest.raises(SystemExit) as exc_info:
@@ -271,7 +271,7 @@ class TestPipelineErrorHandling:
             ),  # llm_judge_evaluator.py fails
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             with pytest.raises(SystemExit) as exc_info:
@@ -290,7 +290,7 @@ class TestPipelineErrorHandling:
             Mock(returncode=1),  # visualize_results.py fails
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             # Should not raise SystemExit, but log warning
@@ -302,7 +302,7 @@ class TestPipelineCommandLineArguments:
 
     def test_pipeline_help_option(self):
         """Test that --help option works correctly"""
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "--help"]):
             with pytest.raises(SystemExit) as exc_info:
@@ -312,7 +312,7 @@ class TestPipelineCommandLineArguments:
 
     def test_pipeline_invalid_evaluator(self):
         """Test that invalid --evaluator value raises error"""
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "invalid"]):
             with pytest.raises(SystemExit):
@@ -334,7 +334,7 @@ class TestPipelineJudgeModelOption:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -367,7 +367,7 @@ class TestPipelineJudgeModelOption:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -402,7 +402,7 @@ class TestPipelineJudgeModelOption:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -436,7 +436,7 @@ class TestPipelineJudgeModelOption:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -470,7 +470,7 @@ class TestPipelineJudgeModelOption:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",
@@ -505,7 +505,7 @@ class TestPipelineJudgeModelOption:
             Mock(returncode=0),  # visualize_results.py
         ]
 
-        from run_full_pipeline import main
+        from scripts.run_full_pipeline import main
 
         with patch(
             "sys.argv",

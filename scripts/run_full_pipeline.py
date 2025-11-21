@@ -16,10 +16,18 @@ Usage:
 import argparse
 import subprocess
 import sys
+# Add project root to Python path (must be before other imports)
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 from pathlib import Path
 from typing import Optional, Tuple
 
-from utils.logging_config import (
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from src.utils.logging_config import (
     log_error,
     log_info,
     log_section,
@@ -32,10 +40,10 @@ from utils.logging_config import (
 setup_logging()
 
 # Default file names
-DEFAULT_COLLECT_OUTPUT = "collected_responses.csv"
-DEFAULT_LLM_JUDGE_OUTPUT = "evaluation_output.csv"
-DEFAULT_RAGAS_OUTPUT = "ragas_evaluation_output.csv"
-DEFAULT_FORMAT_CLARITY_OUTPUT = "format_clarity_output.csv"
+DEFAULT_COLLECT_OUTPUT = "output/collected_responses.csv"
+DEFAULT_LLM_JUDGE_OUTPUT = "output/evaluation_output.csv"
+DEFAULT_RAGAS_OUTPUT = "output/ragas_evaluation_output.csv"
+DEFAULT_FORMAT_CLARITY_OUTPUT = "output/format_clarity_output.csv"
 
 
 def run_collect_step(
@@ -75,7 +83,13 @@ def run_collect_step(
     log_info(f"Model B: {actual_model_b}")
     log_info("")  # Empty line for readability
 
-    cmd = [sys.executable, "collect_responses.py", questions_file, "-o", output_file]
+    cmd = [
+        sys.executable,
+        "scripts/collect_responses.py",
+        questions_file,
+        "-o",
+        output_file,
+    ]
 
     # Always pass model names (use defaults if not specified)
     cmd.extend(["--model-a", actual_model_a])
@@ -124,15 +138,15 @@ def run_evaluation_step(
     """
     evaluators = {
         "llm-judge": {
-            "script": "llm_judge_evaluator.py",
+            "script": "scripts/llm_judge_evaluator.py",
             "output": DEFAULT_LLM_JUDGE_OUTPUT,
         },
         "ragas": {
-            "script": "ragas_llm_judge_evaluator.py",
+            "script": "scripts/ragas_llm_judge_evaluator.py",
             "output": DEFAULT_RAGAS_OUTPUT,
         },
         "format-clarity": {
-            "script": "format_clarity_evaluator.py",
+            "script": "scripts/format_clarity_evaluator.py",
             "output": DEFAULT_FORMAT_CLARITY_OUTPUT,
         },
     }
@@ -253,7 +267,7 @@ def run_visualize_step(
     log_info(f"Input file: {input_file}")
     log_info("")  # Empty line for readability
 
-    cmd = [sys.executable, "visualize_results.py", input_file]
+    cmd = [sys.executable, "scripts/visualize_results.py", input_file]
 
     if model_a_name:
         cmd.extend(["--model-a", model_a_name])

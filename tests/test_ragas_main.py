@@ -30,7 +30,7 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function with --model argument."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -57,7 +57,7 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function uses MODEL_NAME env var when no --model argument."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -82,7 +82,7 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function with --limit argument."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
@@ -105,7 +105,7 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function normalizes model names."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")

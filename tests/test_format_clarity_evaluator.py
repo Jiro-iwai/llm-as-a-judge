@@ -10,7 +10,7 @@ import pytest
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from format_clarity_evaluator import (
+from scripts.format_clarity_evaluator import (
     parse_final_answer,
     get_model_config,
     extract_scores_from_evaluation,
@@ -404,7 +404,7 @@ class TestFormatClarityMain:
         tmp_path,
     ):
         """Test that --yes flag skips confirmation prompt even for >10 rows."""
-        from format_clarity_evaluator import main
+        from scripts.format_clarity_evaluator import main
 
         # Create CSV with 15 rows (should trigger confirmation without --yes)
         input_csv = tmp_path / "input.csv"
@@ -431,7 +431,7 @@ class TestFormatClarityMain:
         tmp_path,
     ):
         """Test that confirmation prompt is shown for >10 rows without --yes flag."""
-        from format_clarity_evaluator import process_csv
+        from scripts.format_clarity_evaluator import process_csv
 
         # Create CSV with 15 rows
         input_csv = tmp_path / "input.csv"
@@ -477,7 +477,7 @@ class TestFormatClarityMain:
         tmp_path,
     ):
         """Test that script exits when user answers 'n' to confirmation."""
-        from format_clarity_evaluator import process_csv
+        from scripts.format_clarity_evaluator import process_csv
 
         # Create CSV with 15 rows
         input_csv = tmp_path / "input.csv"

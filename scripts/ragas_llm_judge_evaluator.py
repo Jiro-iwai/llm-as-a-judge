@@ -25,7 +25,16 @@ import argparse
 import os
 import re
 import sys
+# Add project root to Python path (must be before other imports)
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 import pandas as pd
 from datasets import Dataset
@@ -40,12 +49,12 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from langchain_openai import AzureChatOpenAI
 
-from config.model_configs import (
+from src.config.model_configs import (
     DEFAULT_MODEL,
     SUPPORTED_MODELS,
     get_ragas_config as get_model_config_from_common,
 )
-from utils.logging_config import (
+from src.utils.logging_config import (
     log_info,
     log_error,
     log_warning,

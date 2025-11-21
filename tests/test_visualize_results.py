@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from visualize_results import (
+from scripts.visualize_results import (
     load_data,
     prepare_data,
     create_summary_table,
