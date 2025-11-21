@@ -92,8 +92,14 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
         column exists, returns the original DataFrame unchanged.
     """
     # エラーが発生した行を除外
+    # llm_judge_evaluator.py outputs empty string ("") for normal rows, not NaN
+    # So we need to keep rows where Evaluation_Error is empty string, NaN, or None
     if "Evaluation_Error" in df.columns:
-        df_clean = df[df["Evaluation_Error"].isna()].copy()
+        # Keep rows where Evaluation_Error is NaN, None, or empty string
+        # Exclude rows where Evaluation_Error has a non-empty error message
+        df_clean = df[
+            df["Evaluation_Error"].isna() | (df["Evaluation_Error"] == "")
+        ].copy()
         error_count = len(df) - len(df_clean)
         if error_count > 0:
             log_warning(f"エラー行を除外: {error_count}行")
