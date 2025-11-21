@@ -37,12 +37,12 @@ help:
 	@echo "  make clean         - Clean generated files"
 	@echo ""
 	@echo "Script usage help:"
-	@echo "  make help-llm-judge      - Show usage for llm_judge_evaluator.py"
-	@echo "  make help-format-clarity - Show usage for format_clarity_evaluator.py"
-	@echo "  make help-ragas          - Show usage for ragas_llm_judge_evaluator.py"
-	@echo "  make help-collect        - Show usage for collect_responses.py"
-	@echo "  make help-visualize      - Show usage for visualize_results.py"
-	@echo "  make help-pipeline       - Show usage for run_full_pipeline.py"
+	@echo "  make help-llm-judge      - Show usage for scripts/llm_judge_evaluator.py"
+	@echo "  make help-format-clarity - Show usage for scripts/format_clarity_evaluator.py"
+	@echo "  make help-ragas          - Show usage for scripts/ragas_llm_judge_evaluator.py"
+	@echo "  make help-collect        - Show usage for scripts/collect_responses.py"
+	@echo "  make help-visualize      - Show usage for scripts/visualize_results.py"
+	@echo "  make help-pipeline       - Show usage for scripts/run_full_pipeline.py"
 	@echo ""
 	@echo "Pipeline target:"
 	@echo "  make pipeline            - Run full pipeline (collect, evaluate, visualize)"
@@ -50,32 +50,32 @@ help:
 
 help-llm-judge:
 	@echo "=========================================="
-	@echo "llm_judge_evaluator.py の使い方"
+	@echo "scripts/llm_judge_evaluator.py の使い方"
 	@echo "=========================================="
 	@$(PYTHON) scripts/llm_judge_evaluator.py --help
 
 help-format-clarity:
 	@echo "=========================================="
-	@echo "format_clarity_evaluator.py の使い方"
+	@echo "scripts/format_clarity_evaluator.py の使い方"
 	@echo "=========================================="
 	@$(PYTHON) scripts/format_clarity_evaluator.py --help
 
 help-ragas:
 	@echo "=========================================="
-	@echo "ragas_llm_judge_evaluator.py の使い方"
+	@echo "scripts/ragas_llm_judge_evaluator.py の使い方"
 	@echo "=========================================="
-	@$(PYTHON) scripts/ragas_llm_judge_evaluator.py --help 2>&1 || echo "⚠️  ragas_llm_judge_evaluator.py requires dependencies (ragas, datasets)"
+	@$(PYTHON) scripts/ragas_llm_judge_evaluator.py --help 2>&1 || echo "⚠️  scripts/ragas_llm_judge_evaluator.py requires dependencies (ragas, datasets)"
 
 help-collect:
 	@echo "=========================================="
-	@echo "collect_responses.py の使い方"
+	@echo "scripts/collect_responses.py の使い方"
 	@echo "=========================================="
 	@echo "※ 応答収集後、処理時間ログと比較チャートを自動生成します"
 	@$(PYTHON) scripts/collect_responses.py --help
 
 help-visualize:
 	@echo "=========================================="
-	@echo "visualize_results.py の使い方"
+	@echo "scripts/visualize_results.py の使い方"
 	@echo "=========================================="
 	@$(PYTHON) scripts/visualize_results.py --help
 
@@ -84,7 +84,7 @@ pipeline:
 
 help-pipeline:
 	@echo "=========================================="
-	@echo "run_full_pipeline.py の使い方"
+	@echo "scripts/run_full_pipeline.py の使い方"
 	@echo "=========================================="
 	@$(PYTHON) scripts/run_full_pipeline.py --help
 
