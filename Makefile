@@ -1,4 +1,4 @@
-.PHONY: test format lint typecheck test-scripts test-unit help help-llm-judge help-format-clarity help-ragas help-collect help-visualize help-all clean clean-venv setup venv install-deps update-deps
+.PHONY: test format lint typecheck test-scripts test-unit help help-llm-judge help-format-clarity help-ragas help-collect help-visualize help-pipeline help-all clean clean-venv setup venv install-deps update-deps pipeline
 
 # Python executable (use .venv if available, otherwise system python)
 PYTHON := $(shell if [ -f .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
@@ -7,7 +7,7 @@ PYTHON := $(shell if [ -f .venv/bin/python ]; then echo .venv/bin/python; else e
 SCRIPTS := llm_judge_evaluator.py format_clarity_evaluator.py ragas_llm_judge_evaluator.py collect_responses.py
 
 # All Python scripts (for format/lint/typecheck)
-ALL_SCRIPTS := $(SCRIPTS) compare_processing_time.py visualize_results.py
+ALL_SCRIPTS := $(SCRIPTS) compare_processing_time.py visualize_results.py run_full_pipeline.py
 
 # Scripts that support model option (-m)
 MODEL_SCRIPTS := llm_judge_evaluator.py format_clarity_evaluator.py ragas_llm_judge_evaluator.py
@@ -42,6 +42,10 @@ help:
 	@echo "  make help-ragas          - Show usage for ragas_llm_judge_evaluator.py"
 	@echo "  make help-collect        - Show usage for collect_responses.py"
 	@echo "  make help-visualize      - Show usage for visualize_results.py"
+	@echo "  make help-pipeline       - Show usage for run_full_pipeline.py"
+	@echo ""
+	@echo "Pipeline target:"
+	@echo "  make pipeline            - Run full pipeline (collect, evaluate, visualize)"
 	@echo "  make help-all            - Show usage for all scripts"
 
 help-llm-judge:
@@ -75,7 +79,16 @@ help-visualize:
 	@echo "=========================================="
 	@$(PYTHON) visualize_results.py --help
 
-help-all: help-llm-judge help-format-clarity help-ragas help-collect help-visualize
+pipeline:
+	@$(PYTHON) run_full_pipeline.py $(ARGS)
+
+help-pipeline:
+	@echo "=========================================="
+	@echo "run_full_pipeline.py の使い方"
+	@echo "=========================================="
+	@$(PYTHON) run_full_pipeline.py --help
+
+help-all: help-llm-judge help-format-clarity help-ragas help-collect help-visualize help-pipeline
 	@echo ""
 	@echo "=========================================="
 	@echo "すべてのスクリプトの使い方を表示しました"
