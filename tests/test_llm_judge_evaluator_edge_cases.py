@@ -7,7 +7,6 @@ covered by other tests.
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -52,11 +51,12 @@ class TestCallJudgeModelEdgeCases:
         """Test call_judge_model handles None client."""
         from scripts.llm_judge_evaluator import call_judge_model
 
-        # This should raise an error or handle gracefully
-        # The actual behavior depends on implementation
         # call_judge_model signature: (client, question, model_a_response, model_b_response, model_name, ...)
-        with pytest.raises((AttributeError, TypeError)):
-            call_judge_model(
-                None, "question", "response_a", "response_b", "model", timeout=10
-            )  # type: ignore[call-arg]
+        # When client is None, it will fail after retries and return None
+        result = call_judge_model(
+            None, "question", "response_a", "response_b", "model", timeout=10
+        )  # type: ignore[call-arg]
+
+        # Should return None after all retries fail
+        assert result is None
 
