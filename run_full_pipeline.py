@@ -295,6 +295,9 @@ Examples:
 
     # Custom models and API URL
     python run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
+
+    # Custom judge model for evaluation
+    python run_full_pipeline.py questions.txt --judge-model gpt-5
         """,
     )
 
@@ -336,6 +339,13 @@ Examples:
         type=int,
         default=None,
         help="Limit number of rows to process (passed to evaluation script)",
+    )
+
+    parser.add_argument(
+        "--judge-model",
+        type=str,
+        default=None,
+        help="Model name for evaluation (passed to evaluation script as --model)",
     )
 
     parser.add_argument(
@@ -402,6 +412,7 @@ Examples:
         args.evaluator,
         args.collect_output,
         limit=args.limit,
+        model_name=args.judge_model,
     )
     if not success:
         log_error("Pipeline failed at evaluation step")

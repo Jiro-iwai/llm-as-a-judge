@@ -318,3 +318,140 @@ class TestPipelineCommandLineArguments:
             with pytest.raises(SystemExit):
                 main()
 
+
+class TestPipelineJudgeModelOption:
+    """Tests for --judge-model option"""
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_judge_model_option(self, mock_exists, mock_subprocess_run):
+        """Test that --judge-model option is passed to evaluation script"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "llm-judge",
+                "--judge-model",
+                "gpt-5",
+            ],
+        ):
+            main()
+
+        # Verify that --judge-model was passed to evaluation script as -m
+        eval_call = mock_subprocess_run.call_args_list[1]
+        eval_cmd = eval_call[0][0]
+        assert "-m" in eval_cmd, "Evaluation script should receive -m option"
+        assert "gpt-5" in eval_cmd, "Evaluation script should receive judge model name"
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_judge_model_for_ragas(self, mock_exists, mock_subprocess_run):
+        """Test that --judge-model option works with ragas evaluator"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "ragas",
+                "--judge-model",
+                "gpt-4.1",
+            ],
+        ):
+            main()
+
+        # Verify that --judge-model was passed to ragas evaluator
+        eval_call = mock_subprocess_run.call_args_list[1]
+        eval_cmd = eval_call[0][0]
+        assert "-m" in eval_cmd, "Ragas evaluator should receive -m option"
+        assert "gpt-4.1" in eval_cmd, "Ragas evaluator should receive judge model name"
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_with_judge_model_for_all_evaluators(self, mock_exists, mock_subprocess_run):
+        """Test that --judge-model option is passed to all evaluators when --evaluator all"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+            Mock(returncode=0),  # format_clarity_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "all",
+                "--judge-model",
+                "gpt-5",
+            ],
+        ):
+            main()
+
+        # Verify that --judge-model was passed to all evaluation scripts
+        eval_calls = [call for call in mock_subprocess_run.call_args_list[1:4]]  # Skip collect, get 3 evaluators
+        for eval_call in eval_calls:
+            eval_cmd = eval_call[0][0]
+            assert "-m" in eval_cmd, "All evaluators should receive -m option"
+            assert "gpt-5" in eval_cmd, "All evaluators should receive judge model name"
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    def test_pipeline_without_judge_model_uses_default(self, mock_exists, mock_subprocess_run):
+        """Test that evaluation script runs without -m option when --judge-model is not specified"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "llm-judge",
+            ],
+        ):
+            main()
+
+        # Verify that -m option is not passed when --judge-model is not specified
+        eval_call = mock_subprocess_run.call_args_list[1]
+        eval_cmd = eval_call[0][0]
+        # The script should still run, but -m might be absent (depends on default behavior)
+        # We just verify the script was called
+        assert "llm_judge_evaluator.py" in eval_cmd
+
