@@ -505,8 +505,9 @@ def create_boxplot_chart(
             return
 
         fig, ax = plt.subplots(figsize=(6, 8))
+        scores_array = scores.values
         bp = ax.boxplot(
-            [scores.values],
+            [scores_array],  # type: ignore[arg-type]
             tick_labels=["Format Clarity Score"],
             patch_artist=True,
             showmeans=True,
