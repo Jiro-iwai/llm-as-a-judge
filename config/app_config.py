@@ -16,6 +16,7 @@ Supported environment variables:
 - APP_DEFAULT_IDENTITY: Default identity for API calls
 """
 
+import copy
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -70,8 +71,8 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
     """
     global _config
 
-    # Start with default values
-    config = DEFAULT_CONFIG.copy()
+    # Start with default values (deep copy to avoid mutating DEFAULT_CONFIG)
+    config = copy.deepcopy(DEFAULT_CONFIG)
 
     # Load from YAML file if specified
     config_file_path = config_file or os.getenv("APP_CONFIG_FILE")

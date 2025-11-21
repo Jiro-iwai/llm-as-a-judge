@@ -16,6 +16,7 @@ import yaml
 # Import the config module (will be created)
 # Note: This will fail until we create config/app_config.py
 from config.app_config import (
+    DEFAULT_CONFIG,
     get_app_config,
     get_timeout,
     get_max_retries,
@@ -350,4 +351,50 @@ class TestConfigIntegration:
                 os.environ[var] = value
         finally:
             os.unlink(temp_file)
+
+
+class TestDefaultConfigImmutability:
+    """Tests to ensure DEFAULT_CONFIG is never mutated by load_config."""
+
+    def test_environment_override_does_not_mutate_default_output_files(self):
+        """Environment overrides for output files must not change DEFAULT_CONFIG."""
+        reset_config()
+        original_value = DEFAULT_CONFIG["output_files"]["evaluation_summary"]
+
+        with patch.dict(
+            os.environ, {"APP_OUTPUT_FILE_EVALUATION_SUMMARY": "custom_summary.txt"}
+        ):
+            load_config()
+
+        reset_config()
+        assert (
+            DEFAULT_CONFIG["output_files"]["evaluation_summary"] == original_value
+        ), "DEFAULT_CONFIG output_files was mutated by load_config"
+
+        # Also ensure new configs fall back to default once env var is cleared
+        config = load_config()
+        assert (
+            config["output_files"]["evaluation_summary"] == original_value
+        ), "Config should revert to default evaluation_summary after reset"
+
+    def test_environment_override_does_not_mutate_default_regex_patterns(self):
+        """Environment overrides for regex patterns must not change DEFAULT_CONFIG."""
+        reset_config()
+        original_pattern = DEFAULT_CONFIG["regex_patterns"]["model_a_pattern"]
+
+        with patch.dict(
+            os.environ,
+            {"APP_REGEX_MODEL_A_PATTERN": r"📥 \[custom\].*?経過時間: ([\d.]+)秒"},
+        ):
+            load_config()
+
+        reset_config()
+        assert (
+            DEFAULT_CONFIG["regex_patterns"]["model_a_pattern"] == original_pattern
+        ), "DEFAULT_CONFIG regex_patterns was mutated by load_config"
+
+        config = load_config()
+        assert (
+            config["regex_patterns"]["model_a_pattern"] == original_pattern
+        ), "Config should revert to default regex pattern after reset"
 
