@@ -5,10 +5,9 @@ This module tests edge cases and error handling paths that are not
 covered by other tests.
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -55,6 +54,9 @@ class TestCallJudgeModelEdgeCases:
 
         # This should raise an error or handle gracefully
         # The actual behavior depends on implementation
+        # call_judge_model signature: (client, question, model_a_response, model_b_response, model_name, ...)
         with pytest.raises((AttributeError, TypeError)):
-            call_judge_model(None, "prompt", "model", timeout=10)
+            call_judge_model(
+                None, "question", "response_a", "response_b", "model", timeout=10
+            )  # type: ignore[call-arg]
 
