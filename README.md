@@ -968,6 +968,9 @@ python run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b c
 
 # 評価行数を制限
 python run_full_pipeline.py questions.txt --limit 5
+
+# 評価用のモデルを指定（評価スクリプトの--modelオプションに渡される）
+python run_full_pipeline.py questions.txt --judge-model gpt-5
 ```
 
 **コマンドライン引数：**
@@ -981,6 +984,7 @@ python run_full_pipeline.py questions.txt --limit 5
 - `--model-a`, `--model-b`: モデル名（`collect_responses.py`に渡される）
 - `--api-url`: API URL（`collect_responses.py`に渡される）
 - `--limit`: 評価行数の制限（評価スクリプトに渡される）
+- `--judge-model`: 評価用のモデル名（評価スクリプトの`--model`オプションに渡される）
 - `--skip-collect`: 収集ステップをスキップ（既存の`collected_responses.csv`を使用）
 - `--skip-visualize`: 可視化ステップをスキップ
 - `--collect-output`: 収集ステップの出力ファイル名（デフォルト: `collected_responses.csv`）
@@ -1014,8 +1018,11 @@ python run_full_pipeline.py questions.txt --evaluator all
 # 4. 既存のCSVファイルを使用して評価と可視化のみ実行
 python run_full_pipeline.py questions.txt --skip-collect
 
-# 5. Makefileを使用
-make pipeline ARGS="questions.txt --evaluator llm-judge"
+# 5. 評価用モデルを指定して実行
+python run_full_pipeline.py questions.txt --judge-model gpt-5
+
+# 6. Makefileを使用
+make pipeline ARGS="questions.txt --evaluator llm-judge --judge-model gpt-5"
 ```
 
 **注意：**
