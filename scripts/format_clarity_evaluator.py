@@ -23,18 +23,23 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Union
 
-import pandas as pd
-from openai import OpenAI, AzureOpenAI
-from tqdm import tqdm
-from dotenv import load_dotenv
+# Add project root to Python path (must be before other imports)
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from config.model_configs import (
+import pandas as pd  # noqa: E402
+from openai import OpenAI, AzureOpenAI  # noqa: E402
+from tqdm import tqdm  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+
+from src.config.model_configs import (  # noqa: E402
     SUPPORTED_MODELS,
     get_simple_config as get_model_config_from_common,
 )
-from utils.logging_config import (
+from src.utils.logging_config import (  # noqa: E402
     log_info,
     log_error,
     log_warning,
@@ -42,7 +47,7 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
-from config.app_config import (
+from src.config.app_config import (  # noqa: E402
     get_max_retries,
     get_retry_delay,
 )

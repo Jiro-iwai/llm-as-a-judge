@@ -20,17 +20,24 @@ import uuid
 from pathlib import Path
 from typing import List, Optional
 
-import pandas as pd
-import requests
-from tqdm import tqdm
+# Add project root to Python path (must be before other imports)
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+# Add scripts directory to path for importing compare_processing_time
+scripts_dir = Path(__file__).parent
+sys.path.insert(0, str(scripts_dir))
 
-from compare_processing_time import (
+import pandas as pd  # noqa: E402
+import requests  # noqa: E402
+from tqdm import tqdm  # noqa: E402
+
+from compare_processing_time import (  # noqa: E402
     create_comparison_chart,
     create_statistics_chart,
     create_summary_table,
     extract_processing_times,
 )
-from utils.logging_config import (
+from src.utils.logging_config import (  # noqa: E402
     log_info,
     log_error,
     log_warning,
@@ -38,10 +45,10 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
-from utils.log_output_simplifier import (
+from src.utils.log_output_simplifier import (  # noqa: E402
     clean_and_format_llm_log,
 )
-from config.app_config import (
+from src.config.app_config import (  # noqa: E402
     get_timeout,
     get_api_delay,
     get_default_identity,

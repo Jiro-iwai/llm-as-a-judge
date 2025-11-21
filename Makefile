@@ -4,17 +4,17 @@
 PYTHON := $(shell if [ -f .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
 
 # Main evaluation scripts (with --help option)
-SCRIPTS := llm_judge_evaluator.py format_clarity_evaluator.py ragas_llm_judge_evaluator.py collect_responses.py
+SCRIPTS := scripts/llm_judge_evaluator.py scripts/format_clarity_evaluator.py scripts/ragas_llm_judge_evaluator.py scripts/collect_responses.py
 
 # All Python scripts (for format/lint/typecheck)
-ALL_SCRIPTS := $(SCRIPTS) compare_processing_time.py visualize_results.py run_full_pipeline.py
+ALL_SCRIPTS := $(SCRIPTS) scripts/compare_processing_time.py scripts/visualize_results.py scripts/run_full_pipeline.py
 
 # Scripts that support model option (-m)
-MODEL_SCRIPTS := llm_judge_evaluator.py format_clarity_evaluator.py ragas_llm_judge_evaluator.py
+MODEL_SCRIPTS := scripts/llm_judge_evaluator.py scripts/format_clarity_evaluator.py scripts/ragas_llm_judge_evaluator.py
 
 # Files to clean (exclude requirements.txt and other important files)
-CLEAN_FILES := *.csv *.png evaluation_output.csv format_clarity_output.csv ragas_evaluation_output.csv collected_responses.csv processing_time_summary.txt evaluation_summary.txt
-CLEAN_DIRS := __pycache__ .pytest_cache .ruff_cache .pyright_cache htmlcov
+CLEAN_FILES := output/*.csv output/*.png output/evaluation_output.csv output/format_clarity_output.csv output/ragas_evaluation_output.csv output/collected_responses.csv output/processing_time_summary.txt output/evaluation_summary.txt
+CLEAN_DIRS := __pycache__ .pytest_cache .ruff_cache .pyright_cache htmlcov output/__pycache__ scripts/__pycache__ src/__pycache__
 
 help:
 	@echo "Available targets:"
@@ -52,41 +52,41 @@ help-llm-judge:
 	@echo "=========================================="
 	@echo "llm_judge_evaluator.py の使い方"
 	@echo "=========================================="
-	@$(PYTHON) llm_judge_evaluator.py --help
+	@$(PYTHON) scripts/llm_judge_evaluator.py --help
 
 help-format-clarity:
 	@echo "=========================================="
 	@echo "format_clarity_evaluator.py の使い方"
 	@echo "=========================================="
-	@$(PYTHON) format_clarity_evaluator.py --help
+	@$(PYTHON) scripts/format_clarity_evaluator.py --help
 
 help-ragas:
 	@echo "=========================================="
 	@echo "ragas_llm_judge_evaluator.py の使い方"
 	@echo "=========================================="
-	@$(PYTHON) ragas_llm_judge_evaluator.py --help 2>&1 || echo "⚠️  ragas_llm_judge_evaluator.py requires dependencies (ragas, datasets)"
+	@$(PYTHON) scripts/ragas_llm_judge_evaluator.py --help 2>&1 || echo "⚠️  ragas_llm_judge_evaluator.py requires dependencies (ragas, datasets)"
 
 help-collect:
 	@echo "=========================================="
 	@echo "collect_responses.py の使い方"
 	@echo "=========================================="
 	@echo "※ 応答収集後、処理時間ログと比較チャートを自動生成します"
-	@$(PYTHON) collect_responses.py --help
+	@$(PYTHON) scripts/collect_responses.py --help
 
 help-visualize:
 	@echo "=========================================="
 	@echo "visualize_results.py の使い方"
 	@echo "=========================================="
-	@$(PYTHON) visualize_results.py --help
+	@$(PYTHON) scripts/visualize_results.py --help
 
 pipeline:
-	@$(PYTHON) run_full_pipeline.py $(ARGS)
+	@$(PYTHON) scripts/run_full_pipeline.py $(ARGS)
 
 help-pipeline:
 	@echo "=========================================="
 	@echo "run_full_pipeline.py の使い方"
 	@echo "=========================================="
-	@$(PYTHON) run_full_pipeline.py --help
+	@$(PYTHON) scripts/run_full_pipeline.py --help
 
 help-all: help-llm-judge help-format-clarity help-ragas help-collect help-visualize help-pipeline
 	@echo ""
@@ -271,7 +271,7 @@ test-scripts:
 		echo ""; \
 	done
 	@echo "Testing collect_responses.py..."
-	@if $(PYTHON) collect_responses.py --help 2>&1 | grep -q "\-o OUTPUT"; then \
+	@if $(PYTHON) scripts/collect_responses.py --help 2>&1 | grep -q "\-o OUTPUT"; then \
 		echo "  ✓ -o option available"; \
 	else \
 		echo "  ✗ -o option missing"; \

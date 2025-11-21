@@ -8,7 +8,7 @@ from unittest.mock import Mock
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from llm_judge_evaluator import (
+from scripts.llm_judge_evaluator import (
     get_model_config,
     is_gpt5,
     create_user_prompt,
@@ -106,7 +106,7 @@ class TestLogFunctions:
         """Test log_info function"""
         import io
         import logging
-        from utils.logging_config import setup_logging, reset_logger
+        from src.utils.logging_config import setup_logging, reset_logger
 
         reset_logger()
         stream = io.StringIO()
@@ -125,7 +125,7 @@ class TestLogFunctions:
         """Test log_info with indentation"""
         import io
         import logging
-        from utils.logging_config import setup_logging, reset_logger
+        from src.utils.logging_config import setup_logging, reset_logger
 
         reset_logger()
         stream = io.StringIO()
@@ -145,7 +145,7 @@ class TestLogFunctions:
         """Test log_section function"""
         import io
         import logging
-        from utils.logging_config import setup_logging, reset_logger
+        from src.utils.logging_config import setup_logging, reset_logger
 
         reset_logger()
         stream = io.StringIO()
@@ -165,7 +165,7 @@ class TestLogFunctions:
         """Test log_warning function"""
         import io
         import logging
-        from utils.logging_config import setup_logging, reset_logger
+        from src.utils.logging_config import setup_logging, reset_logger
 
         reset_logger()
         stream = io.StringIO()
@@ -184,7 +184,7 @@ class TestLogFunctions:
         """Test log_error function"""
         import io
         import logging
-        from utils.logging_config import setup_logging, reset_logger
+        from src.utils.logging_config import setup_logging, reset_logger
 
         reset_logger()
         stream = io.StringIO()
@@ -204,7 +204,7 @@ class TestLogFunctions:
         """Test log_success function"""
         import io
         import logging
-        from utils.logging_config import setup_logging, reset_logger
+        from src.utils.logging_config import setup_logging, reset_logger
 
         reset_logger()
         stream = io.StringIO()

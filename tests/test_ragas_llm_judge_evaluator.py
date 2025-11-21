@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ragas_llm_judge_evaluator import (
+from scripts.ragas_llm_judge_evaluator import (
     parse_react_log,
     get_model_config,
     initialize_azure_openai_for_ragas,
@@ -132,7 +132,7 @@ class TestInitializeAzureOpenAIForRagas:
     """Tests for initialize_azure_openai_for_ragas function"""
 
     @patch("langchain_openai.AzureChatOpenAI")
-    @patch("ragas_llm_judge_evaluator.os.getenv")
+    @patch("scripts.ragas_llm_judge_evaluator.os.getenv")
     def test_initialize_azure_openai_for_ragas_success(self, mock_getenv, mock_azure_chat):
         """Test successful Azure OpenAI initialization"""
         mock_getenv.side_effect = lambda key, default=None: {
@@ -153,7 +153,7 @@ class TestInitializeAzureOpenAIForRagas:
         mock_azure_chat.assert_called_once()
 
     @patch("langchain_openai.AzureChatOpenAI")
-    @patch("ragas_llm_judge_evaluator.os.getenv")
+    @patch("scripts.ragas_llm_judge_evaluator.os.getenv")
     def test_initialize_azure_openai_for_ragas_with_model_config(self, mock_getenv, mock_azure_chat):
         """Test initialization with model config"""
         mock_getenv.side_effect = lambda key, default=None: {

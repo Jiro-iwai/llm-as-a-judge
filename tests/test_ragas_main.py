@@ -17,9 +17,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 class TestRagasMain:
     """Tests for ragas_llm_judge_evaluator.py main() function."""
 
-    @patch("ragas_llm_judge_evaluator.process_csv")
-    @patch("ragas_llm_judge_evaluator.log_section")
-    @patch("ragas_llm_judge_evaluator.log_info")
+    @patch("scripts.ragas_llm_judge_evaluator.process_csv")
+    @patch("scripts.ragas_llm_judge_evaluator.log_section")
+    @patch("scripts.ragas_llm_judge_evaluator.log_info")
     @patch("os.getenv")
     def test_main_with_model_argument(
         self,
@@ -30,23 +30,23 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function with --model argument."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
 
         mock_getenv.return_value = None
 
-        with patch("sys.argv", ["ragas_llm_judge_evaluator.py", str(input_csv), "-m", "gpt-4.1"]):
+        with patch("sys.argv", ["scripts/ragas_llm_judge_evaluator.py", str(input_csv), "-m", "gpt-4.1"]):
             main()
 
         mock_process_csv.assert_called_once()
         call_args = mock_process_csv.call_args
         assert call_args.kwargs["model_name"] == "gpt-4.1"
 
-    @patch("ragas_llm_judge_evaluator.process_csv")
-    @patch("ragas_llm_judge_evaluator.log_section")
-    @patch("ragas_llm_judge_evaluator.log_info")
+    @patch("scripts.ragas_llm_judge_evaluator.process_csv")
+    @patch("scripts.ragas_llm_judge_evaluator.log_section")
+    @patch("scripts.ragas_llm_judge_evaluator.log_info")
     @patch("os.getenv")
     def test_main_with_env_var_model(
         self,
@@ -57,23 +57,23 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function uses MODEL_NAME env var when no --model argument."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
 
         mock_getenv.return_value = "gpt-5"
 
-        with patch("sys.argv", ["ragas_llm_judge_evaluator.py", str(input_csv)]):
+        with patch("sys.argv", ["scripts/ragas_llm_judge_evaluator.py", str(input_csv)]):
             main()
 
         mock_process_csv.assert_called_once()
         call_args = mock_process_csv.call_args
         assert call_args.kwargs["model_name"] == "gpt-5"
 
-    @patch("ragas_llm_judge_evaluator.process_csv")
-    @patch("ragas_llm_judge_evaluator.log_section")
-    @patch("ragas_llm_judge_evaluator.log_info")
+    @patch("scripts.ragas_llm_judge_evaluator.process_csv")
+    @patch("scripts.ragas_llm_judge_evaluator.log_section")
+    @patch("scripts.ragas_llm_judge_evaluator.log_info")
     def test_main_with_limit_argument(
         self,
         mock_info,
@@ -82,21 +82,21 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function with --limit argument."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
 
-        with patch("sys.argv", ["ragas_llm_judge_evaluator.py", str(input_csv), "-n", "3"]):
+        with patch("sys.argv", ["scripts/ragas_llm_judge_evaluator.py", str(input_csv), "-n", "3"]):
             main()
 
         mock_process_csv.assert_called_once()
         call_args = mock_process_csv.call_args
         assert call_args.kwargs["limit_rows"] == 3
 
-    @patch("ragas_llm_judge_evaluator.process_csv")
-    @patch("ragas_llm_judge_evaluator.log_section")
-    @patch("ragas_llm_judge_evaluator.log_info")
+    @patch("scripts.ragas_llm_judge_evaluator.process_csv")
+    @patch("scripts.ragas_llm_judge_evaluator.log_section")
+    @patch("scripts.ragas_llm_judge_evaluator.log_info")
     def test_main_model_name_normalization(
         self,
         mock_info,
@@ -105,12 +105,12 @@ class TestRagasMain:
         tmp_path,
     ):
         """Test main() function normalizes model names."""
-        from ragas_llm_judge_evaluator import main
+        from scripts.ragas_llm_judge_evaluator import main
 
         input_csv = tmp_path / "input.csv"
         input_csv.write_text("Question,Model_A_Response,Model_B_Response\nQ1,A1,B1\n")
 
-        with patch("sys.argv", ["ragas_llm_judge_evaluator.py", str(input_csv), "-m", "gpt41"]):
+        with patch("sys.argv", ["scripts/ragas_llm_judge_evaluator.py", str(input_csv), "-m", "gpt41"]):
             main()
 
         mock_process_csv.assert_called_once()

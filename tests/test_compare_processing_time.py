@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from compare_processing_time import (
+from scripts.compare_processing_time import (
     extract_processing_times,
     create_summary_table,
     create_comparison_chart,
@@ -136,7 +136,7 @@ class TestCreateSummaryTable:
 class TestCreateComparisonChart:
     """Tests for create_comparison_chart function"""
 
-    @patch("compare_processing_time.plt")
+    @patch("scripts.compare_processing_time.plt")
     def test_create_comparison_chart_success(self, mock_plt):
         """Test successful creation of comparison chart"""
         # Mock plt.subplots to return figure and axes
@@ -165,7 +165,7 @@ class TestCreateComparisonChart:
 class TestCreateStatisticsChart:
     """Tests for create_statistics_chart function"""
 
-    @patch("compare_processing_time.plt")
+    @patch("scripts.compare_processing_time.plt")
     def test_create_statistics_chart_success(self, mock_plt):
         """Test successful creation of statistics chart"""
         # Mock plt.subplots to return figure and axes (2x2 grid)

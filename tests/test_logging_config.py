@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 # Import the logging module (will be created)
 # Note: This will fail until we create utils/logging_config.py
-from utils.logging_config import (
+from src.utils.logging_config import (
     get_logger,
     log_info,
     log_error,
@@ -26,7 +26,7 @@ from utils.logging_config import (
 
 def reset_logger():
     """Reset the global logger for testing"""
-    from utils.logging_config import reset_logger as reset
+    from src.utils.logging_config import reset_logger as reset
     reset()
 
 

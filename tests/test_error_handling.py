@@ -17,7 +17,7 @@ class TestFontSettingErrorHandling:
     def test_visualize_results_font_setting_handles_oserror(self):
         """Test that OSError is caught and handled gracefully in visualize_results.py"""
         # Read the file and check the exception handler
-        with open("visualize_results.py", "r", encoding="utf-8") as f:
+        with open("scripts/visualize_results.py", "r", encoding="utf-8") as f:
             content = f.read()
 
         # Check that specific exception types are used
@@ -27,7 +27,7 @@ class TestFontSettingErrorHandling:
     def test_compare_processing_time_font_setting_handles_oserror(self):
         """Test that OSError is caught and handled gracefully in compare_processing_time.py"""
         # Read the file and check the exception handler
-        with open("compare_processing_time.py", "r", encoding="utf-8") as f:
+        with open("scripts/compare_processing_time.py", "r", encoding="utf-8") as f:
             content = f.read()
 
         # Check that specific exception types are used
@@ -36,7 +36,7 @@ class TestFontSettingErrorHandling:
 
     def test_visualize_results_no_generic_exception(self):
         """Test that visualize_results.py doesn't use generic Exception handler for font setting"""
-        with open("visualize_results.py", "r", encoding="utf-8") as f:
+        with open("scripts/visualize_results.py", "r", encoding="utf-8") as f:
             lines = f.readlines()
 
         # Check font setting section (around line 30-40)
@@ -46,7 +46,7 @@ class TestFontSettingErrorHandling:
 
     def test_compare_processing_time_no_generic_exception(self):
         """Test that compare_processing_time.py doesn't use generic Exception handler for font setting"""
-        with open("compare_processing_time.py", "r", encoding="utf-8") as f:
+        with open("scripts/compare_processing_time.py", "r", encoding="utf-8") as f:
             lines = f.readlines()
 
         # Check font setting section (around line 30-40)
@@ -87,8 +87,8 @@ class TestSpecificExceptionHandling:
             return issues
 
         # Check visualization scripts
-        visualize_issues = check_exception_handlers("visualize_results.py")
-        compare_issues = check_exception_handlers("compare_processing_time.py")
+        visualize_issues = check_exception_handlers("scripts/visualize_results.py")
+        compare_issues = check_exception_handlers("scripts/compare_processing_time.py")
 
         # After improvements, these should be empty or minimal
         # For now, we document what needs to be fixed

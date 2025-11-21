@@ -21,7 +21,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_value_error(self):
         """Test clean_and_format_llm_log handles ValueError."""
-        from utils.log_output_simplifier import clean_and_format_llm_log
+        from src.utils.log_output_simplifier import clean_and_format_llm_log
 
         # Mock json.loads to raise ValueError
         with patch("json.loads", side_effect=ValueError("Invalid value")):
@@ -30,7 +30,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_type_error(self):
         """Test clean_and_format_llm_log handles TypeError."""
-        from utils.log_output_simplifier import clean_and_format_llm_log
+        from src.utils.log_output_simplifier import clean_and_format_llm_log
 
         # Mock json.loads to raise TypeError
         with patch("json.loads", side_effect=TypeError("Invalid type")):
@@ -39,7 +39,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_generic_exception(self):
         """Test clean_and_format_llm_log handles generic Exception."""
-        from utils.log_output_simplifier import clean_and_format_llm_log
+        from src.utils.log_output_simplifier import clean_and_format_llm_log
 
         # Mock json.loads to raise a generic exception
         with patch("json.loads", side_effect=Exception("Unexpected error")):
@@ -48,7 +48,7 @@ class TestCleanAndFormatLlmLogEdgeCases:
 
     def test_clean_and_format_llm_log_empty_section(self):
         """Test clean_and_format_llm_log skips empty sections."""
-        from utils.log_output_simplifier import clean_and_format_llm_log
+        from src.utils.log_output_simplifier import clean_and_format_llm_log
 
         # Create log with empty section
         log_text = "思考：\n\n回答：Answer here"
@@ -62,21 +62,21 @@ class TestFormatResponseEdgeCases:
 
     def test_format_response_exception_handling(self):
         """Test format_response handles exceptions gracefully."""
-        from collect_responses import format_response
+        from scripts.collect_responses import format_response
 
         # Mock clean_and_format_llm_log to raise exception
         # Note: We need to patch it where it's imported in collect_responses
-        with patch("collect_responses.clean_and_format_llm_log", side_effect=Exception("Test error")):
+        with patch("scripts.collect_responses.clean_and_format_llm_log", side_effect=Exception("Test error")):
             result = format_response("test response")
             # Should return original response_text on exception (format_response catches exceptions)
             assert result == "test response"
 
     def test_format_response_generic_exception(self):
         """Test format_response handles generic exceptions."""
-        from collect_responses import format_response
+        from scripts.collect_responses import format_response
 
         # Mock clean_and_format_llm_log to raise generic exception
-        with patch("collect_responses.clean_and_format_llm_log", side_effect=RuntimeError("Runtime error")):
+        with patch("scripts.collect_responses.clean_and_format_llm_log", side_effect=RuntimeError("Runtime error")):
             result = format_response("test response")
             assert result == "test response"
 
@@ -84,12 +84,12 @@ class TestFormatResponseEdgeCases:
 class TestCallApiEdgeCases:
     """Tests for call_api edge cases."""
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_warning")
-    @patch("collect_responses.log_info")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_warning")
+    @patch("scripts.collect_responses.log_info")
     def test_call_api_unexpected_response_format(self, mock_info, mock_warning, mock_post):
         """Test call_api handles unexpected response format."""
-        from collect_responses import call_api
+        from scripts.collect_responses import call_api
 
         # Mock response with unexpected format (not dict or list)
         mock_response = Mock()
@@ -104,11 +104,11 @@ class TestCallApiEdgeCases:
         assert result == "plain text response"
         mock_warning.assert_called()
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_warning")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_warning")
     def test_call_api_missing_answer_field(self, mock_warning, mock_post):
         """Test call_api handles missing answer field."""
-        from collect_responses import call_api
+        from scripts.collect_responses import call_api
 
         # Mock response without answer field
         mock_response = Mock()
@@ -123,12 +123,12 @@ class TestCallApiEdgeCases:
         assert result == "response text"
         mock_warning.assert_called()
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_processing_time_entry")
-    @patch("collect_responses.log_info")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_processing_time_entry")
+    @patch("scripts.collect_responses.log_info")
     def test_call_api_with_urls_field(self, mock_info, mock_log_time, mock_post):
         """Test call_api handles urls field in response."""
-        from collect_responses import call_api
+        from scripts.collect_responses import call_api
 
         # Mock response with urls field
         mock_response = Mock()
@@ -145,11 +145,11 @@ class TestCallApiEdgeCases:
         # Check that URL count was logged
         assert any("url" in str(call).lower() for call in mock_info.call_args_list)
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_error")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_error")
     def test_call_api_json_decode_error_with_attribute_error(self, mock_error, mock_post):
         """Test call_api handles AttributeError when accessing response.text."""
-        from collect_responses import call_api
+        from scripts.collect_responses import call_api
 
         # Mock response that raises AttributeError
         mock_response = Mock()
@@ -168,13 +168,13 @@ class TestCallApiEdgeCases:
 class TestCollectResponsesVerbose:
     """Tests for collect_responses verbose mode."""
 
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
-    @patch("collect_responses.log_warning")
-    @patch("collect_responses.time.sleep")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
+    @patch("scripts.collect_responses.log_warning")
+    @patch("scripts.collect_responses.time.sleep")
     def test_collect_responses_verbose_mode(
         self,
         mock_sleep,
@@ -186,7 +186,7 @@ class TestCollectResponsesVerbose:
         mock_call_api,
     ):
         """Test collect_responses with verbose=True."""
-        from collect_responses import collect_responses
+        from scripts.collect_responses import collect_responses
         import pandas as pd
 
         mock_call_api.side_effect = ["Answer A1", "Answer B1"]
@@ -205,11 +205,11 @@ class TestCollectResponsesVerbose:
         assert mock_section.called
         assert mock_info.called
 
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.time.sleep")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.time.sleep")
     def test_collect_responses_non_verbose_mode(
         self,
         mock_sleep,
@@ -219,7 +219,7 @@ class TestCollectResponsesVerbose:
         mock_call_api,
     ):
         """Test collect_responses with verbose=False."""
-        from collect_responses import collect_responses
+        from scripts.collect_responses import collect_responses
 
         mock_call_api.side_effect = ["Answer A1", "Answer B1"]
 
@@ -236,9 +236,9 @@ class TestCollectResponsesVerbose:
         # With verbose=False, fewer log calls should be made
         # (but some are still needed for errors)
 
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
-    @patch("collect_responses.log_info")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.log_info")
     def test_collect_responses_with_failed_responses_verbose(
         self,
         mock_info,
@@ -246,7 +246,7 @@ class TestCollectResponsesVerbose:
         mock_call_api,
     ):
         """Test collect_responses verbose mode with failed responses."""
-        from collect_responses import collect_responses
+        from scripts.collect_responses import collect_responses
 
         # Mock call_api to return None (failed)
         mock_call_api.side_effect = [None, "Answer B1"]
@@ -270,7 +270,7 @@ class TestReadQuestionsErrorHandling:
 
     def test_read_questions_permission_error(self, tmp_path):
         """Test read_questions handles PermissionError."""
-        from collect_responses import read_questions
+        from scripts.collect_responses import read_questions
 
         # Create a file that will cause PermissionError
         test_file = tmp_path / "test.txt"
@@ -283,7 +283,7 @@ class TestReadQuestionsErrorHandling:
 
     def test_read_questions_unicode_decode_error(self, tmp_path):
         """Test read_questions handles UnicodeDecodeError."""
-        from collect_responses import read_questions
+        from scripts.collect_responses import read_questions
 
         test_file = tmp_path / "test.txt"
         test_file.write_bytes(b"\xff\xfe")  # Invalid UTF-8
@@ -295,7 +295,7 @@ class TestReadQuestionsErrorHandling:
 
     def test_read_questions_generic_exception(self, tmp_path):
         """Test read_questions handles generic Exception."""
-        from collect_responses import read_questions
+        from scripts.collect_responses import read_questions
 
         test_file = tmp_path / "test.txt"
         test_file.write_text("test")
@@ -309,11 +309,11 @@ class TestReadQuestionsErrorHandling:
 class TestCollectResponsesConfigDefaults:
     """Tests for collect_responses config defaults."""
 
-    @patch("collect_responses.get_default_identity")
-    @patch("collect_responses.get_timeout")
-    @patch("collect_responses.get_api_delay")
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.get_default_identity")
+    @patch("scripts.collect_responses.get_timeout")
+    @patch("scripts.collect_responses.get_api_delay")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
     def test_collect_responses_uses_config_defaults(
         self,
         mock_format,
@@ -323,7 +323,7 @@ class TestCollectResponsesConfigDefaults:
         mock_get_identity,
     ):
         """Test collect_responses uses config defaults when None."""
-        from collect_responses import collect_responses
+        from scripts.collect_responses import collect_responses
 
         mock_get_identity.return_value = "default-identity"
         mock_get_timeout.return_value = 120

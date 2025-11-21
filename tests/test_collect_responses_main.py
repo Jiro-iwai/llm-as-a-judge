@@ -21,14 +21,14 @@ class TestInitializeProcessingTimeLog:
 
     def test_initialize_processing_time_log_empty_log_file(self, tmp_path):
         """Test that initialize_processing_time_log handles empty log_file."""
-        from collect_responses import initialize_processing_time_log
+        from scripts.collect_responses import initialize_processing_time_log
 
         # Should not raise an error
         initialize_processing_time_log("")
 
     def test_initialize_processing_time_log_creates_directory(self, tmp_path):
         """Test that initialize_processing_time_log creates parent directories."""
-        from collect_responses import initialize_processing_time_log
+        from scripts.collect_responses import initialize_processing_time_log
 
         log_file = tmp_path / "subdir" / "time.log"
         initialize_processing_time_log(str(log_file))
@@ -38,13 +38,13 @@ class TestInitializeProcessingTimeLog:
 
     def test_initialize_processing_time_log_handles_oserror(self, tmp_path):
         """Test that initialize_processing_time_log handles OSError gracefully."""
-        from collect_responses import initialize_processing_time_log
+        from scripts.collect_responses import initialize_processing_time_log
 
         # Create a path that will cause OSError (e.g., invalid path)
         invalid_path = "/invalid/path/to/file.log"
 
         # Should not raise, but log a warning
-        with patch("collect_responses.log_warning") as mock_warning:
+        with patch("scripts.collect_responses.log_warning") as mock_warning:
             initialize_processing_time_log(invalid_path)
             mock_warning.assert_called_once()
 
@@ -54,14 +54,14 @@ class TestLogProcessingTimeEntry:
 
     def test_log_processing_time_entry_empty_log_file(self):
         """Test that log_processing_time_entry handles empty log_file."""
-        from collect_responses import log_processing_time_entry
+        from scripts.collect_responses import log_processing_time_entry
 
         # Should not raise an error
         log_processing_time_entry("model", 1.0, "")
 
     def test_log_processing_time_entry_writes_to_file(self, tmp_path):
         """Test that log_processing_time_entry writes to file correctly."""
-        from collect_responses import log_processing_time_entry
+        from scripts.collect_responses import log_processing_time_entry
 
         log_file = tmp_path / "time.log"
         log_file.write_text("# Header\n")
@@ -82,11 +82,11 @@ class TestLogProcessingTimeEntry:
 
     def test_log_processing_time_entry_handles_oserror(self, tmp_path):
         """Test that log_processing_time_entry handles OSError gracefully."""
-        from collect_responses import log_processing_time_entry
+        from scripts.collect_responses import log_processing_time_entry
 
         invalid_path = "/invalid/path/to/file.log"
 
-        with patch("collect_responses.log_warning") as mock_warning:
+        with patch("scripts.collect_responses.log_warning") as mock_warning:
             log_processing_time_entry("model", 1.0, invalid_path)
             mock_warning.assert_called_once()
 
@@ -94,13 +94,13 @@ class TestLogProcessingTimeEntry:
 class TestCollectResponsesMain:
     """Tests for collect_responses.py main() function."""
 
-    @patch("collect_responses.collect_responses")
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
-    @patch("collect_responses.log_error")
-    @patch("collect_responses.log_warning")
+    @patch("scripts.collect_responses.collect_responses")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
+    @patch("scripts.collect_responses.log_error")
+    @patch("scripts.collect_responses.log_warning")
     def test_main_success(
         self,
         mock_warning,
@@ -113,7 +113,7 @@ class TestCollectResponsesMain:
         tmp_path,
     ):
         """Test main() function with successful execution."""
-        from collect_responses import main
+        from scripts.collect_responses import main
         import pandas as pd
 
         # Setup mocks
@@ -130,38 +130,38 @@ class TestCollectResponsesMain:
             }
         )
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file), "-o", str(output_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file), "-o", str(output_file)]):
             main()
 
         mock_read_questions.assert_called_once()
         mock_collect_responses.assert_called_once()
         assert output_file.exists()
 
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_error")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_error")
     def test_main_empty_questions_file(self, mock_error, mock_read_questions, tmp_path):
         """Test main() function exits when no questions found."""
-        from collect_responses import main
+        from scripts.collect_responses import main
 
         questions_file = tmp_path / "questions.txt"
         questions_file.write_text("")
 
         mock_read_questions.return_value = []
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file)]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
 
         mock_error.assert_called()
 
-    @patch("collect_responses.collect_responses")
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
-    @patch("collect_responses.log_warning")
-    @patch("collect_responses.log_error")
+    @patch("scripts.collect_responses.collect_responses")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
+    @patch("scripts.collect_responses.log_warning")
+    @patch("scripts.collect_responses.log_error")
     def test_main_with_failed_responses(
         self,
         mock_error,
@@ -174,7 +174,7 @@ class TestCollectResponsesMain:
         tmp_path,
     ):
         """Test main() function handles failed responses correctly."""
-        from collect_responses import main
+        from scripts.collect_responses import main
         import pandas as pd
 
         questions_file = tmp_path / "questions.txt"
@@ -191,18 +191,18 @@ class TestCollectResponsesMain:
             }
         )
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file), "-o", str(output_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file), "-o", str(output_file)]):
             main()
 
         # Should log warnings about failed responses
         # Check that warnings were called (may be in Japanese or English)
         assert mock_warning.called or mock_error.called
 
-    @patch("collect_responses.collect_responses")
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
+    @patch("scripts.collect_responses.collect_responses")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
     def test_main_saves_csv_with_quoting(
         self,
         mock_success,
@@ -213,7 +213,7 @@ class TestCollectResponsesMain:
         tmp_path,
     ):
         """Test main() function saves CSV with proper quoting."""
-        from collect_responses import main
+        from scripts.collect_responses import main
         import pandas as pd
 
         questions_file = tmp_path / "questions.txt"
@@ -230,7 +230,7 @@ class TestCollectResponsesMain:
         )
         mock_collect_responses.return_value = df
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file), "-o", str(output_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file), "-o", str(output_file)]):
             main()
 
         # Verify CSV was saved with proper quoting

@@ -29,7 +29,7 @@ class TestExtractScoresEdgeCases:
 
     def test_extract_scores_with_empty_evaluation(self):
         """Test extract_scores_from_evaluation handles empty evaluation."""
-        from llm_judge_evaluator import extract_scores_from_evaluation
+        from scripts.llm_judge_evaluator import extract_scores_from_evaluation
 
         result = extract_scores_from_evaluation({}, "model_a_evaluation")
 
@@ -38,7 +38,7 @@ class TestExtractScoresEdgeCases:
 
     def test_extract_scores_with_missing_key(self):
         """Test extract_scores_from_evaluation handles missing model key."""
-        from llm_judge_evaluator import extract_scores_from_evaluation
+        from scripts.llm_judge_evaluator import extract_scores_from_evaluation
 
         result = extract_scores_from_evaluation({"other_key": "value"}, "model_a_evaluation")
 
@@ -51,7 +51,7 @@ class TestCallJudgeModelEdgeCases:
 
     def test_call_judge_model_with_none_client(self):
         """Test call_judge_model handles None client."""
-        from llm_judge_evaluator import call_judge_model
+        from scripts.llm_judge_evaluator import call_judge_model
 
         # This should raise an error or handle gracefully
         # The actual behavior depends on implementation

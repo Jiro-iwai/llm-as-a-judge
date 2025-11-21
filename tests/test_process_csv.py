@@ -17,9 +17,9 @@ import pytest
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from format_clarity_evaluator import process_csv as format_process_csv
-from llm_judge_evaluator import process_csv as llm_process_csv
-from ragas_llm_judge_evaluator import process_csv as ragas_process_csv
+from scripts.format_clarity_evaluator import process_csv as format_process_csv
+from scripts.llm_judge_evaluator import process_csv as llm_process_csv
+from scripts.ragas_llm_judge_evaluator import process_csv as ragas_process_csv
 
 
 class TestFormatClarityProcessCsv:
@@ -27,16 +27,16 @@ class TestFormatClarityProcessCsv:
 
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     @patch("builtins.input")
-    @patch("format_clarity_evaluator.log_error")
-    @patch("format_clarity_evaluator.log_success")
-    @patch("format_clarity_evaluator.log_warning")
-    @patch("format_clarity_evaluator.log_info")
-    @patch("format_clarity_evaluator.tqdm")
-    @patch("format_clarity_evaluator.parse_final_answer")
-    @patch("format_clarity_evaluator.extract_scores_from_evaluation")
-    @patch("format_clarity_evaluator.call_judge_model")
-    @patch("format_clarity_evaluator.OpenAI")
-    @patch("format_clarity_evaluator.AzureOpenAI")
+    @patch("scripts.format_clarity_evaluator.log_error")
+    @patch("scripts.format_clarity_evaluator.log_success")
+    @patch("scripts.format_clarity_evaluator.log_warning")
+    @patch("scripts.format_clarity_evaluator.log_info")
+    @patch("scripts.format_clarity_evaluator.tqdm")
+    @patch("scripts.format_clarity_evaluator.parse_final_answer")
+    @patch("scripts.format_clarity_evaluator.extract_scores_from_evaluation")
+    @patch("scripts.format_clarity_evaluator.call_judge_model")
+    @patch("scripts.format_clarity_evaluator.OpenAI")
+    @patch("scripts.format_clarity_evaluator.AzureOpenAI")
     def test_process_csv_with_header(self, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_parse_final, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_error, mock_input):
         """Test process_csv with CSV file that has header row"""
         # Mock input to avoid interactive prompt
@@ -88,10 +88,10 @@ class TestFormatClarityProcessCsv:
                 if os.path.exists(f):
                     os.unlink(f)
 
-    @patch("format_clarity_evaluator.AzureOpenAI")
-    @patch("format_clarity_evaluator.OpenAI")
-    @patch("format_clarity_evaluator.call_judge_model")
-    @patch("format_clarity_evaluator.tqdm")
+    @patch("scripts.format_clarity_evaluator.AzureOpenAI")
+    @patch("scripts.format_clarity_evaluator.OpenAI")
+    @patch("scripts.format_clarity_evaluator.call_judge_model")
+    @patch("scripts.format_clarity_evaluator.tqdm")
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     def test_process_csv_without_header(self, mock_tqdm, mock_openai, mock_azure, mock_call_judge):
         """Test process_csv with CSV file without header row"""
@@ -127,20 +127,20 @@ class TestFormatClarityProcessCsv:
                 if os.path.exists(f):
                     os.unlink(f)
 
-    @patch("format_clarity_evaluator.AzureOpenAI")
-    @patch("format_clarity_evaluator.OpenAI")
+    @patch("scripts.format_clarity_evaluator.AzureOpenAI")
+    @patch("scripts.format_clarity_evaluator.OpenAI")
     def test_process_csv_file_not_found(self, mock_openai, mock_azure):
         """Test process_csv with non-existent file"""
         with pytest.raises(SystemExit):
             format_process_csv("nonexistent_file.csv", "output.csv")
 
-    @patch("format_clarity_evaluator.AzureOpenAI")
-    @patch("format_clarity_evaluator.OpenAI")
-    @patch("format_clarity_evaluator.call_judge_model")
-    @patch("format_clarity_evaluator.tqdm")
-    @patch("format_clarity_evaluator.log_error")
-    @patch("format_clarity_evaluator.log_info")
-    @patch("format_clarity_evaluator.log_warning")
+    @patch("scripts.format_clarity_evaluator.AzureOpenAI")
+    @patch("scripts.format_clarity_evaluator.OpenAI")
+    @patch("scripts.format_clarity_evaluator.call_judge_model")
+    @patch("scripts.format_clarity_evaluator.tqdm")
+    @patch("scripts.format_clarity_evaluator.log_error")
+    @patch("scripts.format_clarity_evaluator.log_info")
+    @patch("scripts.format_clarity_evaluator.log_warning")
     @patch("builtins.input")
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     def test_process_csv_missing_columns(self, mock_input, mock_log_warning, mock_log_info, mock_log_error, mock_tqdm, mock_call_judge, mock_openai, mock_azure):
@@ -187,17 +187,17 @@ class TestFormatClarityProcessCsv:
 
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     @patch("builtins.input")
-    @patch("format_clarity_evaluator.log_error")
-    @patch("format_clarity_evaluator.log_success")
-    @patch("format_clarity_evaluator.log_warning")
-    @patch("format_clarity_evaluator.log_info")
-    @patch("format_clarity_evaluator.tqdm")
-    @patch("format_clarity_evaluator.parse_final_answer")
-    @patch("format_clarity_evaluator.extract_scores_from_evaluation")
-    @patch("format_clarity_evaluator.call_judge_model")
-    @patch("format_clarity_evaluator.OpenAI")
-    @patch("format_clarity_evaluator.AzureOpenAI")
-    @patch("format_clarity_evaluator.pd.DataFrame.to_csv")
+    @patch("scripts.format_clarity_evaluator.log_error")
+    @patch("scripts.format_clarity_evaluator.log_success")
+    @patch("scripts.format_clarity_evaluator.log_warning")
+    @patch("scripts.format_clarity_evaluator.log_info")
+    @patch("scripts.format_clarity_evaluator.tqdm")
+    @patch("scripts.format_clarity_evaluator.parse_final_answer")
+    @patch("scripts.format_clarity_evaluator.extract_scores_from_evaluation")
+    @patch("scripts.format_clarity_evaluator.call_judge_model")
+    @patch("scripts.format_clarity_evaluator.OpenAI")
+    @patch("scripts.format_clarity_evaluator.AzureOpenAI")
+    @patch("scripts.format_clarity_evaluator.pd.DataFrame.to_csv")
     def test_process_csv_no_cost_estimate_message(self, mock_to_csv, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_parse_final, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_error, mock_input):
         """Test that cost estimate message is removed and replaced with guidance message"""
         # Mock input to avoid interactive prompt
@@ -246,8 +246,8 @@ class TestFormatClarityProcessCsv:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
 
-    @patch("format_clarity_evaluator.AzureOpenAI")
-    @patch("format_clarity_evaluator.OpenAI")
+    @patch("scripts.format_clarity_evaluator.AzureOpenAI")
+    @patch("scripts.format_clarity_evaluator.OpenAI")
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True)
     def test_process_csv_standard_openai(self, mock_openai, mock_azure):
         """Test process_csv with standard OpenAI client"""
@@ -268,7 +268,7 @@ class TestFormatClarityProcessCsv:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
 
-            with patch("format_clarity_evaluator.call_judge_model") as mock_call:
+            with patch("scripts.format_clarity_evaluator.call_judge_model") as mock_call:
                 mock_call.return_value = {
                     "format_clarity_score": 4,
                     "format_clarity_justification": "Good"
@@ -291,16 +291,16 @@ class TestLLMJudgeProcessCsv:
 
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     @patch("builtins.input")
-    @patch("llm_judge_evaluator.log_error")
-    @patch("llm_judge_evaluator.log_section")
-    @patch("llm_judge_evaluator.log_success")
-    @patch("llm_judge_evaluator.log_warning")
-    @patch("llm_judge_evaluator.log_info")
-    @patch("llm_judge_evaluator.tqdm")
-    @patch("llm_judge_evaluator.extract_scores_from_evaluation")
-    @patch("llm_judge_evaluator.call_judge_model")
-    @patch("llm_judge_evaluator.OpenAI")
-    @patch("llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.log_error")
+    @patch("scripts.llm_judge_evaluator.log_section")
+    @patch("scripts.llm_judge_evaluator.log_success")
+    @patch("scripts.llm_judge_evaluator.log_warning")
+    @patch("scripts.llm_judge_evaluator.log_info")
+    @patch("scripts.llm_judge_evaluator.tqdm")
+    @patch("scripts.llm_judge_evaluator.extract_scores_from_evaluation")
+    @patch("scripts.llm_judge_evaluator.call_judge_model")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
     def test_process_csv_with_header(self, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error, mock_input):
         """Test process_csv with CSV file that has header row"""
         # Mock input to avoid interactive prompt
@@ -383,17 +383,17 @@ class TestLLMJudgeProcessCsv:
 
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     @patch("builtins.input")
-    @patch("llm_judge_evaluator.log_error")
-    @patch("llm_judge_evaluator.log_section")
-    @patch("llm_judge_evaluator.log_success")
-    @patch("llm_judge_evaluator.log_warning")
-    @patch("llm_judge_evaluator.log_info")
-    @patch("llm_judge_evaluator.tqdm")
-    @patch("llm_judge_evaluator.extract_scores_from_evaluation")
-    @patch("llm_judge_evaluator.call_judge_model")
-    @patch("llm_judge_evaluator.OpenAI")
-    @patch("llm_judge_evaluator.AzureOpenAI")
-    @patch("llm_judge_evaluator.pd.DataFrame.to_csv")
+    @patch("scripts.llm_judge_evaluator.log_error")
+    @patch("scripts.llm_judge_evaluator.log_section")
+    @patch("scripts.llm_judge_evaluator.log_success")
+    @patch("scripts.llm_judge_evaluator.log_warning")
+    @patch("scripts.llm_judge_evaluator.log_info")
+    @patch("scripts.llm_judge_evaluator.tqdm")
+    @patch("scripts.llm_judge_evaluator.extract_scores_from_evaluation")
+    @patch("scripts.llm_judge_evaluator.call_judge_model")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.pd.DataFrame.to_csv")
     def test_process_csv_no_cost_estimate_message(self, mock_to_csv, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error, mock_input):
         """Test that cost estimate message is removed and replaced with guidance message"""
         # Mock input to avoid interactive prompt
@@ -455,8 +455,8 @@ class TestLLMJudgeProcessCsv:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
 
-    @patch("llm_judge_evaluator.AzureOpenAI")
-    @patch("llm_judge_evaluator.OpenAI")
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
     def test_process_csv_file_not_found(self, mock_openai, mock_azure):
         """Test process_csv with non-existent file"""
         with pytest.raises(SystemExit):
@@ -467,15 +467,15 @@ class TestRagasProcessCsv:
     """Tests for ragas_llm_judge_evaluator.process_csv"""
 
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
-    @patch("ragas_llm_judge_evaluator.log_error")
-    @patch("ragas_llm_judge_evaluator.log_section")
-    @patch("ragas_llm_judge_evaluator.log_success")
-    @patch("ragas_llm_judge_evaluator.log_warning")
-    @patch("ragas_llm_judge_evaluator.log_info")
-    @patch("ragas_llm_judge_evaluator.tqdm")
-    @patch("ragas_llm_judge_evaluator.parse_react_log")
-    @patch("ragas_llm_judge_evaluator.evaluate_with_ragas")
-    @patch("ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
+    @patch("scripts.ragas_llm_judge_evaluator.log_error")
+    @patch("scripts.ragas_llm_judge_evaluator.log_section")
+    @patch("scripts.ragas_llm_judge_evaluator.log_success")
+    @patch("scripts.ragas_llm_judge_evaluator.log_warning")
+    @patch("scripts.ragas_llm_judge_evaluator.log_info")
+    @patch("scripts.ragas_llm_judge_evaluator.tqdm")
+    @patch("scripts.ragas_llm_judge_evaluator.parse_react_log")
+    @patch("scripts.ragas_llm_judge_evaluator.evaluate_with_ragas")
+    @patch("scripts.ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
     def test_process_csv_with_header(self, mock_init, mock_evaluate, mock_parse_react, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error):
         """Test process_csv with CSV file that has header row"""
         # Mock tqdm to return the iterable directly
@@ -525,7 +525,7 @@ class TestRagasProcessCsv:
                 if os.path.exists(f):
                     os.unlink(f)
 
-    @patch("ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
+    @patch("scripts.ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     def test_process_csv_file_not_found(self, mock_init):
         """Test process_csv with non-existent file"""

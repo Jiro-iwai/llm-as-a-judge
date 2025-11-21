@@ -20,19 +20,24 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import pandas as pd
-from openai import OpenAI, AzureOpenAI
-from tqdm import tqdm
-from dotenv import load_dotenv
+# Add project root to Python path (must be before other imports)
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from config.model_configs import (
+import pandas as pd  # noqa: E402
+from openai import OpenAI, AzureOpenAI  # noqa: E402
+from tqdm import tqdm  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+
+from src.config.model_configs import (  # noqa: E402
     DEFAULT_MODEL,
     SUPPORTED_MODELS,
     get_full_config as get_model_config_from_common,
 )
-from utils.logging_config import (
+from src.utils.logging_config import (  # noqa: E402
     log_info,
     log_error,
     log_warning,
@@ -40,7 +45,7 @@ from utils.logging_config import (
     log_section,
     setup_logging,
 )
-from config.app_config import (
+from src.config.app_config import (  # noqa: E402
     get_timeout,
     get_max_retries,
     get_retry_delay,
@@ -74,7 +79,7 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
     config = get_model_config_from_common(model_name_lower)
 
     # If model not found, common module returns default, but we should warn
-    from config.model_configs import _find_model_key
+    from src.config.model_configs import _find_model_key
 
     if _find_model_key(model_name_lower) is None:
         log_warning(
