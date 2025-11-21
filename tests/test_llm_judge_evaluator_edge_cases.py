@@ -5,9 +5,14 @@ This module tests edge cases and error handling paths that are not
 covered by other tests.
 """
 
+import os
 import sys
+import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
+import pandas as pd
+import pytest
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,9 +21,74 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 class TestProcessCsvEdgeCases:
     """Tests for process_csv edge cases."""
 
-    # Note: process_csv tests are complex and require full environment setup
-    # These edge cases are better tested through integration tests
-    pass
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
+    def test_process_csv_file_not_found(self, mock_openai, mock_azure):
+        """Test process_csv handles FileNotFoundError."""
+        from scripts.llm_judge_evaluator import process_csv
+
+        with pytest.raises(SystemExit):
+            process_csv("nonexistent_file.csv", "output.csv")
+
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
+    @patch("scripts.llm_judge_evaluator.pd.read_csv")
+    def test_process_csv_empty_data_error(self, mock_read_csv, mock_openai, mock_azure):
+        """Test process_csv handles EmptyDataError."""
+        from scripts.llm_judge_evaluator import process_csv
+
+        # Mock pd.read_csv to raise EmptyDataError
+        mock_read_csv.side_effect = pd.errors.EmptyDataError("No columns to parse from file")
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
+            temp_file = f.name
+
+        try:
+            with pytest.raises(SystemExit):
+                process_csv(temp_file, "output.csv")
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
+    @patch("scripts.llm_judge_evaluator.pd.read_csv")
+    def test_process_csv_parser_error(self, mock_read_csv, mock_openai, mock_azure):
+        """Test process_csv handles ParserError."""
+        from scripts.llm_judge_evaluator import process_csv
+
+        # Mock pd.read_csv to raise ParserError
+        mock_read_csv.side_effect = pd.errors.ParserError("Error tokenizing data")
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
+            temp_file = f.name
+
+        try:
+            with pytest.raises(SystemExit):
+                process_csv(temp_file, "output.csv")
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    @patch("scripts.llm_judge_evaluator.AzureOpenAI")
+    @patch("scripts.llm_judge_evaluator.OpenAI")
+    @patch("builtins.open")
+    def test_process_csv_permission_error(self, mock_open, mock_openai, mock_azure):
+        """Test process_csv handles PermissionError."""
+        from scripts.llm_judge_evaluator import process_csv
+
+        # Mock open to raise PermissionError
+        mock_open.side_effect = PermissionError("Permission denied")
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
+            temp_file = f.name
+
+        try:
+            with pytest.raises(SystemExit):
+                process_csv(temp_file, "output.csv")
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
 
 
 class TestExtractScoresEdgeCases:
