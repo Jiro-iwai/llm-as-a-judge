@@ -433,7 +433,7 @@ python scripts/llm_judge_evaluator.py my_test_data.csv
 
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `output/evaluation_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `evaluation_output.csv`、`run_full_pipeline.py`経由の場合は `output/evaluation_output.csv`）には以下が含まれます：
 
   - すべての元の列（Question, Model_A_Response, Model_B_Response）
   - 各モデル（AとB）について：
@@ -601,7 +601,7 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `ragas_output/evaluation_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `ragas_evaluation_output.csv`、`run_full_pipeline.py`経由の場合は `output/ragas_evaluation_output.csv`）には以下が含まれます：
 
   - **元の列**：Question, Model\_A\_Response, Model\_B\_Response
   - **解析された列**：
@@ -719,7 +719,7 @@ python scripts/format_clarity_evaluator.py input.csv
 
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `output/format_clarity_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `format_clarity_output.csv`、`run_full_pipeline.py`経由の場合は `output/format_clarity_output.csv`）には以下が含まれます：
 
 | 列 | 説明 |
 |--------|-------------|
@@ -802,7 +802,7 @@ python scripts/collect_responses.py questions.txt --time-log custom_time_log.txt
 - **CSVファイル（.csv）**: 最初の列に質問（ヘッダー行は任意）
 
 **出力：**
-- `output/collected_responses.csv`（デフォルト）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
+- `collected_responses.csv`（デフォルト、`run_full_pipeline.py`経由の場合は `output/collected_responses.csv`）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
 - `processing_time_log.txt`: 各API呼び出しの処理時間ログ
 - `processing_time_comparison.png`, `processing_time_statistics.png`, `processing_time_summary.txt`: 処理時間比較チャートと統計サマリー
 
@@ -920,8 +920,10 @@ python scripts/visualize_results.py my_evaluation_results.csv
 # モデル名を指定して可視化（PNGファイルに実際のモデル名が表示されます）
 python scripts/visualize_results.py output/evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
 
-# ragas_output/evaluation_output.csvを可視化
-python scripts/visualize_results.py ragas_output/evaluation_output.csv
+# ragas_evaluation_output.csvを可視化（直接実行した場合）
+python scripts/visualize_results.py ragas_evaluation_output.csv
+# または、run_full_pipeline.py経由で実行した場合
+python scripts/visualize_results.py output/ragas_evaluation_output.csv
 
 # output/format_clarity_output.csvを可視化
 python scripts/visualize_results.py output/format_clarity_output.csv
@@ -952,10 +954,10 @@ python scripts/visualize_results.py output/format_clarity_output.csv
 
 **出力ファイル：**
 
-- `evaluation_comparison.png`: Model AとModel Bのスコア比較チャート（バーチャート）
-- `evaluation_distribution.png`: スコア分布のヒストグラム
-- `evaluation_boxplot.png`: スコア分布の箱ひげ図
-- `evaluation_summary.txt`: 統計サマリーテーブル（平均、最小、最大、標準偏差など）
+- `output/evaluation_comparison.png`: Model AとModel Bのスコア比較チャート（バーチャート）
+- `output/evaluation_distribution.png`: スコア分布のヒストグラム
+- `output/evaluation_boxplot.png`: スコア分布の箱ひげ図
+- `output/evaluation_summary.txt`: 統計サマリーテーブル（平均、最小、最大、標準偏差など）
 
 **使用例：**
 
@@ -970,7 +972,7 @@ python scripts/visualize_results.py output/evaluation_output.csv --model-a claud
 python scripts/visualize_results.py output/evaluation_output.csv
 
 # 3. 生成されたファイルを確認
-ls -la evaluation_*.png evaluation_summary.txt
+ls -la output/evaluation_*.png output/evaluation_summary.txt
 ```
 
 **注意：**
@@ -1045,7 +1047,7 @@ python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
 
 2. **Step 2: 評価実行**
    - 選択された評価スクリプトを実行
-   - 出力: `output/evaluation_output.csv`（llm-judge）、`ragas_output/evaluation_output.csv`（ragas）、`output/format_clarity_output.csv`（format-clarity）
+   - 出力: `output/evaluation_output.csv`（llm-judge）、`output/ragas_evaluation_output.csv`（ragas）、`output/format_clarity_output.csv`（format-clarity）
 
 3. **Step 3: 結果可視化**（`--skip-visualize`が指定されていない場合）
    - `visualize_results.py`を実行
