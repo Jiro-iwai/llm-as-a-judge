@@ -309,6 +309,7 @@ class TestReadQuestionsErrorHandling:
 class TestCollectResponsesConfigDefaults:
     """Tests for collect_responses config defaults."""
 
+    @patch("scripts.collect_responses.time.sleep")
     @patch("scripts.collect_responses.get_default_identity")
     @patch("scripts.collect_responses.get_timeout")
     @patch("scripts.collect_responses.get_api_delay")
@@ -321,6 +322,7 @@ class TestCollectResponsesConfigDefaults:
         mock_get_delay,
         mock_get_timeout,
         mock_get_identity,
+        mock_sleep,
     ):
         """Test collect_responses uses config defaults when None."""
         from scripts.collect_responses import collect_responses
@@ -345,4 +347,6 @@ class TestCollectResponsesConfigDefaults:
         mock_get_identity.assert_called_once()
         mock_get_timeout.assert_called_once()
         mock_get_delay.assert_called_once()
+        # Verify that time.sleep was called (for rate limiting)
+        assert mock_sleep.called
 

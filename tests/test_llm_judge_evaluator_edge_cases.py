@@ -116,16 +116,20 @@ class TestExtractScoresEdgeCases:
 class TestCallJudgeModelEdgeCases:
     """Tests for call_judge_model edge cases."""
 
-    def test_call_judge_model_with_none_client(self):
+    @patch("scripts.llm_judge_evaluator.time.sleep")
+    def test_call_judge_model_with_none_client(self, mock_sleep):
         """Test call_judge_model handles None client."""
         from scripts.llm_judge_evaluator import call_judge_model
 
         # call_judge_model signature: (client, question, model_a_response, model_b_response, model_name, ...)
         # When client is None, it will fail after retries and return None
+        # Mock time.sleep to avoid actual delays during retries
         result = call_judge_model(
             None, "question", "response_a", "response_b", "model", timeout=10
         )  # type: ignore[call-arg]
 
         # Should return None after all retries fail
         assert result is None
+        # Verify that time.sleep was called during retries
+        assert mock_sleep.called
 
