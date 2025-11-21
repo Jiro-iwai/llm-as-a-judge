@@ -21,6 +21,8 @@ LLM-as-a-JudgeとRagasフレームワークを使用した、CyChat SDの応答�
   - [Ragas-Based Evaluator](#ragas-based-evaluator)
   - [Format Clarity Evaluator](#format-clarity-evaluator)
   - [データ収集スクリプト](#データ収集スクリプト)
+  - [処理時間比較スクリプト](#処理時間比較スクリプト)
+  - [結果可視化スクリプト](#結果可視化スクリプト)
   - [エラーハンドリング](#エラーハンドリング)
   - [パフォーマンスに関する考慮事項](#パフォーマンスに関する考慮事項)
 
@@ -777,6 +779,72 @@ python collect_responses.py questions.txt -o responses.csv
 # 3. 収集したデータを評価
 python llm_judge_evaluator.py responses.csv -n 5
 ```
+
+-----
+
+## 処理時間比較スクリプト
+
+### `compare_processing_time.py` - 処理時間比較スクリプト
+
+ログファイルから2つのモデルの処理時間を抽出し、比較チャートや統計情報を生成するスクリプトです。
+
+**主な機能：**
+- ログファイルから処理時間を抽出（正規表現パターンを使用）
+- 処理時間比較チャート（バーチャート）
+- 統計チャート（平均、分布、トレンド、速度比）
+- サマリーテーブル（詳細な統計情報）
+
+**使用方法：**
+
+```bash
+# 基本的な使用方法（デフォルトのログファイル名: tmp.txt）
+python compare_processing_time.py
+
+# カスタムログファイルを指定
+python compare_processing_time.py log_file.txt
+```
+
+**設定値の外部化：**
+
+正規表現パターンと出力ファイル名は、環境変数または設定ファイルから読み込まれます：
+
+- `APP_REGEX_MODEL_A_PATTERN`: Model Aの処理時間を抽出する正規表現パターン
+- `APP_REGEX_MODEL_B_PATTERN`: Model Bの処理時間を抽出する正規表現パターン
+- `APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`: 比較チャートの出力ファイル名
+- `APP_OUTPUT_FILE_PROCESSING_TIME_STATISTICS`: 統計チャートの出力ファイル名
+- `APP_OUTPUT_FILE_PROCESSING_TIME_SUMMARY`: サマリーテーブルの出力ファイル名
+
+詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
+
+**入力ファイル形式：**
+
+ログファイルには、以下のような形式で処理時間情報が含まれている必要があります：
+
+```
+📥 [claude3.5-sonnet] ... 経過時間: 12.34秒
+📥 [claude4.5-haiku] ... 経過時間: 8.90秒
+```
+
+**出力ファイル：**
+
+- `processing_time_comparison.png`: Model AとModel Bの処理時間比較チャート（バーチャート）
+- `processing_time_statistics.png`: 統計チャート（平均、分布、トレンド、速度比の4つのサブプロット）
+- `processing_time_summary.txt`: 詳細な統計サマリーテーブル（各質問の処理時間、差分、速度比、全体統計）
+
+**使用例：**
+
+```bash
+# 1. ログファイルを準備（API呼び出しのログなど）
+# 2. 処理時間を抽出して比較
+python compare_processing_time.py api_logs.txt
+
+# 3. 生成されたファイルを確認
+ls -la processing_time_*.png processing_time_summary.txt
+```
+
+**注意：**
+- Model AとModel Bのデータ数が一致しない場合、少ない方に合わせて調整されます
+- 正規表現パターンは設定ファイルまたは環境変数でカスタマイズ可能です
 
 -----
 

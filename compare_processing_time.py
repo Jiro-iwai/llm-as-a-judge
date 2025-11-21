@@ -47,7 +47,21 @@ plt.rcParams["figure.figsize"] = (14, 8)
 def extract_processing_times(
     log_file: str,
 ) -> Tuple[List[int], List[float], List[float]]:
-    """ログファイルから処理時間を抽出"""
+    """
+    Extract processing times for two models from a log file.
+
+    Args:
+        log_file: Path to the log file containing processing time information.
+
+    Returns:
+        A tuple containing:
+        - List of question numbers (1-indexed)
+        - List of Model A processing times (in seconds)
+        - List of Model B processing times (in seconds)
+
+    Raises:
+        SystemExit: If the log file is not found.
+    """
 
     model_a_times = []
     model_b_times = []
@@ -95,7 +109,19 @@ def create_comparison_chart(
     model_b_times: List[float],
     output_file: str = "processing_time_comparison.png",
 ) -> None:
-    """処理時間比較チャートを作成"""
+    """
+    Create a bar chart comparing processing times between two models.
+
+    Args:
+        question_numbers: List of question numbers (x-axis labels).
+        model_a_times: List of processing times for Model A (in seconds).
+        model_b_times: List of processing times for Model B (in seconds).
+        output_file: Path to save the output PNG file. Defaults to
+            "processing_time_comparison.png".
+
+    Returns:
+        None. The chart is saved to the specified output file.
+    """
 
     # バーチャートを作成
     x = question_numbers
@@ -141,7 +167,25 @@ def create_statistics_chart(
     model_b_times: List[float],
     output_file: str = "processing_time_statistics.png",
 ) -> None:
-    """統計チャートを作成"""
+    """
+    Create a statistics chart with multiple subplots showing processing time analysis.
+
+    The chart includes:
+    - Average processing time comparison
+    - Processing time distribution (histogram)
+    - Processing time trend over questions
+    - Speedup ratio comparison
+
+    Args:
+        question_numbers: List of question numbers (x-axis labels).
+        model_a_times: List of processing times for Model A (in seconds).
+        model_b_times: List of processing times for Model B (in seconds).
+        output_file: Path to save the output PNG file. Defaults to
+            "processing_time_statistics.png".
+
+    Returns:
+        None. The chart is saved to the specified output file.
+    """
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
@@ -241,7 +285,25 @@ def create_summary_table(
     model_b_times: List[float],
     output_file: str = "processing_time_summary.txt",
 ) -> None:
-    """サマリーテーブルを作成"""
+    """
+    Create a summary table with detailed processing time statistics.
+
+    The table includes:
+    - Per-question processing times for both models
+    - Difference and speedup ratio for each question
+    - Overall statistics (mean, min, max, standard deviation)
+    - Time reduction percentage
+
+    Args:
+        question_numbers: List of question numbers.
+        model_a_times: List of processing times for Model A (in seconds).
+        model_b_times: List of processing times for Model B (in seconds).
+        output_file: Path to save the output text file. Defaults to
+            "processing_time_summary.txt".
+
+    Returns:
+        None. The summary table is saved to the specified output file.
+    """
 
     df = pd.DataFrame(
         {
