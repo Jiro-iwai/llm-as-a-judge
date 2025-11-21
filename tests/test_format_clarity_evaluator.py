@@ -152,16 +152,16 @@ class TestCreateUserPrompt:
     def test_create_user_prompt_basic(self):
         """Test creating a basic user prompt"""
         question = "テスト質問"
-        claude_35_answer = "Claude 3.5の回答"
-        claude_45_answer = "Claude 4.5の回答"
+        model_a_answer = "モデルAの回答"
+        model_b_answer = "モデルBの回答"
 
-        prompt = create_user_prompt(question, claude_35_answer, claude_45_answer)
+        prompt = create_user_prompt(question, model_a_answer, model_b_answer)
 
         assert question in prompt
-        assert claude_35_answer in prompt
-        assert claude_45_answer in prompt
-        assert "Claude 3.5" in prompt
-        assert "Claude 4.5" in prompt
+        assert model_a_answer in prompt
+        assert model_b_answer in prompt
+        assert "Model A" in prompt
+        assert "Model B" in prompt
 
     def test_create_user_prompt_empty_strings(self):
         """Test creating prompt with empty strings"""

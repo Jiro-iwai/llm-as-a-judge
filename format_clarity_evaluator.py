@@ -2,8 +2,8 @@
 """
 Format Clarity Evaluator - LLM-as-a-Judge for Stylistic Similarity
 
-This script evaluates how closely the formatting and style of Claude 4.5 Sonnet's
-responses match Claude 3.5 Sonnet's responses (the baseline/golden standard).
+This script evaluates how closely the formatting and style of Model A's responses
+match Model B's responses (the baseline/golden standard).
 
 It reads raw ReAct logs from a CSV file, parses the Final Answer sections,
 and uses an LLM judge (GPT-5 or GPT-4-turbo) to score format similarity on a 1-5 scale.
@@ -78,28 +78,28 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
 JUDGE_SYSTEM_PROMPT = """You are a meticulous AI evaluator specializing in text formatting and stylistic consistency.
 
 **Your Task:**
-Your sole task is to evaluate how closely the format of the "Claude 4.5 Sonnet Answer" matches the format of the "Claude 3.5 Sonnet Answer". The "Claude 3.5 Sonnet Answer" is the golden standard, and you are scoring the "Claude 4.5 Sonnet Answer" on its ability to mimic that style.
+Your sole task is to evaluate how closely the format of the "Model A Answer" matches the format of the "Model B Answer". The "Model B Answer" is the golden standard, and you are scoring the "Model A Answer" on its ability to mimic that style.
 
 You must provide a score from 1 to 5, using the detailed rubric below. You must return your evaluation as a single, valid JSON object and nothing else.
 
 ### **Detailed Scoring Rubric: Format/Clarity (回答の形式)**
 
-*Focus: Compare the "Claude 4.5 Sonnet Answer" directly against the "Claude 3.5 Sonnet Answer". Evaluate the similarity in markdown (headings, bolding), list structures (bullets/numbers), and overall logical separation of ideas.*
+*Focus: Compare the "Model A Answer" directly against the "Model B Answer". Evaluate the similarity in markdown (headings, bolding), list structures (bullets/numbers), and overall logical separation of ideas.*
 
 - **5 (Excellent - Near Identical):**
-    The "Claude 4.5 Sonnet" response uses virtually identical formatting to the "Claude 3.5 Sonnet" response. It effectively mirrors the use of markdown headings (e.g., `##`), bold text (`**...**`), bullet points (`-`), and logical paragraph breaks. The structure is a clear match.
+    The Model A response uses virtually identical formatting to the Model B response. It effectively mirrors the use of markdown headings (e.g., `##`), bold text (`**...**`), bullet points (`-`), and logical paragraph breaks. The structure is a clear match.
 
 - **4 (Good - Mostly Similar):**
-    The "Claude 4.5 Sonnet" response follows the general structure (e.g., headings, lists) of the "Claude 3.5 Sonnet" response but has minor, non-critical deviations. For example, it might use bullets where the 3.5 model used numbers, or miss a single bolded word, but the overall style is clearly aligned.
+    The Model A response follows the general structure (e.g., headings, lists) of the Model B response but has minor, non-critical deviations. For example, it might use bullets where Model B used numbers, or miss a single bolded word, but the overall style is clearly aligned.
 
 - **3 (Acceptable - Some Similarities):**
-    The "Claude 4.5 Sonnet" response shows some structural similarities but also has significant differences. For example, it might use lists where the 3.5 model used paragraphs, or be missing all the headings that the 3.5 model used. The style is noticeably different but not completely unrelated.
+    The Model A response shows some structural similarities but also has significant differences. For example, it might use lists where Model B used paragraphs, or be missing all the headings that Model B used. The style is noticeably different but not completely unrelated.
 
 - **2 (Poor - Mostly Different):**
-    The "Claude 4.5 Sonnet" response is mostly different. It might use some basic formatting (like paragraph breaks), but it does not resemble the structure or style (e.g., use of headings and lists) of the "Claude 3.5 Sonnet" response.
+    The Model A response is mostly different. It might use some basic formatting (like paragraph breaks), but it does not resemble the structure or style (e.g., use of headings and lists) of the Model B response.
 
 - **1 (Very Poor - No Resemblance):**
-    The "Claude 4.5 Sonnet" response format is completely different. For example, the 3.5 model provided a structured, multi-part answer, and the 4.5 model returned a single, dense block of text (or vice-versa).
+    The Model A response format is completely different. For example, Model B provided a structured, multi-part answer, and Model A returned a single, dense block of text (or vice-versa).
 
 ---
 **Required JSON Output Format:**
@@ -158,30 +158,28 @@ def parse_final_answer(raw_log: str) -> str:
         return raw_log
 
 
-def create_user_prompt(
-    question: str, claude_35_answer: str, claude_45_answer: str
-) -> str:
+def create_user_prompt(question: str, model_a_answer: str, model_b_answer: str) -> str:
     """
     Create the user prompt that will be sent to the judge model.
 
     Args:
         question: The original user question
-        claude_35_answer: Parsed final answer from Claude 3.5 Sonnet (baseline)
-        claude_45_answer: Parsed final answer from Claude 4.5 Sonnet (candidate)
+        model_a_answer: Parsed final answer from Model A (to be evaluated)
+        model_b_answer: Parsed final answer from Model B (golden standard/baseline)
 
     Returns:
         Formatted prompt string
     """
-    return f"""Please evaluate how closely the formatting and style of the Claude 4.5 Sonnet Answer matches the Claude 3.5 Sonnet Answer.
+    return f"""Please evaluate how closely the formatting and style of the Model A Answer matches the Model B Answer.
 
 **Question:**
 {question}
 
-**Claude 3.5 Sonnet Answer (Golden Standard):**
-{claude_35_answer}
+**Model B Answer (Golden Standard):**
+{model_b_answer}
 
-**Claude 4.5 Sonnet Answer (To Be Evaluated):**
-{claude_45_answer}
+**Model A Answer (To Be Evaluated):**
+{model_a_answer}
 
 Provide your evaluation as a JSON object following the specified format."""
 
@@ -189,8 +187,8 @@ Provide your evaluation as a JSON object following the specified format."""
 def call_judge_model(
     client: Union[OpenAI, AzureOpenAI],
     question: str,
-    claude_35_answer: str,
-    claude_45_answer: str,
+    model_a_answer: str,
+    model_b_answer: str,
     model_name: str = "gpt-4-turbo",
     is_azure: bool = False,
     max_retries: Optional[int] = None,
@@ -202,8 +200,8 @@ def call_judge_model(
     Args:
         client: OpenAI or AzureOpenAI client instance
         question: The original user question
-        claude_35_answer: Parsed final answer from Claude 3.5 Sonnet
-        claude_45_answer: Parsed final answer from Claude 4.5 Sonnet
+        model_a_answer: Parsed final answer from Model A (to be evaluated)
+        model_b_answer: Parsed final answer from Model B (golden standard/baseline)
         model_name: Model name or Azure deployment name
         is_azure: Whether using Azure OpenAI (affects parameter naming)
         max_retries: Maximum number of retry attempts on failure (defaults to config value)
@@ -218,7 +216,7 @@ def call_judge_model(
     if retry_delay is None:
         retry_delay = get_retry_delay()
 
-    user_prompt = create_user_prompt(question, claude_35_answer, claude_45_answer)
+    user_prompt = create_user_prompt(question, model_a_answer, model_b_answer)
 
     for attempt in range(max_retries):
         response: Any = None
@@ -515,8 +513,8 @@ def process_csv(
     # Prepare output columns
     output_columns = [
         "Question",
-        "Claude_3.5_Final_Answer",
-        "Claude_4.5_Final_Answer",
+        "Model_A_Final_Answer",
+        "Model_B_Final_Answer",
         "Format_Clarity_Score",
         "Format_Clarity_Justification",
         "Evaluation_Error",
@@ -550,22 +548,22 @@ def process_csv(
         )
 
         # Parse the final answers from the raw logs
-        claude_35_final_answer = parse_final_answer(model_a_raw_log)
-        claude_45_final_answer = parse_final_answer(model_b_raw_log)
+        model_a_final_answer = parse_final_answer(model_a_raw_log)
+        model_b_final_answer = parse_final_answer(model_b_raw_log)
 
         # Initialize result row with parsed data
         result_row = {
             "Question": question,
-            "Claude_3.5_Final_Answer": claude_35_final_answer,
-            "Claude_4.5_Final_Answer": claude_45_final_answer,
+            "Model_A_Final_Answer": model_a_final_answer,
+            "Model_B_Final_Answer": model_b_final_answer,
         }
 
         # Call judge model
         evaluation = call_judge_model(
             client,
             question,
-            claude_35_final_answer,
-            claude_45_final_answer,
+            model_a_final_answer,
+            model_b_final_answer,
             model_name=model_name,
             is_azure=is_azure,
         )
@@ -631,7 +629,7 @@ def main():
     Main entry point for the script.
     """
     parser = argparse.ArgumentParser(
-        description="Format Clarity Evaluator - Compare formatting similarity between Claude 3.5 and 4.5",
+        description="Format Clarity Evaluator - Compare formatting similarity between two models",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -640,10 +638,10 @@ Examples:
     python format_clarity_evaluator.py input.csv -n 5  # Test with first 5 rows only
 
 Input CSV Format:
-    - NO header row
+    - Header row optional
     - Column A: Question
-    - Column B: Claude 3.5 Sonnet answer (Full raw ReAct log)
-    - Column C: Claude 4.5 Sonnet answer (Full raw ReAct log)
+    - Column B: Model A answer (Full raw ReAct log)
+    - Column C: Model B answer (Full raw ReAct log)
 
 Setup for Azure OpenAI:
     1. Install dependencies: pip install -r requirements.txt
@@ -729,7 +727,7 @@ How It Works:
                 break
 
     log_section("Format Clarity Evaluator - LLM-as-a-Judge")
-    log_info("Comparing Claude 4.5 Sonnet formatting against Claude 3.5 Sonnet")
+    log_info("Comparing Model A formatting against Model B (golden standard)")
 
     # Determine model name
     model_name = args.model or os.getenv("MODEL_NAME", DEFAULT_MODEL)
