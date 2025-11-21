@@ -700,7 +700,7 @@ def process_csv(
     else:
         log_warning(f"API呼び出し回数: {len(df)}回（モデル: {model_name}）", indent=0)
         log_warning(
-            f"推定コスト: ${len(df) * 0.15:.2f} - ${len(df) * 0.50:.2f}（概算）",
+            "APIコストがかかるため、まずは-nフラグで少量から試すことを推奨します",
             indent=0,
         )
 

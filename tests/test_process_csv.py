@@ -185,6 +185,67 @@ class TestFormatClarityProcessCsv:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
 
+    @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
+    @patch("builtins.input")
+    @patch("format_clarity_evaluator.log_error")
+    @patch("format_clarity_evaluator.log_success")
+    @patch("format_clarity_evaluator.log_warning")
+    @patch("format_clarity_evaluator.log_info")
+    @patch("format_clarity_evaluator.tqdm")
+    @patch("format_clarity_evaluator.parse_final_answer")
+    @patch("format_clarity_evaluator.extract_scores_from_evaluation")
+    @patch("format_clarity_evaluator.call_judge_model")
+    @patch("format_clarity_evaluator.OpenAI")
+    @patch("format_clarity_evaluator.AzureOpenAI")
+    @patch("format_clarity_evaluator.pd.DataFrame.to_csv")
+    def test_process_csv_no_cost_estimate_message(self, mock_to_csv, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_parse_final, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_error, mock_input):
+        """Test that cost estimate message is removed and replaced with guidance message"""
+        # Mock input to avoid interactive prompt
+        mock_input.return_value = "y"
+        
+        # Mock tqdm to return the iterable directly
+        mock_tqdm.side_effect = lambda x, **kwargs: x
+        
+        # Mock parse_final_answer
+        mock_parse_final.side_effect = lambda x: f"Parsed: {x[:10]}"
+        
+        # Mock extract_scores_from_evaluation
+        mock_extract_scores.return_value = (4, "Good formatting")
+        
+        # Mock call_judge_model
+        mock_call_judge.return_value = {"format_clarity_evaluation": {"score": 4, "justification": "Good"}}
+        
+        # Mock Azure client
+        mock_client = MagicMock()
+        mock_azure.return_value = mock_client
+        
+        # Create test CSV with 15 rows (should trigger cost message area)
+        test_data = pd.DataFrame({
+            "Question": [f"Q{i}" for i in range(15)],
+            "Model_A_Response": [f"A{i}" for i in range(15)],
+            "Model_B_Response": [f"B{i}" for i in range(15)],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
+            test_data.to_csv(f.name, index=False)
+            temp_file = f.name
+
+        try:
+            format_process_csv(temp_file, "output.csv", non_interactive=True)
+            
+            # Verify that cost estimate message (with $) is NOT logged
+            warning_calls = [str(call) for call in mock_log_warning.call_args_list]
+            cost_estimate_found = any("Estimated cost" in str(call) or "$" in str(call) for call in warning_calls)
+            assert not cost_estimate_found, "Cost estimate message should be removed"
+            
+            # Verify that guidance message is logged instead
+            guidance_found = any("API costs" in str(call) or "-n flag" in str(call) for call in warning_calls)
+            assert guidance_found, "Guidance message should be logged"
+            
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
     @patch("format_clarity_evaluator.AzureOpenAI")
     @patch("format_clarity_evaluator.OpenAI")
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True)
@@ -319,6 +380,80 @@ class TestLLMJudgeProcessCsv:
             for f in [temp_file, output_file]:
                 if os.path.exists(f):
                     os.unlink(f)
+
+    @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
+    @patch("builtins.input")
+    @patch("llm_judge_evaluator.log_error")
+    @patch("llm_judge_evaluator.log_section")
+    @patch("llm_judge_evaluator.log_success")
+    @patch("llm_judge_evaluator.log_warning")
+    @patch("llm_judge_evaluator.log_info")
+    @patch("llm_judge_evaluator.tqdm")
+    @patch("llm_judge_evaluator.extract_scores_from_evaluation")
+    @patch("llm_judge_evaluator.call_judge_model")
+    @patch("llm_judge_evaluator.OpenAI")
+    @patch("llm_judge_evaluator.AzureOpenAI")
+    @patch("llm_judge_evaluator.pd.DataFrame.to_csv")
+    def test_process_csv_no_cost_estimate_message(self, mock_to_csv, mock_azure, mock_openai, mock_call_judge, mock_extract_scores, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error, mock_input):
+        """Test that cost estimate message is removed and replaced with guidance message"""
+        # Mock input to avoid interactive prompt
+        mock_input.return_value = "y"
+        
+        # Mock tqdm to return the iterable directly
+        mock_tqdm.side_effect = lambda x, **kwargs: x
+        
+        # Mock extract_scores_from_evaluation
+        def mock_extract(evaluation, model_key):
+            return {
+                "citation_score": 5,
+                "relevance_score": 5,
+                "citation_justification": "Good",
+                "relevance_justification": "Excellent",
+                "react_performance_thought_score": 5,
+                "react_performance_thought_justification": "Good",
+                "rag_retrieval_observation_score": 5,
+                "rag_retrieval_observation_justification": "Good",
+                "information_integration_score": 5,
+                "information_integration_justification": "Good",
+            }
+        mock_extract_scores.side_effect = mock_extract
+        
+        # Mock call_judge_model
+        mock_call_judge.return_value = {
+            "model_a_evaluation": {"citation_score": {"score": 5}},
+            "model_b_evaluation": {"citation_score": {"score": 5}},
+        }
+        
+        # Mock Azure client
+        mock_client = MagicMock()
+        mock_azure.return_value = mock_client
+        
+        # Create test CSV with 15 rows (should trigger cost message area)
+        test_data = pd.DataFrame({
+            "Question": [f"Q{i}" for i in range(15)],
+            "Model_A_Response": [f"A{i}" for i in range(15)],
+            "Model_B_Response": [f"B{i}" for i in range(15)],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
+            test_data.to_csv(f.name, index=False)
+            temp_file = f.name
+
+        try:
+            llm_process_csv(temp_file, "output.csv", non_interactive=True)
+            
+            # Verify that cost estimate message (with $) is NOT logged
+            warning_calls = [str(call) for call in mock_log_warning.call_args_list]
+            cost_estimate_found = any("推定コスト" in str(call) or "$" in str(call) for call in warning_calls)
+            assert not cost_estimate_found, "Cost estimate message should be removed"
+            
+            # Verify that guidance message is logged instead
+            guidance_found = any("APIコストがかかる" in str(call) or "-nフラグ" in str(call) for call in warning_calls)
+            assert guidance_found, "Guidance message should be logged"
+            
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
 
     @patch("llm_judge_evaluator.AzureOpenAI")
     @patch("llm_judge_evaluator.OpenAI")
