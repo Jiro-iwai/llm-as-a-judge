@@ -1,10 +1,11 @@
 """Unit tests for collect_responses.py"""
 
 import json
-import pytest
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
+
+import pytest
 
 # Add parent directory to path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -218,6 +219,33 @@ class TestCallApi:
         # Should return response.text when answer field is missing
         assert result == "Response text"
 
+    @patch("collect_responses.requests.post")
+    def test_call_api_logs_processing_time(self, mock_post, tmp_path):
+        """Test that processing time entries are written to the log file."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"answer": "Logged answer"}
+        mock_post.return_value = mock_response
+
+        log_file = tmp_path / "processing_time.log"
+        result = call_api(
+            "Test question",
+            "http://example.com/api",
+            "claude3.5-sonnet",
+            time_log_path=str(log_file),
+            question_number=2,
+            model_label="Model A",
+            verbose=False,
+        )
+
+        assert result == "Logged answer"
+        assert log_file.exists()
+        content = log_file.read_text(encoding="utf-8")
+        assert "claude3.5-sonnet" in content
+        assert "質問2" in content
+        assert "Model A" in content
+        assert "経過時間" in content
+
 
 class TestReadQuestions:
     """Tests for read_questions function"""
@@ -300,4 +328,40 @@ class TestReadQuestions:
         assert "Question 1" in result
         assert "Question 2" in result
         assert "# Comment" not in " ".join(result)
+
+
+class TestCollectResponsesIntegration:
+    """Tests for collect_responses helper integrations."""
+
+    @patch("collect_responses.generate_processing_time_reports")
+    @patch("collect_responses.format_response", side_effect=lambda x: x)
+    @patch(
+        "collect_responses.call_api",
+        side_effect=[
+            "Answer A1",
+            "Answer B1",
+            "Answer A2",
+            "Answer B2",
+        ],
+    )
+    def test_collect_responses_generates_reports(
+        self, mock_call_api, mock_format_response, mock_generate_reports, tmp_path
+    ):
+        """Test that collect_responses triggers processing time reports."""
+        from collect_responses import collect_responses
+
+        log_file = tmp_path / "time.log"
+        df = collect_responses(
+            questions=["Q1", "Q2"],
+            api_url="http://example.com/api",
+            model_a="claude3.5-sonnet",
+            model_b="claude4.5-haiku",
+            time_log_path=str(log_file),
+            verbose=False,
+            delay=0.0,
+        )
+
+        assert len(df) == 2
+        assert mock_call_api.call_count == 4  # two models per question
+        mock_generate_reports.assert_called_once_with(str(log_file))
 

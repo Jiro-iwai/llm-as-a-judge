@@ -66,6 +66,7 @@ help-collect:
 	@echo "=========================================="
 	@echo "collect_responses.py の使い方"
 	@echo "=========================================="
+	@echo "※ 応答収集後、処理時間ログと比較チャートを自動生成します"
 	@$(PYTHON) collect_responses.py --help
 
 help-visualize:
