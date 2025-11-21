@@ -44,7 +44,7 @@ class TestInitializeProcessingTimeLog:
         invalid_path = "/invalid/path/to/file.log"
 
         # Should not raise, but log a warning
-        with patch("collect_responses.log_warning") as mock_warning:
+        with patch("scripts.collect_responses.log_warning") as mock_warning:
             initialize_processing_time_log(invalid_path)
             mock_warning.assert_called_once()
 
@@ -86,7 +86,7 @@ class TestLogProcessingTimeEntry:
 
         invalid_path = "/invalid/path/to/file.log"
 
-        with patch("collect_responses.log_warning") as mock_warning:
+        with patch("scripts.collect_responses.log_warning") as mock_warning:
             log_processing_time_entry("model", 1.0, invalid_path)
             mock_warning.assert_called_once()
 
@@ -94,13 +94,13 @@ class TestLogProcessingTimeEntry:
 class TestCollectResponsesMain:
     """Tests for collect_responses.py main() function."""
 
-    @patch("collect_responses.collect_responses")
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
-    @patch("collect_responses.log_error")
-    @patch("collect_responses.log_warning")
+    @patch("scripts.collect_responses.collect_responses")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
+    @patch("scripts.collect_responses.log_error")
+    @patch("scripts.collect_responses.log_warning")
     def test_main_success(
         self,
         mock_warning,
@@ -130,15 +130,15 @@ class TestCollectResponsesMain:
             }
         )
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file), "-o", str(output_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file), "-o", str(output_file)]):
             main()
 
         mock_read_questions.assert_called_once()
         mock_collect_responses.assert_called_once()
         assert output_file.exists()
 
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_error")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_error")
     def test_main_empty_questions_file(self, mock_error, mock_read_questions, tmp_path):
         """Test main() function exits when no questions found."""
         from scripts.collect_responses import main
@@ -148,20 +148,20 @@ class TestCollectResponsesMain:
 
         mock_read_questions.return_value = []
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file)]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
 
         mock_error.assert_called()
 
-    @patch("collect_responses.collect_responses")
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
-    @patch("collect_responses.log_warning")
-    @patch("collect_responses.log_error")
+    @patch("scripts.collect_responses.collect_responses")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
+    @patch("scripts.collect_responses.log_warning")
+    @patch("scripts.collect_responses.log_error")
     def test_main_with_failed_responses(
         self,
         mock_error,
@@ -191,18 +191,18 @@ class TestCollectResponsesMain:
             }
         )
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file), "-o", str(output_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file), "-o", str(output_file)]):
             main()
 
         # Should log warnings about failed responses
         # Check that warnings were called (may be in Japanese or English)
         assert mock_warning.called or mock_error.called
 
-    @patch("collect_responses.collect_responses")
-    @patch("collect_responses.read_questions")
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
+    @patch("scripts.collect_responses.collect_responses")
+    @patch("scripts.collect_responses.read_questions")
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
     def test_main_saves_csv_with_quoting(
         self,
         mock_success,
@@ -230,7 +230,7 @@ class TestCollectResponsesMain:
         )
         mock_collect_responses.return_value = df
 
-        with patch("sys.argv", ["collect_responses.py", str(questions_file), "-o", str(output_file)]):
+        with patch("sys.argv", ["scripts/collect_responses.py", str(questions_file), "-o", str(output_file)]):
             main()
 
         # Verify CSV was saved with proper quoting

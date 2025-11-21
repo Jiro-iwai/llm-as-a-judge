@@ -38,7 +38,7 @@ class TestPipelineBasicFunctionality:
         # Import and run pipeline
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             main()
 
         # Verify subprocess.run was called 3 times
@@ -58,7 +58,7 @@ class TestPipelineBasicFunctionality:
 
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "ragas"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "ragas"]):
             main()
 
         # Should call collect, evaluation, and visualization
@@ -78,7 +78,7 @@ class TestPipelineBasicFunctionality:
 
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "format-clarity"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "format-clarity"]):
             main()
 
         # Should call collect, evaluation, and visualization
@@ -100,7 +100,7 @@ class TestPipelineBasicFunctionality:
 
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "all"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "all"]):
             main()
 
         # Should call collect once, then 3 evaluators, then visualize
@@ -126,7 +126,7 @@ class TestPipelineOptions:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--skip-collect",
                 "--evaluator",
@@ -154,7 +154,7 @@ class TestPipelineOptions:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--skip-visualize",
                 "--evaluator",
@@ -183,7 +183,7 @@ class TestPipelineOptions:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--model-a",
                 "claude4.5-sonnet",
@@ -216,7 +216,7 @@ class TestPipelineOptions:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--limit",
                 "5",
@@ -235,7 +235,7 @@ class TestPipelineErrorHandling:
     """Tests for error handling"""
 
     @patch("subprocess.run")
-    @patch("run_full_pipeline.Path")
+    @patch("scripts.run_full_pipeline.Path")
     def test_pipeline_fails_on_collect_error(self, mock_path_class, mock_subprocess_run):
         """Test that pipeline fails appropriately when collect step errors"""
         # Mock Path.exists() to return True for questions.txt
@@ -245,18 +245,18 @@ class TestPipelineErrorHandling:
 
         # Mock subprocess.run to raise CalledProcessError
         mock_subprocess_run.side_effect = subprocess.CalledProcessError(
-            returncode=1, cmd=["python", "collect_responses.py"], stderr="Error occurred"
+            returncode=1, cmd=["python", "scripts/collect_responses.py"], stderr="Error occurred"
         )
 
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
 
     @patch("subprocess.run")
-    @patch("run_full_pipeline.Path")
+    @patch("scripts.run_full_pipeline.Path")
     def test_pipeline_fails_on_evaluation_error(self, mock_path_class, mock_subprocess_run):
         """Test that pipeline fails appropriately when evaluation step errors"""
         # Mock Path.exists() to return True for questions.txt
@@ -267,13 +267,13 @@ class TestPipelineErrorHandling:
         mock_subprocess_run.side_effect = [
             Mock(returncode=0, stdout="", stderr=""),  # collect_responses.py succeeds
             subprocess.CalledProcessError(
-                returncode=1, cmd=["python", "llm_judge_evaluator.py"], stderr="Evaluation error"
+                returncode=1, cmd=["python", "scripts/llm_judge_evaluator.py"], stderr="Evaluation error"
             ),  # llm_judge_evaluator.py fails
         ]
 
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
@@ -292,7 +292,7 @@ class TestPipelineErrorHandling:
 
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "llm-judge"]):
             # Should not raise SystemExit, but log warning
             main()
 
@@ -304,7 +304,7 @@ class TestPipelineCommandLineArguments:
         """Test that --help option works correctly"""
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "--help"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "--help"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             # argparse exits with code 0 for --help
@@ -314,7 +314,7 @@ class TestPipelineCommandLineArguments:
         """Test that invalid --evaluator value raises error"""
         from scripts.run_full_pipeline import main
 
-        with patch("sys.argv", ["run_full_pipeline.py", "questions.txt", "--evaluator", "invalid"]):
+        with patch("sys.argv", ["scripts/run_full_pipeline.py", "questions.txt", "--evaluator", "invalid"]):
             with pytest.raises(SystemExit):
                 main()
 
@@ -339,7 +339,7 @@ class TestPipelineJudgeModelOption:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--evaluator",
                 "llm-judge",
@@ -372,7 +372,7 @@ class TestPipelineJudgeModelOption:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--evaluator",
                 "ragas",
@@ -407,7 +407,7 @@ class TestPipelineJudgeModelOption:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--evaluator",
                 "all",
@@ -441,7 +441,7 @@ class TestPipelineJudgeModelOption:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--evaluator",
                 "llm-judge",
@@ -454,7 +454,7 @@ class TestPipelineJudgeModelOption:
         eval_cmd = eval_call[0][0]
         # The script should still run, but -m might be absent (depends on default behavior)
         # We just verify the script was called
-        assert "llm_judge_evaluator.py" in eval_cmd
+        assert "scripts/llm_judge_evaluator.py" in eval_cmd
 
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
@@ -475,7 +475,7 @@ class TestPipelineJudgeModelOption:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--evaluator",
                 "llm-judge",
@@ -487,7 +487,7 @@ class TestPipelineJudgeModelOption:
         eval_call = mock_subprocess_run.call_args_list[1]
         eval_cmd = eval_call[0][0]
         assert "--yes" in eval_cmd, "Pipeline should pass --yes flag to evaluation script for non-interactive execution"
-        assert "llm_judge_evaluator.py" in eval_cmd
+        assert "scripts/llm_judge_evaluator.py" in eval_cmd
 
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
@@ -510,7 +510,7 @@ class TestPipelineJudgeModelOption:
         with patch(
             "sys.argv",
             [
-                "run_full_pipeline.py",
+                "scripts/run_full_pipeline.py",
                 "questions.txt",
                 "--evaluator",
                 "all",

@@ -136,7 +136,7 @@ class TestCreateSummaryTable:
 class TestCreateComparisonChart:
     """Tests for create_comparison_chart function"""
 
-    @patch("compare_processing_time.plt")
+    @patch("scripts.compare_processing_time.plt")
     def test_create_comparison_chart_success(self, mock_plt):
         """Test successful creation of comparison chart"""
         # Mock plt.subplots to return figure and axes
@@ -165,7 +165,7 @@ class TestCreateComparisonChart:
 class TestCreateStatisticsChart:
     """Tests for create_statistics_chart function"""
 
-    @patch("compare_processing_time.plt")
+    @patch("scripts.compare_processing_time.plt")
     def test_create_statistics_chart_success(self, mock_plt):
         """Test successful creation of statistics chart"""
         # Mock plt.subplots to return figure and axes (2x2 grid)

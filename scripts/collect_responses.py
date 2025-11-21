@@ -23,6 +23,9 @@ from typing import List, Optional
 # Add project root to Python path (must be before other imports)
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+# Add scripts directory to path for importing compare_processing_time
+scripts_dir = Path(__file__).parent
+sys.path.insert(0, str(scripts_dir))
 
 import pandas as pd  # noqa: E402
 import requests  # noqa: E402

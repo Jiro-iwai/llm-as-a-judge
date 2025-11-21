@@ -79,7 +79,7 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
     config = get_model_config_from_common(model_name_lower)
 
     # If model not found, common module returns default, but we should warn
-    from config.model_configs import _find_model_key
+    from src.config.model_configs import _find_model_key
 
     if _find_model_key(model_name_lower) is None:
         log_warning(

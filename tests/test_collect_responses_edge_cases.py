@@ -66,7 +66,7 @@ class TestFormatResponseEdgeCases:
 
         # Mock clean_and_format_llm_log to raise exception
         # Note: We need to patch it where it's imported in collect_responses
-        with patch("collect_responses.clean_and_format_llm_log", side_effect=Exception("Test error")):
+        with patch("scripts.collect_responses.clean_and_format_llm_log", side_effect=Exception("Test error")):
             result = format_response("test response")
             # Should return original response_text on exception (format_response catches exceptions)
             assert result == "test response"
@@ -76,7 +76,7 @@ class TestFormatResponseEdgeCases:
         from scripts.collect_responses import format_response
 
         # Mock clean_and_format_llm_log to raise generic exception
-        with patch("collect_responses.clean_and_format_llm_log", side_effect=RuntimeError("Runtime error")):
+        with patch("scripts.collect_responses.clean_and_format_llm_log", side_effect=RuntimeError("Runtime error")):
             result = format_response("test response")
             assert result == "test response"
 
@@ -84,9 +84,9 @@ class TestFormatResponseEdgeCases:
 class TestCallApiEdgeCases:
     """Tests for call_api edge cases."""
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_warning")
-    @patch("collect_responses.log_info")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_warning")
+    @patch("scripts.collect_responses.log_info")
     def test_call_api_unexpected_response_format(self, mock_info, mock_warning, mock_post):
         """Test call_api handles unexpected response format."""
         from scripts.collect_responses import call_api
@@ -104,8 +104,8 @@ class TestCallApiEdgeCases:
         assert result == "plain text response"
         mock_warning.assert_called()
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_warning")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_warning")
     def test_call_api_missing_answer_field(self, mock_warning, mock_post):
         """Test call_api handles missing answer field."""
         from scripts.collect_responses import call_api
@@ -123,9 +123,9 @@ class TestCallApiEdgeCases:
         assert result == "response text"
         mock_warning.assert_called()
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_processing_time_entry")
-    @patch("collect_responses.log_info")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_processing_time_entry")
+    @patch("scripts.collect_responses.log_info")
     def test_call_api_with_urls_field(self, mock_info, mock_log_time, mock_post):
         """Test call_api handles urls field in response."""
         from scripts.collect_responses import call_api
@@ -145,8 +145,8 @@ class TestCallApiEdgeCases:
         # Check that URL count was logged
         assert any("url" in str(call).lower() for call in mock_info.call_args_list)
 
-    @patch("collect_responses.requests.post")
-    @patch("collect_responses.log_error")
+    @patch("scripts.collect_responses.requests.post")
+    @patch("scripts.collect_responses.log_error")
     def test_call_api_json_decode_error_with_attribute_error(self, mock_error, mock_post):
         """Test call_api handles AttributeError when accessing response.text."""
         from scripts.collect_responses import call_api
@@ -168,13 +168,13 @@ class TestCallApiEdgeCases:
 class TestCollectResponsesVerbose:
     """Tests for collect_responses verbose mode."""
 
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.log_success")
-    @patch("collect_responses.log_warning")
-    @patch("collect_responses.time.sleep")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.log_success")
+    @patch("scripts.collect_responses.log_warning")
+    @patch("scripts.collect_responses.time.sleep")
     def test_collect_responses_verbose_mode(
         self,
         mock_sleep,
@@ -205,11 +205,11 @@ class TestCollectResponsesVerbose:
         assert mock_section.called
         assert mock_info.called
 
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
-    @patch("collect_responses.log_section")
-    @patch("collect_responses.log_info")
-    @patch("collect_responses.time.sleep")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.log_section")
+    @patch("scripts.collect_responses.log_info")
+    @patch("scripts.collect_responses.time.sleep")
     def test_collect_responses_non_verbose_mode(
         self,
         mock_sleep,
@@ -236,9 +236,9 @@ class TestCollectResponsesVerbose:
         # With verbose=False, fewer log calls should be made
         # (but some are still needed for errors)
 
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
-    @patch("collect_responses.log_info")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.log_info")
     def test_collect_responses_with_failed_responses_verbose(
         self,
         mock_info,
@@ -309,11 +309,11 @@ class TestReadQuestionsErrorHandling:
 class TestCollectResponsesConfigDefaults:
     """Tests for collect_responses config defaults."""
 
-    @patch("collect_responses.get_default_identity")
-    @patch("collect_responses.get_timeout")
-    @patch("collect_responses.get_api_delay")
-    @patch("collect_responses.call_api")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.get_default_identity")
+    @patch("scripts.collect_responses.get_timeout")
+    @patch("scripts.collect_responses.get_api_delay")
+    @patch("scripts.collect_responses.call_api")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
     def test_collect_responses_uses_config_defaults(
         self,
         mock_format,

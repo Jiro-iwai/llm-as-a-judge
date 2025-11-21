@@ -190,7 +190,7 @@ class TestCreateSummaryTable:
 class TestCreateScoreComparisonChart:
     """Tests for create_score_comparison_chart function"""
 
-    @patch("visualize_results.plt")
+    @patch("scripts.visualize_results.plt")
     def test_create_score_comparison_chart_success(self, mock_plt):
         """Test successful creation of score comparison chart"""
         # Mock plt.subplots to return figure and axes
@@ -219,7 +219,7 @@ class TestCreateScoreComparisonChart:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
 
-    @patch("visualize_results.plt")
+    @patch("scripts.visualize_results.plt")
     def test_create_score_comparison_chart_no_scores(self, mock_plt):
         """Test creating chart with no score columns"""
         df = pd.DataFrame({
@@ -243,7 +243,7 @@ class TestCreateScoreComparisonChart:
 class TestCreateScoreDistributionChart:
     """Tests for create_score_distribution_chart function"""
 
-    @patch("visualize_results.plt")
+    @patch("scripts.visualize_results.plt")
     def test_create_score_distribution_chart_success(self, mock_plt):
         """Test successful creation of score distribution chart"""
         # Mock plt.subplots to return figure and axes
@@ -274,7 +274,7 @@ class TestCreateScoreDistributionChart:
 class TestCreateBoxplotChart:
     """Tests for create_boxplot_chart function"""
 
-    @patch("visualize_results.plt")
+    @patch("scripts.visualize_results.plt")
     def test_create_boxplot_chart_success(self, mock_plt):
         """Test successful creation of boxplot chart"""
         # Mock plt.subplots to return figure and axes

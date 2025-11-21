@@ -126,7 +126,7 @@ class TestFormatResponse:
     def test_format_response_formatting_error(self):
         """Test handling formatting error"""
         # Create a response that will cause an error
-        with patch("collect_responses.clean_and_format_llm_log", side_effect=Exception("Error")):
+        with patch("scripts.collect_responses.clean_and_format_llm_log", side_effect=Exception("Error")):
             result = format_response("test")
             assert result == "test"  # Should return original text on error
 
@@ -134,7 +134,7 @@ class TestFormatResponse:
 class TestCallApi:
     """Tests for call_api function"""
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_success(self, mock_post):
         """Test successful API call"""
         mock_response = Mock()
@@ -147,7 +147,7 @@ class TestCallApi:
         assert result == "Test answer"
         mock_post.assert_called_once()
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_http_error(self, mock_post):
         """Test handling HTTP error"""
         import requests
@@ -161,7 +161,7 @@ class TestCallApi:
 
         assert result is None
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_request_exception(self, mock_post):
         """Test handling request exception"""
         import requests
@@ -171,7 +171,7 @@ class TestCallApi:
 
         assert result is None
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_json_decode_error(self, mock_post):
         """Test handling JSON decode error"""
         mock_response = Mock()
@@ -185,7 +185,7 @@ class TestCallApi:
         # Should return text content when JSON decode fails
         assert result == "Invalid JSON"
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_timeout(self, mock_post):
         """Test handling timeout error"""
         import requests
@@ -195,7 +195,7 @@ class TestCallApi:
 
         assert result is None
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_array_response(self, mock_post):
         """Test handling array format response"""
         mock_response = Mock()
@@ -207,7 +207,7 @@ class TestCallApi:
 
         assert result == "Test answer"
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_no_answer_field(self, mock_post):
         """Test handling response without answer field"""
         mock_response = Mock()
@@ -221,7 +221,7 @@ class TestCallApi:
         # Should return response.text when answer field is missing
         assert result == "Response text"
 
-    @patch("collect_responses.requests.post")
+    @patch("scripts.collect_responses.requests.post")
     def test_call_api_logs_processing_time(self, mock_post, tmp_path):
         """Test that processing time entries are written to the log file."""
         mock_response = Mock()
@@ -335,10 +335,10 @@ class TestReadQuestions:
 class TestCollectResponsesIntegration:
     """Tests for collect_responses helper integrations."""
 
-    @patch("collect_responses.generate_processing_time_reports")
-    @patch("collect_responses.format_response", side_effect=lambda x: x)
+    @patch("scripts.collect_responses.generate_processing_time_reports")
+    @patch("scripts.collect_responses.format_response", side_effect=lambda x: x)
     @patch(
-        "collect_responses.call_api",
+        "scripts.collect_responses.call_api",
         side_effect=[
             "Answer A1",
             "Answer B1",

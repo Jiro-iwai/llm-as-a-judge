@@ -391,9 +391,9 @@ class TestCallJudgeModel:
 class TestFormatClarityMain:
     """Tests for format_clarity_evaluator.py main() function."""
 
-    @patch("format_clarity_evaluator.process_csv")
-    @patch("format_clarity_evaluator.log_section")
-    @patch("format_clarity_evaluator.log_info")
+    @patch("scripts.format_clarity_evaluator.process_csv")
+    @patch("scripts.format_clarity_evaluator.log_section")
+    @patch("scripts.format_clarity_evaluator.log_info")
     @patch("builtins.input")
     def test_main_with_yes_flag_skips_confirmation(
         self,
@@ -413,7 +413,7 @@ class TestFormatClarityMain:
             rows.append(f"Q{i},A{i},B{i}")
         input_csv.write_text("\n".join(rows))
 
-        with patch("sys.argv", ["format_clarity_evaluator.py", str(input_csv), "--yes"]):
+        with patch("sys.argv", ["scripts/format_clarity_evaluator.py", str(input_csv), "--yes"]):
             main()
 
         # input() should not be called when --yes flag is present
@@ -421,8 +421,8 @@ class TestFormatClarityMain:
         mock_process_csv.assert_called_once()
 
     @patch("builtins.input")
-    @patch("format_clarity_evaluator.call_judge_model")
-    @patch("format_clarity_evaluator.tqdm")
+    @patch("scripts.format_clarity_evaluator.call_judge_model")
+    @patch("scripts.format_clarity_evaluator.tqdm")
     def test_main_without_yes_flag_shows_confirmation_for_many_rows(
         self,
         mock_tqdm,
@@ -446,7 +446,7 @@ class TestFormatClarityMain:
         mock_tqdm.side_effect = lambda iterable, **kwargs: iterable
 
         # Mock API client to avoid actual API calls
-        with patch("format_clarity_evaluator.AzureOpenAI") as mock_azure_class, patch(
+        with patch("scripts.format_clarity_evaluator.AzureOpenAI") as mock_azure_class, patch(
             "format_clarity_evaluator.OpenAI"
         ) as mock_openai_class, patch("os.getenv") as mock_getenv, patch(
             "format_clarity_evaluator.pd.DataFrame.to_csv"
@@ -489,7 +489,7 @@ class TestFormatClarityMain:
         mock_input.return_value = "n"  # User cancels
 
         # Mock API client to avoid actual API calls
-        with patch("format_clarity_evaluator.AzureOpenAI") as mock_azure_class, patch(
+        with patch("scripts.format_clarity_evaluator.AzureOpenAI") as mock_azure_class, patch(
             "format_clarity_evaluator.OpenAI"
         ) as mock_openai_class, patch("os.getenv") as mock_getenv:
             mock_client = Mock()
