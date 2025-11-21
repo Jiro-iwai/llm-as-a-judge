@@ -45,7 +45,19 @@ plt.rcParams["figure.figsize"] = (14, 10)
 
 
 def load_data(csv_file: str) -> pd.DataFrame:
-    """CSVファイルを読み込む"""
+    """
+    Load evaluation results from a CSV file.
+
+    Args:
+        csv_file: Path to the CSV file containing evaluation results.
+
+    Returns:
+        DataFrame containing the evaluation results.
+
+    Raises:
+        SystemExit: If the file is not found, cannot be parsed, or
+            permission is denied.
+    """
     try:
         df = pd.read_csv(csv_file)
         log_success(f"データを読み込みました: {len(df)}行")
@@ -67,7 +79,17 @@ def load_data(csv_file: str) -> pd.DataFrame:
 
 
 def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
-    """評価データを準備（エラー行を除外）"""
+    """
+    Prepare evaluation data by removing rows with errors.
+
+    Args:
+        df: DataFrame containing evaluation results, potentially with
+            error rows marked in the "Evaluation_Error" column.
+
+    Returns:
+        Cleaned DataFrame with error rows removed. If no "Evaluation_Error"
+        column exists, returns the original DataFrame unchanged.
+    """
     # エラーが発生した行を除外
     if "Evaluation_Error" in df.columns:
         df_clean = df[df["Evaluation_Error"].isna()].copy()
@@ -87,7 +109,25 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 def create_score_comparison_chart(
     df: pd.DataFrame, output_file: str = "evaluation_comparison.png"
 ) -> None:
-    """Model AとModel Bのスコア比較チャートを作成"""
+    """
+    Create a bar chart comparing average scores between Model A and Model B.
+
+    The chart compares the following metrics:
+    - Citation Score
+    - Relevance Score
+    - ReAct Performance Thought Score
+    - RAG Retrieval Observation Score
+    - Information Integration Score
+
+    Args:
+        df: DataFrame containing evaluation results with columns like
+            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        output_file: Path to save the output PNG file. Defaults to
+            "evaluation_comparison.png".
+
+    Returns:
+        None. The chart is saved to the specified output file.
+    """
 
     metrics = [
         ("Citation", "Citation_Score"),
@@ -169,7 +209,25 @@ def create_score_comparison_chart(
 def create_score_distribution_chart(
     df: pd.DataFrame, output_file: str = "evaluation_distribution.png"
 ) -> None:
-    """スコアの分布を表示"""
+    """
+    Create histogram charts showing score distributions for each metric.
+
+    The chart displays histograms for the following metrics:
+    - Citation Score
+    - Relevance Score
+    - ReAct Performance Thought Score
+    - RAG Retrieval Observation Score
+    - Information Integration Score
+
+    Args:
+        df: DataFrame containing evaluation results with columns like
+            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        output_file: Path to save the output PNG file. Defaults to
+            "evaluation_distribution.png".
+
+    Returns:
+        None. The chart is saved to the specified output file.
+    """
 
     metrics = [
         ("Citation", "Citation_Score"),
@@ -222,7 +280,25 @@ def create_score_distribution_chart(
 def create_boxplot_chart(
     df: pd.DataFrame, output_file: str = "evaluation_boxplot.png"
 ) -> None:
-    """箱ひげ図を作成"""
+    """
+    Create box plots comparing score distributions between Model A and Model B.
+
+    The chart displays box plots for the following metrics:
+    - Citation Score
+    - Relevance Score
+    - ReAct Performance Thought Score
+    - RAG Retrieval Observation Score
+    - Information Integration Score
+
+    Args:
+        df: DataFrame containing evaluation results with columns like
+            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        output_file: Path to save the output PNG file. Defaults to
+            "evaluation_boxplot.png".
+
+    Returns:
+        None. The chart is saved to the specified output file.
+    """
 
     metrics = [
         ("Citation", "Citation_Score"),
@@ -278,7 +354,23 @@ def create_boxplot_chart(
 def create_summary_table(
     df: pd.DataFrame, output_file: str = "evaluation_summary.txt"
 ) -> None:
-    """サマリーテーブルをテキストファイルに出力"""
+    """
+    Create a summary table with evaluation statistics in text format.
+
+    The table includes:
+    - Average scores for each metric (Model A vs Model B)
+    - Difference between Model A and Model B scores
+    - Overall statistics (mean, min, max, standard deviation)
+
+    Args:
+        df: DataFrame containing evaluation results with columns like
+            "Model_A_Citation_Score", "Model_B_Citation_Score", etc.
+        output_file: Path to save the output text file. Defaults to
+            "evaluation_summary.txt".
+
+    Returns:
+        None. The summary table is saved to the specified output file.
+    """
 
     metrics = [
         ("Citation", "Citation_Score"),

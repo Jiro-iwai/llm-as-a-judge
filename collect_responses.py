@@ -43,7 +43,14 @@ setup_logging()
 
 def clean_html(text_block: str) -> str:
     """
-    Replaces HTML links with a 'Text (URL)' format and removes other HTML tags.
+    Replace HTML links with a 'Text (URL)' format and remove other HTML tags.
+
+    Args:
+        text_block: Input text containing HTML tags and links.
+
+    Returns:
+        Cleaned text with HTML links converted to 'Text (URL)' format and
+        all other HTML tags removed. Whitespace is normalized.
     """
     if not text_block:
         return ""
