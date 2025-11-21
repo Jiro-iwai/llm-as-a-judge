@@ -199,16 +199,18 @@ def create_score_comparison_chart(
             return
 
         # Convert to numeric, handling empty strings
-        scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce").dropna()
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
         if len(scores) == 0:
             log_error("No valid Format_Clarity_Score values found")
             plt.close()
             return
 
         fig, ax = plt.subplots(figsize=(8, 6))
+        mean_score = float(scores.mean())
         ax.bar(
             ["Format Clarity Score"],
-            [scores.mean()],
+            [mean_score],
             alpha=0.8,
             color="#3498db",
         )
@@ -219,8 +221,8 @@ def create_score_comparison_chart(
         ax.grid(axis="y", alpha=0.3, linestyle="--")
         ax.text(
             0,
-            scores.mean(),
-            f"{scores.mean():.2f}",
+            mean_score,
+            f"{mean_score:.2f}",
             ha="center",
             va="bottom",
             fontsize=12,
@@ -245,8 +247,10 @@ def create_score_comparison_chart(
 
         if model_a_col in df.columns and model_b_col in df.columns:
             # Convert to numeric, handling empty strings
-            model_a_values = pd.to_numeric(df[model_a_col], errors="coerce").dropna()
-            model_b_values = pd.to_numeric(df[model_b_col], errors="coerce").dropna()
+            model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+            model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+            model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+            model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
             if len(model_a_values) > 0 and len(model_b_values) > 0:
                 model_a_avg = float(model_a_values.mean())
@@ -372,7 +376,8 @@ def create_score_distribution_chart(
             log_error("Format_Clarity_Score column not found")
             return
 
-        scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce").dropna()
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
         if len(scores) == 0:
             log_error("No valid Format_Clarity_Score values found")
             return
@@ -406,8 +411,10 @@ def create_score_distribution_chart(
         model_b_col = f"Model_B_{score_col}"
 
         if model_a_col in df.columns and model_b_col in df.columns:
-            model_a_scores = pd.to_numeric(df[model_a_col], errors="coerce").dropna()
-            model_b_scores = pd.to_numeric(df[model_b_col], errors="coerce").dropna()
+            model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+            model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+            model_a_scores: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+            model_b_scores: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
             if len(model_a_scores) > 0 and len(model_b_scores) > 0:
                 ax.hist(
@@ -491,7 +498,8 @@ def create_boxplot_chart(
             log_error("Format_Clarity_Score column not found")
             return
 
-        scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce").dropna()
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
         if len(scores) == 0:
             log_error("No valid Format_Clarity_Score values found")
             return
@@ -531,8 +539,10 @@ def create_boxplot_chart(
         model_b_col = f"Model_B_{score_col}"
 
         if model_a_col in df.columns and model_b_col in df.columns:
-            model_a_values = pd.to_numeric(df[model_a_col], errors="coerce").dropna()
-            model_b_values = pd.to_numeric(df[model_b_col], errors="coerce").dropna()
+            model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+            model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+            model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+            model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
             if len(model_a_values) > 0 and len(model_b_values) > 0:
                 plot_data.append(model_a_values.values)
@@ -621,7 +631,8 @@ def create_summary_table(
             log_error("Format_Clarity_Score column not found")
             return
 
-        scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce").dropna()
+        numeric_scores = pd.to_numeric(df["Format_Clarity_Score"], errors="coerce")
+        scores: pd.Series = numeric_scores.dropna()  # type: ignore[assignment]
         if len(scores) == 0:
             log_error("No valid Format_Clarity_Score values found")
             return
@@ -666,16 +677,14 @@ def create_summary_table(
             model_b_col = f"Model_B_{score_col}"
 
             if model_a_col in df.columns and model_b_col in df.columns:
-                model_a_values = pd.to_numeric(
-                    df[model_a_col], errors="coerce"
-                ).dropna()
-                model_b_values = pd.to_numeric(
-                    df[model_b_col], errors="coerce"
-                ).dropna()
+                model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+                model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+                model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+                model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
                 if len(model_a_values) > 0 and len(model_b_values) > 0:
-                    model_a_avg = model_a_values.mean()
-                    model_b_avg = model_b_values.mean()
+                    model_a_avg = float(model_a_values.mean())
+                    model_b_avg = float(model_b_values.mean())
                     diff = model_b_avg - model_a_avg
 
                     f.write(
@@ -693,26 +702,24 @@ def create_summary_table(
             model_b_col = f"Model_B_{score_col}"
 
             if model_a_col in df.columns and model_b_col in df.columns:
-                model_a_values = pd.to_numeric(
-                    df[model_a_col], errors="coerce"
-                ).dropna()
-                model_b_values = pd.to_numeric(
-                    df[model_b_col], errors="coerce"
-                ).dropna()
+                model_a_numeric = pd.to_numeric(df[model_a_col], errors="coerce")
+                model_b_numeric = pd.to_numeric(df[model_b_col], errors="coerce")
+                model_a_values: pd.Series = model_a_numeric.dropna()  # type: ignore[assignment]
+                model_b_values: pd.Series = model_b_numeric.dropna()  # type: ignore[assignment]
 
                 if len(model_a_values) > 0 and len(model_b_values) > 0:
                     f.write(f"{metric_name}:\n")
                     f.write(
-                        f"  {label_a}: 平均={model_a_values.mean():.2f}, "
-                        f"最小={model_a_values.min():.2f}, "
-                        f"最大={model_a_values.max():.2f}, "
-                        f"標準偏差={model_a_values.std():.2f}\n"
+                        f"  {label_a}: 平均={float(model_a_values.mean()):.2f}, "
+                        f"最小={float(model_a_values.min()):.2f}, "
+                        f"最大={float(model_a_values.max()):.2f}, "
+                        f"標準偏差={float(model_a_values.std()):.2f}\n"
                     )
                     f.write(
-                        f"  {label_b}: 平均={model_b_values.mean():.2f}, "
-                        f"最小={model_b_values.min():.2f}, "
-                        f"最大={model_b_values.max():.2f}, "
-                        f"標準偏差={model_b_values.std():.2f}\n\n"
+                        f"  {label_b}: 平均={float(model_b_values.mean()):.2f}, "
+                        f"最小={float(model_b_values.min()):.2f}, "
+                        f"最大={float(model_b_values.max()):.2f}, "
+                        f"標準偏差={float(model_b_values.std()):.2f}\n\n"
                     )
 
     log_success(f"サマリーテーブルを保存: {output_file}")
