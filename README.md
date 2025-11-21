@@ -493,7 +493,7 @@ python scripts/llm_judge_evaluator.py my_test_data.csv
 
 **注意**: ヘッダー行は任意です。スクリプトは自動的にヘッダー行を検出します。
 
-#### 期待されるReActログの構造（フォーマット済み - `utils/log_output_simplifier.py` を使用）
+#### 期待されるReActログの構造（フォーマット済み - `src/utils/log_output_simplifier.py` を使用）
 
 スクリプトは、これらのセクションを持つログを期待します：
 
@@ -862,7 +862,7 @@ python scripts/compare_processing_time.py log_file.txt
 
 **出力ファイル名のカスタマイズ：**
 
-出力ファイル名（`processing_time_*.png`、`processing_time_summary.txt`など）は`config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
+出力ファイル名（`processing_time_*.png`、`processing_time_summary.txt`など）は`src/config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 **入力ファイル形式：**
 
@@ -979,7 +979,7 @@ ls -la output/evaluation_*.png output/evaluation_summary.txt
 - **エラー行のフィルタリング**: `Evaluation_Error`列に非空のエラーメッセージがある行は自動的に除外されます。`Evaluation_Error`が空文字列（`""`）または`NaN`の行は正常行として扱われ、可視化に含まれます。
 - 日本語フォントが正しく表示されない場合は、システムの日本語フォント設定を確認してください
 - `--model-a`と`--model-b`オプションでモデル名を指定すると、PNGファイルのタイトル、凡例、サマリーテーブルに実際のモデル名が表示されます。指定しない場合は「Model A」と「Model B」と表示されます
-- **出力ファイル名のカスタマイズ**: 出力ファイル名（`evaluation_*.png`、`evaluation_summary.txt`など）は`config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
+- **出力ファイル名のカスタマイズ**: 出力ファイル名（`evaluation_*.png`、`evaluation_summary.txt`など）は`src/config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
 
@@ -1082,7 +1082,7 @@ make pipeline ARGS="questions.txt --evaluator llm-judge --judge-model gpt-5"
 - 各ステップでエラーが発生した場合、パイプラインは適切に停止します
 - 可視化ステップでエラーが発生した場合、警告を表示してパイプラインは続行します
 - **非対話実行**: `run_full_pipeline.py`から実行する場合、評価スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`）には自動的に`--yes`フラグが付与され、10行を超える場合でも確認プロンプトが表示されずに実行されます。これにより、CI/バッチ環境での自動実行が可能です。個別に評価スクリプトを実行する場合は、`--yes`フラグを明示的に指定することで非対話実行できます。
-- **出力ファイル名のカスタマイズ**: 評価結果や処理時間レポートの出力ファイル名（`evaluation_*.png`、`processing_time_*.png`など）は`config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`、`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
+- **出力ファイル名のカスタマイズ**: 評価結果や処理時間レポートの出力ファイル名（`evaluation_*.png`、`processing_time_*.png`など）は`src/config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`、`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
 
