@@ -884,6 +884,9 @@ python visualize_results.py
 # カスタムCSVファイルを指定
 python visualize_results.py my_evaluation_results.csv
 
+# モデル名を指定して可視化（PNGファイルに実際のモデル名が表示されます）
+python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
+
 # ragas_evaluation_output.csvを可視化
 python visualize_results.py ragas_evaluation_output.csv
 ```
@@ -913,7 +916,10 @@ python visualize_results.py ragas_evaluation_output.csv
 # 1. 評価を実行
 python llm_judge_evaluator.py responses.csv -o evaluation_output.csv
 
-# 2. 結果を可視化
+# 2. 結果を可視化（モデル名を指定するとPNGファイルに実際のモデル名が表示されます）
+python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
+
+# または、モデル名を指定しない場合（デフォルトで「Model A」と「Model B」と表示）
 python visualize_results.py evaluation_output.csv
 
 # 3. 生成されたファイルを確認
@@ -923,6 +929,7 @@ ls -la evaluation_*.png evaluation_summary.txt
 **注意：**
 - エラーが発生した行（`Evaluation_Error`列に値がある行）は自動的に除外されます
 - 日本語フォントが正しく表示されない場合は、システムの日本語フォント設定を確認してください
+- `--model-a`と`--model-b`オプションでモデル名を指定すると、PNGファイルのタイトル、凡例、サマリーテーブルに実際のモデル名が表示されます。指定しない場合は「Model A」と「Model B」と表示されます
 
 -----
 

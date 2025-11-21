@@ -484,6 +484,9 @@ def main():
     # カスタムCSVファイルを指定
     python visualize_results.py my_evaluation_results.csv
     
+    # モデル名を指定して可視化
+    python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
+    
     # ragas_evaluation_output.csvを可視化
     python visualize_results.py ragas_evaluation_output.csv
 
@@ -513,6 +516,20 @@ def main():
         help="評価結果のCSVファイル（デフォルト: evaluation_output.csv）",
     )
 
+    parser.add_argument(
+        "--model-a",
+        type=str,
+        default=None,
+        help="Model Aの名前（例: claude4.5-sonnet）。指定しない場合は「Model A」と表示されます。",
+    )
+
+    parser.add_argument(
+        "--model-b",
+        type=str,
+        default=None,
+        help="Model Bの名前（例: claude4.5-haiku）。指定しない場合は「Model B」と表示されます。",
+    )
+
     args = parser.parse_args()
     csv_file = args.input_csv
 
@@ -534,10 +551,30 @@ def main():
 
     # グラフを作成
     log_info("グラフを作成中...")
-    create_score_comparison_chart(df_clean, output_files["evaluation_comparison"])
-    create_score_distribution_chart(df_clean, output_files["evaluation_distribution"])
-    create_boxplot_chart(df_clean, output_files["evaluation_boxplot"])
-    create_summary_table(df_clean, output_files["evaluation_summary"])
+    create_score_comparison_chart(
+        df_clean,
+        output_files["evaluation_comparison"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
+    create_score_distribution_chart(
+        df_clean,
+        output_files["evaluation_distribution"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
+    create_boxplot_chart(
+        df_clean,
+        output_files["evaluation_boxplot"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
+    create_summary_table(
+        df_clean,
+        output_files["evaluation_summary"],
+        model_a_name=args.model_a,
+        model_b_name=args.model_b,
+    )
 
     log_info("")
     log_section("✓ 可視化完了!")
