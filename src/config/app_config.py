@@ -173,6 +173,12 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
 
     # Load from YAML file if specified
     config_file_path = config_file or os.getenv("APP_CONFIG_FILE")
+    # If no config file is specified, try default config.yaml
+    if not config_file_path:
+        default_config_path = Path("config.yaml")
+        if default_config_path.exists():
+            config_file_path = str(default_config_path)
+    
     if config_file_path and yaml is not None:
         config_path = Path(config_file_path)
         if config_path.exists():
