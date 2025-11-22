@@ -204,10 +204,10 @@ python scripts/llm_judge_evaluator.py data.csv
 
 # 設定ファイルを使用
 export APP_CONFIG_FILE=my_config.yaml
-python scripts/collect_responses.py questions.txt
+python scripts/collect_responses.py examples/questions.txt
 
 # コマンドライン引数で上書き（一部のスクリプトのみ）
-python scripts/collect_responses.py questions.txt --timeout 150 --delay 2.5
+python scripts/collect_responses.py examples/questions.txt --timeout 150 --delay 2.5
 ```
 
 **注意**: コマンドライン引数が指定された場合は、それが環境変数や設定ファイルよりも優先されます。
@@ -831,19 +831,19 @@ LLMジャッジは詳細な5段階のスケールを使用します：
 
 ```bash
 # 基本的な使用方法
-python scripts/collect_responses.py questions.txt -o responses.csv
+python scripts/collect_responses.py examples/questions.txt -o responses.csv
 
 # カスタムAPI URLを指定
-python scripts/collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls
+python scripts/collect_responses.py examples/questions.txt --api-url http://localhost:8080/api/v1/urls
 
 # カスタムモデルを指定
-python scripts/collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+python scripts/collect_responses.py examples/questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
 
 # カスタムidentity、timeout、delayを指定（デフォルト値は設定ファイルまたは環境変数から読み込まれます）
-python scripts/collect_responses.py questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
+python scripts/collect_responses.py examples/questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
 
 # カスタム処理時間ログファイルを指定
-python scripts/collect_responses.py questions.txt --time-log custom_time_log.txt
+python scripts/collect_responses.py examples/questions.txt --time-log custom_time_log.txt
 ```
 
 **設定値の外部化：**
@@ -869,10 +869,10 @@ python scripts/collect_responses.py questions.txt --time-log custom_time_log.txt
 
 ```bash
 # 1. 質問ファイルを準備
-echo "会社の休暇制度について教えてください" > questions.txt
+echo "会社の休暇制度について教えてください" > examples/questions.txt
 
 # 2. 応答を収集（処理時間ログとチャートが自動生成されます）
-python scripts/collect_responses.py questions.txt -o responses.csv
+python scripts/collect_responses.py examples/questions.txt -o responses.csv
 
 # 3. 処理時間レポートを確認
 ls -la output/processing_time_*.png output/processing_time_summary.txt output/processing_time_log.txt
@@ -1069,34 +1069,34 @@ ls -la output/evaluation_*.png output/evaluation_summary.txt
 
 ```bash
 # デフォルトでllm-judge評価を使用してパイプラインを実行
-python scripts/run_full_pipeline.py questions.txt
+python scripts/run_full_pipeline.py examples/questions.txt
 
 # ragas評価を使用
-python scripts/run_full_pipeline.py questions.txt --evaluator ragas
+python scripts/run_full_pipeline.py examples/questions.txt --evaluator ragas
 
 # 全ての評価スクリプトを実行
-python scripts/run_full_pipeline.py questions.txt --evaluator all
+python scripts/run_full_pipeline.py examples/questions.txt --evaluator all
 
 # ragas評価でメトリクスを指定
-python scripts/run_full_pipeline.py questions.txt --evaluator ragas --ragas-metrics faithfulness context_precision
+python scripts/run_full_pipeline.py examples/questions.txt --evaluator ragas --ragas-metrics faithfulness context_precision
 
 # ragas評価でプリセットを指定（basic / with_reference）
-python scripts/run_full_pipeline.py questions.txt --evaluator ragas --ragas-metrics-preset basic
+python scripts/run_full_pipeline.py examples/questions.txt --evaluator ragas --ragas-metrics-preset basic
 
 # 収集ステップをスキップ（既存のCSVファイルを使用）
-python scripts/run_full_pipeline.py questions.txt --skip-collect
+python scripts/run_full_pipeline.py examples/questions.txt --skip-collect
 
 # 可視化ステップをスキップ
-python scripts/run_full_pipeline.py questions.txt --skip-visualize
+python scripts/run_full_pipeline.py examples/questions.txt --skip-visualize
 
 # カスタムモデルとAPI URLを指定
-python scripts/run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
+python scripts/run_full_pipeline.py examples/questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
 
 # 評価行数を制限
-python scripts/run_full_pipeline.py questions.txt --limit 5
+python scripts/run_full_pipeline.py examples/questions.txt --limit 5
 
 # 評価用のモデルを指定（評価スクリプトの--modelオプションに渡される）
-python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
+python scripts/run_full_pipeline.py examples/questions.txt --judge-model gpt-5
 ```
 
 **コマンドライン引数：**
@@ -1135,22 +1135,22 @@ python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
 
 ```bash
 # 1. 基本的な使用方法（llm-judge評価）
-python scripts/run_full_pipeline.py questions.txt
+python scripts/run_full_pipeline.py examples/questions.txt
 
 # 2. ragas評価を使用
-python scripts/run_full_pipeline.py questions.txt --evaluator ragas
+python scripts/run_full_pipeline.py examples/questions.txt --evaluator ragas
 
 # 3. 全ての評価スクリプトを実行
-python scripts/run_full_pipeline.py questions.txt --evaluator all
+python scripts/run_full_pipeline.py examples/questions.txt --evaluator all
 
 # 4. 既存のCSVファイルを使用して評価と可視化のみ実行
-python scripts/run_full_pipeline.py questions.txt --skip-collect
+python scripts/run_full_pipeline.py examples/questions.txt --skip-collect
 
 # 5. 評価用モデルを指定して実行
-python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
+python scripts/run_full_pipeline.py examples/questions.txt --judge-model gpt-5
 
 # 6. Makefileを使用
-make pipeline ARGS="questions.txt --evaluator llm-judge --judge-model gpt-5"
+make pipeline ARGS="examples/questions.txt --evaluator llm-judge --judge-model gpt-5"
 ```
 
 **注意：**

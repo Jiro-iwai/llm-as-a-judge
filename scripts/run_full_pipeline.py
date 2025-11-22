@@ -8,9 +8,9 @@ This script runs the complete pipeline:
 3. visualize_results.py - Visualize evaluation results
 
 Usage:
-    python run_full_pipeline.py questions.txt
-    python run_full_pipeline.py questions.txt --evaluator llm-judge
-    python run_full_pipeline.py questions.txt --evaluator ragas --skip-collect
+    python scripts/run_full_pipeline.py examples/questions.txt
+    python scripts/run_full_pipeline.py examples/questions.txt --evaluator llm-judge
+    python scripts/run_full_pipeline.py examples/questions.txt --evaluator ragas --skip-collect
 """
 
 import argparse

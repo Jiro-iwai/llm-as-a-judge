@@ -626,17 +626,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    # Collect responses from questions.txt
-    python scripts/collect_responses.py questions.txt -o output/collected_responses.csv
+    # Collect responses from examples/questions.txt
+    python scripts/collect_responses.py examples/questions.txt -o output/collected_responses.csv
     
     # Use custom API URL
-    python scripts/collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls -o output/responses.csv
+    python scripts/collect_responses.py examples/questions.txt --api-url http://localhost:8080/api/v1/urls -o output/responses.csv
     
     # Use custom models
-    python scripts/collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku -o output/responses.csv
+    python scripts/collect_responses.py examples/questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku -o output/responses.csv
     
     # Use custom identity
-    python scripts/collect_responses.py questions.txt --identity YOUR_IDENTITY -o output/responses.csv
+    python scripts/collect_responses.py examples/questions.txt --identity YOUR_IDENTITY -o output/responses.csv
 
 Input file format:
     - Text file (.txt): One question per line. Lines starting with # are treated as comments.

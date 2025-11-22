@@ -259,7 +259,6 @@ def call_judge_model(
             # Extract the response content
             content = response.choices[0].message.content
 
-            # Debug: Check if content is empty or None
             if not content:
                 raise ValueError(
                     f"Empty response from API. Finish reason: {finish_reason}"
@@ -282,29 +281,27 @@ def call_judge_model(
             )
             log_error(error_msg)
 
-            # Debug: Print what we actually received
-            content_for_debug: Optional[str] = None
+            # Log error details for debugging (without storing in debug variable)
             if response is not None:
                 try:
-                    content_for_debug = (
+                    received_content = (
                         response.choices[0].message.content
                         if response.choices
                         else None
                     )
+                    if received_content:
+                        log_info(
+                            f"Received content (first 500 chars): {received_content[:500]}"
+                        )
+                    else:
+                        response_str = (
+                            str(response)[:200] if response else "No response"
+                        )
+                        log_info(
+                            f"Content was empty or None. Full response: {response_str}"
+                        )
                 except (AttributeError, IndexError):
-                    pass
-
-            if content_for_debug:
-                log_info(
-                    f"Received content (first 500 chars): {content_for_debug[:500]}"
-                )
-            else:
-                response_for_debug = "No response"
-                if response is not None:
-                    response_for_debug = str(response)[:200]
-                log_info(
-                    f"Content was empty or None. Full response: {response_for_debug}"
-                )
+                    log_info("Failed to parse response")
 
             if attempt == max_retries - 1:
                 return None
