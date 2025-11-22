@@ -277,10 +277,11 @@ def initialize_azure_openai_for_ragas(
         log_error("  AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002")
         sys.exit(1)
 
-    # Embedding model name (e.g., text-embedding-3-large-20240312)
-    embedding_model_name = os.getenv(
-        "AZURE_OPENAI_EMBEDDING_MODEL_NAME", "text-embedding-3-large-20240312"
-    )
+    # Embedding model name (optional, defaults to deployment name if not set)
+    embedding_model_name = os.getenv("AZURE_OPENAI_EMBEDDING_MODEL_NAME")
+    if not embedding_model_name:
+        # If not set, use deployment name as model name (common case)
+        embedding_model_name = embedding_deployment
 
     if not azure_endpoint or not azure_api_key:
         log_error("Azure OpenAI credentials not found.")
@@ -885,7 +886,7 @@ Setup:
        
        # REQUIRED for Ragas evaluation (chat models cannot be used for embeddings):
        export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-ada-002'
-       # Optional (defaults to text-embedding-3-large-20240312):
+       # Optional (defaults to deployment name if not set):
        export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-ada-002'
        
        # Or add to .env file:

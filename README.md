@@ -681,8 +681,8 @@ Ragas評価では、内部的にEmbeddingsモデルを使用します。**チャ
   - Azure OpenAIリソースで作成したEmbeddingsデプロイメント名を指定してください
   - 例: `text-embedding-ada-002` または `your-embedding-deployment-name`
 - **`AZURE_OPENAI_EMBEDDING_MODEL_NAME`**: Embeddingsモデル名（**オプション**）
-  - デフォルト値（`text-embedding-3-large-20240312`）が使用されるため、通常は設定不要です
-  - デプロイメント名とモデル名が異なる場合のみ設定してください
+  - 通常は設定不要です。デプロイメント名とモデル名が異なる場合のみ設定してください
+  - 未設定の場合、デプロイメント名がモデル名として使用されます
 
 `.env`ファイルに追加する例（最小構成）：
 ```env
