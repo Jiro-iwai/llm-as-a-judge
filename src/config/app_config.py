@@ -6,6 +6,19 @@ This module provides a centralized configuration system that:
 - Optionally loads from YAML config file (specified via APP_CONFIG_FILE env var)
 - Allows environment variables to override config file values
 - Provides convenient getter functions for common configuration values
+- Validates configuration values for correctness
+
+Configuration Priority (highest to lowest):
+1. Environment variables (for overrides)
+2. YAML config file (recommended for most settings)
+3. Default values (code defaults)
+
+Note: While environment variables can override YAML settings, YAML is the
+recommended approach for managing most configuration values. Environment
+variables should primarily be used for:
+- Required credentials (AZURE_OPENAI_*, OPENAI_API_KEY)
+- Runtime overrides (APP_MAX_WORKERS, APP_TIMEOUT)
+- CI/CD or deployment-specific settings
 
 Supported environment variables:
 - APP_CONFIG_FILE: Path to YAML config file
@@ -15,17 +28,23 @@ Supported environment variables:
 - APP_API_DELAY: Delay between API calls in seconds
 - APP_DEFAULT_IDENTITY: Default identity for API calls
 - APP_MAX_WORKERS: Maximum number of parallel workers (None for sequential processing, int for parallel)
+- APP_OUTPUT_FILE_*: Override specific output file paths (deprecated, use YAML instead)
+- APP_REGEX_MODEL_A_PATTERN: Override model A regex pattern (deprecated, use YAML instead)
+- APP_REGEX_MODEL_B_PATTERN: Override model B regex pattern (deprecated, use YAML instead)
 """
 
 import copy
+import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     import yaml
 except ImportError:
     yaml = None  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 # Global config instance
 _config: Optional[Dict[str, Any]] = None
@@ -65,9 +84,81 @@ def reset_config() -> None:
     _config = None
 
 
+def validate_app_config(config: Dict[str, Any]) -> List[str]:
+    """
+    Validate configuration values and return a list of issues found.
+
+    Args:
+        config: Configuration dictionary to validate.
+
+    Returns:
+        List of validation issue messages (empty if no issues found).
+    """
+    issues: List[str] = []
+
+    # Validate max_workers
+    max_workers = config.get("max_workers")
+    if max_workers is not None:
+        if not isinstance(max_workers, int):
+            issues.append(f"max_workers must be int or None, got {type(max_workers).__name__}")
+        elif max_workers < 1:
+            issues.append(f"max_workers must be >= 1 or None, got {max_workers}")
+
+    # Validate timeout
+    timeout = config.get("timeout")
+    if timeout is not None:
+        if not isinstance(timeout, int):
+            issues.append(f"timeout must be int, got {type(timeout).__name__}")
+        elif timeout < 1:
+            issues.append(f"timeout must be >= 1, got {timeout}")
+
+    # Validate max_retries
+    max_retries = config.get("max_retries")
+    if max_retries is not None:
+        if not isinstance(max_retries, int):
+            issues.append(f"max_retries must be int, got {type(max_retries).__name__}")
+        elif max_retries < 0:
+            issues.append(f"max_retries must be >= 0, got {max_retries}")
+
+    # Validate retry_delay
+    retry_delay = config.get("retry_delay")
+    if retry_delay is not None:
+        if not isinstance(retry_delay, int):
+            issues.append(f"retry_delay must be int, got {type(retry_delay).__name__}")
+        elif retry_delay < 0:
+            issues.append(f"retry_delay must be >= 0, got {retry_delay}")
+
+    # Validate api_delay
+    api_delay = config.get("api_delay")
+    if api_delay is not None:
+        if not isinstance(api_delay, (int, float)):
+            issues.append(f"api_delay must be int or float, got {type(api_delay).__name__}")
+        elif api_delay < 0:
+            issues.append(f"api_delay must be >= 0, got {api_delay}")
+
+    # Validate output_files structure
+    output_files = config.get("output_files")
+    if output_files is not None:
+        if not isinstance(output_files, dict):
+            issues.append(f"output_files must be dict, got {type(output_files).__name__}")
+
+    # Validate regex_patterns structure
+    regex_patterns = config.get("regex_patterns")
+    if regex_patterns is not None:
+        if not isinstance(regex_patterns, dict):
+            issues.append(f"regex_patterns must be dict, got {type(regex_patterns).__name__}")
+
+    return issues
+
+
 def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
     """
     Load configuration from file and environment variables.
+
+    Configuration priority (highest to lowest):
+    1. Environment variables (for overrides)
+    2. YAML config file (recommended for most settings)
+    3. Default values (code defaults)
 
     Args:
         config_file: Optional path to config file. If None, reads from APP_CONFIG_FILE env var.
@@ -153,21 +244,39 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
         except ValueError:
             pass
 
-    # Output files from env vars
+    # Output files from env vars (deprecated: use YAML instead)
     output_files = config.get("output_files", {})
     for key in output_files.keys():
         env_key = f"APP_OUTPUT_FILE_{key.upper()}"
         if env_key in os.environ:
             output_files[key] = os.environ[env_key]
+            logger.warning(
+                f"Using deprecated environment variable {env_key}. "
+                "Consider using YAML config file instead."
+            )
     config["output_files"] = output_files
 
-    # Regex patterns from env vars
+    # Regex patterns from env vars (deprecated: use YAML instead)
     regex_patterns = config.get("regex_patterns", {})
     if "APP_REGEX_MODEL_A_PATTERN" in os.environ:
         regex_patterns["model_a_pattern"] = os.environ["APP_REGEX_MODEL_A_PATTERN"]
+        logger.warning(
+            "Using deprecated environment variable APP_REGEX_MODEL_A_PATTERN. "
+            "Consider using YAML config file instead."
+        )
     if "APP_REGEX_MODEL_B_PATTERN" in os.environ:
         regex_patterns["model_b_pattern"] = os.environ["APP_REGEX_MODEL_B_PATTERN"]
+        logger.warning(
+            "Using deprecated environment variable APP_REGEX_MODEL_B_PATTERN. "
+            "Consider using YAML config file instead."
+        )
     config["regex_patterns"] = regex_patterns
+
+    # Validate configuration
+    validation_issues = validate_app_config(config)
+    if validation_issues:
+        for issue in validation_issues:
+            logger.warning(f"Configuration validation issue: {issue}")
 
     _config = config
     return config
@@ -176,6 +285,8 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
 def get_app_config() -> Dict[str, Any]:
     """
     Get the global configuration, loading it if necessary.
+
+    Configuration is validated automatically when loaded.
 
     Returns:
         Configuration dictionary.
@@ -276,11 +387,27 @@ def get_max_workers(override: Optional[int] = None) -> Optional[int]:
 
     Returns:
         Maximum number of workers (None for sequential, int for parallel).
+        Invalid values (< 1) are automatically converted to None (sequential processing).
     """
     if override is not None:
+        # Validate override value
+        if override < 1:
+            logger.warning(
+                f"Invalid max_workers override value: {override}. "
+                "Using None (sequential processing) instead."
+            )
+            return None
         return override
     config = get_app_config()
-    return config.get("max_workers", DEFAULT_CONFIG["max_workers"])
+    max_workers = config.get("max_workers", DEFAULT_CONFIG["max_workers"])
+    # Validate and fix invalid values
+    if max_workers is not None and max_workers < 1:
+        logger.warning(
+            f"Invalid max_workers value in config: {max_workers}. "
+            "Using None (sequential processing) instead."
+        )
+        return None
+    return max_workers
 
 
 def get_output_file_names() -> Dict[str, str]:

@@ -1,0 +1,42 @@
+# Application Configuration Example
+# 
+# Copy this file to config.yaml and customize as needed.
+# Configuration priority (highest to lowest):
+# 1. Environment variables (for overrides)
+# 2. YAML config file (this file - recommended for most settings)
+# 3. Default values (code defaults)
+
+# API settings
+timeout: 120                    # Request timeout in seconds
+max_retries: 3                 # Maximum number of retry attempts
+retry_delay: 2                 # Delay between retries in seconds
+api_delay: 1.0                 # Delay between API calls in seconds
+default_identity: "USER"       # Default identity for API calls
+
+# Parallel processing settings
+max_workers: null              # None or unset: sequential processing (default)
+                                # 1 or greater: parallel processing with that many workers
+                                # Example: max_workers: 4  # Use 4 parallel workers
+
+# Output file paths
+# These paths are relative to the project root or can be absolute paths
+output_files:
+  evaluation_comparison: "output/evaluation_comparison.png"
+  evaluation_distribution: "output/evaluation_distribution.png"
+  evaluation_boxplot: "output/evaluation_boxplot.png"
+  evaluation_summary: "output/evaluation_summary.txt"
+  ragas_evaluation_comparison: "output/ragas_evaluation_comparison.png"
+  ragas_evaluation_distribution: "output/ragas_evaluation_distribution.png"
+  ragas_evaluation_boxplot: "output/ragas_evaluation_boxplot.png"
+  ragas_evaluation_summary: "output/ragas_evaluation_summary.txt"
+  processing_time_comparison: "output/processing_time_comparison.png"
+  processing_time_statistics: "output/processing_time_statistics.png"
+  processing_time_summary: "output/processing_time_summary.txt"
+  processing_time_log: "output/processing_time_log.txt"
+
+# Regex patterns for processing time extraction
+# Used by compare_processing_time.py to extract processing times from log files
+regex_patterns:
+  model_a_pattern: "📥 \\[claude3\\.5-sonnet\\].*?経過時間: ([\\d.]+)秒"
+  model_b_pattern: "📥 \\[claude4\\.5-haiku\\].*?経過時間: ([\\d.]+)秒"
+
