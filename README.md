@@ -10,7 +10,7 @@ LLM-as-a-JudgeとRagasフレームワークを使用した、CyChat SDの応答�
 2.  **`ragas_llm_judge_evaluator.py`**: Ragasフレームワークベースの評価
 3.  **`format_clarity_evaluator.py`**: 2つのモデルの応答のフォーマット/スタイルの類似性を比較
 
-すべてのスクリプトは、LLM-as-a-Judgeとして**Azure OpenAI (GPT-5, GPT-4.1)とStandard OpenAI (GPT-4 Turbo)**をサポートしています。
+**LLM Judge Evaluator** と **Format Clarity Evaluator** は、LLM-as-a-Judgeとして**Azure OpenAI (GPT-5, GPT-4.1)とStandard OpenAI (GPT-4 Turbo)**の両方をサポートしています。**Ragas Evaluator** は現状**Azure OpenAI専用**です（Embeddings設定が必要なため）。
 
 ## 目次
 
@@ -112,7 +112,9 @@ OPENAI_API_KEY=your-actual-openai-key
 MODEL_NAME=gpt-4-turbo  # または gpt-4.1
 ```
 
-**注意**: `MODEL_NAME`環境変数は任意です。コマンドライン引数 `-m` で指定することもできます。
+**注意**: 
+- `MODEL_NAME`環境変数は任意です。コマンドライン引数 `-m` で指定することもできます。
+- **Ragas評価スクリプト (`ragas_llm_judge_evaluator.py`) は現状Azure OpenAI専用です**。Standard OpenAI単体では動作しません。Ragas評価を使用する場合は、Azure OpenAI + Embeddings設定が必要です。
 
 ### アプリケーション設定（設定値の外部化）
 
@@ -620,6 +622,8 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv --metrics-preset basic
 
 ### Embeddings設定（必須）
 
+**重要**: Ragas評価スクリプト (`ragas_llm_judge_evaluator.py`) は現状**Azure OpenAI専用**です。Standard OpenAI (`OPENAI_API_KEY`) 単体では動作しません。
+
 Ragas評価では、内部的にEmbeddingsモデルを使用します。**チャットモデル（`gpt-4.1`など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です。**
 
 `.env`ファイルに以下の環境変数を追加してください：
@@ -899,7 +903,17 @@ python scripts/compare_processing_time.py
 
 # カスタムログファイルを指定
 python scripts/compare_processing_time.py output/processing_time_log.txt
+
+# モデル名を指定して動的パターン生成を使用
+python scripts/compare_processing_time.py output/processing_time_log.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
 ```
+
+**コマンドラインオプション：**
+
+- `--model-a MODEL_A`: Model Aの名前を指定（動的正規表現パターン生成を使用）
+- `--model-b MODEL_B`: Model Bの名前を指定（動的正規表現パターン生成を使用）
+
+**注意**: `--model-a`と`--model-b`の両方を指定すると、設定ファイルの正規表現パターンではなく、指定されたモデル名から動的にパターンを生成します。これにより、異なるモデル名のログファイルでも柔軟に対応できます。
 
 **設定値の外部化：**
 

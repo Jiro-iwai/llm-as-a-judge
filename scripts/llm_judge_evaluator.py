@@ -7,7 +7,7 @@ It reads questions and responses from a CSV file, sends them to OpenAI's API (st
 for evaluation, and writes the scored results to an output CSV file.
 
 Usage:
-    python llm_judge_evaluator.py <input_csv_file>
+    python scripts/llm_judge_evaluator.py <input_csv_file>
 
 Requirements:
     - For Azure OpenAI: Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and MODEL_NAME

@@ -6,8 +6,8 @@ This script collects responses from the LLM API for two models (claude3.5-sonnet
 and creates a CSV file suitable for evaluation.
 
 Usage:
-    python collect_responses.py questions.txt -o output.csv
-    python collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls
+    python scripts/collect_responses.py questions.txt -o output.csv
+    python scripts/collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls
 """
 
 import argparse
@@ -773,9 +773,11 @@ Input file format:
 
     log_section("📝 次のステップ")
     log_info("評価スクリプトを実行:")
-    log_info(f"  python llm_judge_evaluator.py {args.output} -n 5", indent=1)
+    log_info(f"  python scripts/llm_judge_evaluator.py {args.output} -n 5", indent=1)
     log_info("\nまたは:")
-    log_info(f"  python ragas_llm_judge_evaluator.py {args.output} -n 5", indent=1)
+    log_info(
+        f"  python scripts/ragas_llm_judge_evaluator.py {args.output} -n 5", indent=1
+    )
 
 
 if __name__ == "__main__":

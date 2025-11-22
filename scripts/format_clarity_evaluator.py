@@ -9,7 +9,7 @@ It reads raw ReAct logs from a CSV file, parses the Final Answer sections,
 and uses an LLM judge (GPT-5 or GPT-4-turbo) to score format similarity on a 1-5 scale.
 
 Usage:
-    python format_clarity_evaluator.py <input_csv_file>
+    python scripts/format_clarity_evaluator.py <input_csv_file>
 
 Requirements:
     - For Azure OpenAI: Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and MODEL_NAME
