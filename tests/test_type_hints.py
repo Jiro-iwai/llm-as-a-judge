@@ -53,8 +53,8 @@ class TestTypeHintsCompleteness:
         if sig.return_annotation == inspect.Signature.empty:
             issues.append("Missing return type annotation")
 
-        # Document issues but don't fail - we'll fix them
-        assert isinstance(issues, list)
+        # Actually verify that there are no issues
+        assert len(issues) == 0, f"Type hint issues found: {', '.join(issues)}"
 
     def test_format_clarity_call_judge_model_has_type_hints(self):
         """Test that format_clarity_evaluator.call_judge_model has complete type hints"""
@@ -66,7 +66,8 @@ class TestTypeHintsCompleteness:
         if client_param and client_param.annotation == inspect.Signature.empty:
             issues.append("client parameter missing type annotation")
 
-        assert isinstance(issues, list)
+        # Actually verify that there are no issues
+        assert len(issues) == 0, f"Type hint issues found: {', '.join(issues)}"
 
     def test_ragas_get_model_config_has_return_type(self):
         """Test that ragas_llm_judge_evaluator.get_model_config has return type"""
@@ -85,7 +86,8 @@ class TestTypeHintsCompleteness:
         issues = self.check_function_type_hints(
             ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas
         )
-        assert isinstance(issues, list)
+        # Actually verify that there are no issues
+        assert len(issues) == 0, f"Type hint issues found: {', '.join(issues)}"
 
     def test_ragas_evaluate_with_ragas_has_type_hints(self):
         """Test that evaluate_with_ragas has complete type hints"""
@@ -97,19 +99,22 @@ class TestTypeHintsCompleteness:
         if llm_param and llm_param.annotation == inspect.Signature.empty:
             issues.append("llm parameter missing type annotation")
 
-        assert isinstance(issues, list)
+        # Actually verify that there are no issues
+        assert len(issues) == 0, f"Type hint issues found: {', '.join(issues)}"
 
     def test_parse_react_log_has_type_hints(self):
         """Test that parse_react_log has complete type hints"""
         issues = self.check_function_type_hints(ragas_llm_judge_evaluator.parse_react_log)
-        assert isinstance(issues, list)
+        # Actually verify that there are no issues
+        assert len(issues) == 0, f"Type hint issues found: {', '.join(issues)}"
 
     def test_extract_processing_times_has_type_hints(self):
         """Test that extract_processing_times has complete type hints"""
         issues = self.check_function_type_hints(
             compare_processing_time.extract_processing_times
         )
-        assert isinstance(issues, list)
+        # Actually verify that there are no issues
+        assert len(issues) == 0, f"Type hint issues found: {', '.join(issues)}"
 
     def test_visualize_functions_have_type_hints(self):
         """Test that visualize_results functions have complete type hints"""
@@ -127,7 +132,8 @@ class TestTypeHintsCompleteness:
             issues = self.check_function_type_hints(func)
             all_issues.extend(issues)
 
-        assert isinstance(all_issues, list)
+        # Actually verify that there are no issues
+        assert len(all_issues) == 0, f"Type hint issues found: {', '.join(all_issues)}"
 
     def test_collect_responses_functions_have_type_hints(self):
         """Test that collect_responses functions have complete type hints"""
@@ -142,7 +148,8 @@ class TestTypeHintsCompleteness:
             issues = self.check_function_type_hints(func)
             all_issues.extend(issues)
 
-        assert isinstance(all_issues, list)
+        # Actually verify that there are no issues
+        assert len(all_issues) == 0, f"Type hint issues found: {', '.join(all_issues)}"
 
 
 class TestClientParameterTypeHints:
@@ -189,6 +196,6 @@ class TestReturnTypeHints:
             if sig.return_annotation == inspect.Signature.empty:
                 missing_return_types.append(name)
 
-        # Document missing return types but don't fail - we'll fix them
-        assert isinstance(missing_return_types, list)
+        # Actually verify that all functions have return types
+        assert len(missing_return_types) == 0, f"Functions missing return types: {', '.join(missing_return_types)}"
 
