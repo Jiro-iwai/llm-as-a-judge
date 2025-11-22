@@ -253,32 +253,35 @@ def extract_scores_from_evaluation(
     return score, justification
 
 
-def process_csv(
-    input_file: str,
-    output_file: str = "format_clarity_output.csv",
-    limit_rows: Optional[int] = None,
-    model_name: Optional[str] = None,
-    non_interactive: bool = False,
-) -> None:
+# Output columns definition for format_clarity_evaluator
+FORMAT_CLARITY_OUTPUT_COLUMNS = [
+    "Question",
+    "Model_A_Final_Answer",
+    "Model_B_Final_Answer",
+    "Format_Clarity_Score",
+    "Format_Clarity_Justification",
+    "Evaluation_Error",
+]
+
+
+def initialize_openai_client_format_clarity(
+    model_name: str,
+) -> tuple[Union[OpenAI, AzureOpenAI], bool]:
     """
-    Main processing function that reads the input CSV, parses logs, evaluates format similarity,
-    and writes the results to the output CSV.
+    Initialize OpenAI client (Azure or Standard) for format_clarity_evaluator.
 
     Args:
-        input_file: Path to the input CSV file
-        output_file: Path to the output CSV file (default: format_clarity_output.csv)
-        limit_rows: Optional limit on number of rows to process (for cost control)
-        model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
-        non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
+        model_name: Model name for evaluation
+
+    Returns:
+        Tuple of (client, is_azure) where is_azure indicates if Azure OpenAI is used
+
+    Raises:
+        SystemExit: If no valid credentials are found
     """
-    # Check if using Azure OpenAI or standard OpenAI
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-    # Model name can be set via parameter or environment variable
-    if model_name is None:
-        model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
-
     is_azure = bool(azure_endpoint and azure_api_key)
 
     if is_azure:
@@ -294,6 +297,7 @@ def process_csv(
             api_key=azure_api_key,
             api_version=azure_api_version,
         )
+        return client, True
     else:
         # Initialize standard OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
@@ -311,8 +315,24 @@ def process_csv(
         log_info("Using standard OpenAI")
         log_info(f"Model: {model_name}")
         client = OpenAI(api_key=api_key)
+        return client, False
 
-    # Read input CSV
+
+def read_and_validate_csv_format_clarity(input_file: str) -> pd.DataFrame:
+    """
+    Read and validate input CSV file for format_clarity_evaluator.
+
+    Supports Claude format column names (Claude_35_Raw_Log, Claude_45_Raw_Log).
+
+    Args:
+        input_file: Path to the input CSV file
+
+    Returns:
+        DataFrame with standardized column names
+
+    Raises:
+        SystemExit: If file cannot be read or validated
+    """
     log_info(f"Reading input file: {input_file}")
     try:
         # Check if CSV has header row
@@ -390,8 +410,27 @@ def process_csv(
         sys.exit(1)
 
     log_info(f"Loaded {len(df)} rows from input file.")
+    return df
 
-    # Apply row limit if specified (for cost control during testing)
+
+def apply_row_limit_and_confirm_format_clarity(
+    df: pd.DataFrame, limit_rows: Optional[int], model_name: str, non_interactive: bool
+) -> pd.DataFrame:
+    """
+    Apply row limit and prompt for confirmation if needed (format_clarity_evaluator version).
+
+    Args:
+        df: Input DataFrame
+        limit_rows: Optional limit on number of rows to process
+        model_name: Model name for logging
+        non_interactive: If True, skips confirmation prompt
+
+    Returns:
+        DataFrame with row limit applied
+
+    Raises:
+        SystemExit: If user cancels the operation
+    """
     if limit_rows is not None and limit_rows < len(df):
         df = df.head(limit_rows)
         log_warning(
@@ -421,80 +460,105 @@ def process_csv(
                 log_info("\nCancelled.")
                 sys.exit(0)
 
-    # Prepare output columns
-    output_columns = [
-        "Question",
-        "Model_A_Final_Answer",
-        "Model_B_Final_Answer",
-        "Format_Clarity_Score",
-        "Format_Clarity_Justification",
-        "Evaluation_Error",
-    ]
+    return df
 
-    results = []
 
-    # Process each row with progress bar
-    log_info("\nParsing logs and evaluating format similarity...")
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
-        # Convert pandas Series to str if needed
-        question_val = row["Question"]
-        model_a_val = row["Model_A_Response"]
-        model_b_val = row["Model_B_Response"]
+def process_single_row_format_clarity(
+    row: pd.Series,
+    client: Union[OpenAI, AzureOpenAI],
+    model_name: str,
+    is_azure: bool,
+    output_columns: list[str],
+) -> Dict[str, Any]:
+    """
+    Process a single row from the input DataFrame (format_clarity_evaluator version).
 
-        # Use isinstance check to avoid Series condition operator error
-        question = (
-            str(question_val)
-            if not (isinstance(question_val, float) and pd.isna(question_val))
-            else ""
+    Args:
+        row: Single row from DataFrame
+        client: OpenAI or AzureOpenAI client
+        model_name: Model name for evaluation
+        is_azure: Whether using Azure OpenAI
+        output_columns: List of output column names
+
+    Returns:
+        Dictionary containing evaluation results for the row
+    """
+    # Convert pandas Series to str if needed
+    question_val = row["Question"]
+    model_a_val = row["Model_A_Response"]
+    model_b_val = row["Model_B_Response"]
+
+    # Use isinstance check to avoid Series condition operator error
+    question = (
+        str(question_val)
+        if not (isinstance(question_val, float) and pd.isna(question_val))
+        else ""
+    )
+    model_a_raw_log = (
+        str(model_a_val)
+        if not (isinstance(model_a_val, float) and pd.isna(model_a_val))
+        else ""
+    )
+    model_b_raw_log = (
+        str(model_b_val)
+        if not (isinstance(model_b_val, float) and pd.isna(model_b_val))
+        else ""
+    )
+
+    # Parse the final answers from the raw logs
+    model_a_final_answer = parse_final_answer(model_a_raw_log)
+    model_b_final_answer = parse_final_answer(model_b_raw_log)
+
+    # Initialize result row with parsed data
+    result_row = {
+        "Question": question,
+        "Model_A_Final_Answer": model_a_final_answer,
+        "Model_B_Final_Answer": model_b_final_answer,
+    }
+
+    # Call judge model
+    evaluation = call_judge_model(
+        client,
+        question,
+        model_a_final_answer,
+        model_b_final_answer,
+        model_name=model_name,
+        is_azure=is_azure,
+    )
+
+    if evaluation is None:
+        # If evaluation failed, record error and set score to None
+        result_row["Format_Clarity_Score"] = ""  # Use empty string instead of None
+        result_row["Format_Clarity_Justification"] = ""
+        result_row["Evaluation_Error"] = (
+            "Failed to get valid evaluation from judge model"
         )
-        model_a_raw_log = (
-            str(model_a_val)
-            if not (isinstance(model_a_val, float) and pd.isna(model_a_val))
-            else ""
-        )
-        model_b_raw_log = (
-            str(model_b_val)
-            if not (isinstance(model_b_val, float) and pd.isna(model_b_val))
-            else ""
-        )
+    else:
+        # Extract score and justification
+        score, justification = extract_scores_from_evaluation(evaluation)
+        result_row["Format_Clarity_Score"] = str(score) if score is not None else ""
+        result_row["Format_Clarity_Justification"] = justification
+        result_row["Evaluation_Error"] = ""
 
-        # Parse the final answers from the raw logs
-        model_a_final_answer = parse_final_answer(model_a_raw_log)
-        model_b_final_answer = parse_final_answer(model_b_raw_log)
+    return result_row
 
-        # Initialize result row with parsed data
-        result_row = {
-            "Question": question,
-            "Model_A_Final_Answer": model_a_final_answer,
-            "Model_B_Final_Answer": model_b_final_answer,
-        }
 
-        # Call judge model
-        evaluation = call_judge_model(
-            client,
-            question,
-            model_a_final_answer,
-            model_b_final_answer,
-            model_name=model_name,
-            is_azure=is_azure,
-        )
+def write_results_to_csv_format_clarity(
+    results: list[Dict[str, Any]], output_file: str, output_columns: list[str]
+) -> pd.DataFrame:
+    """
+    Write evaluation results to CSV file (format_clarity_evaluator version).
 
-        if evaluation is None:
-            # If evaluation failed, record error and set score to None
-            result_row["Format_Clarity_Score"] = ""  # Use empty string instead of None
-            result_row["Format_Clarity_Justification"] = ""
-            result_row["Evaluation_Error"] = (
-                "Failed to get valid evaluation from judge model"
-            )
-        else:
-            # Extract score and justification
-            score, justification = extract_scores_from_evaluation(evaluation)
-            result_row["Format_Clarity_Score"] = str(score) if score is not None else ""
-            result_row["Format_Clarity_Justification"] = justification
-            result_row["Evaluation_Error"] = ""
+    Includes average score calculation and distribution.
 
-        results.append(result_row)
+    Args:
+        results: List of result dictionaries
+        output_file: Path to output CSV file
+        output_columns: List of output column names
 
+    Returns:
+        Output DataFrame
+    """
     # Create output DataFrame and write to CSV
     if results:
         output_df = pd.DataFrame(results)
@@ -533,6 +597,52 @@ def process_csv(
                     value_counts = score_series.value_counts()
                     if isinstance(value_counts, pd.Series):
                         log_info(str(value_counts.sort_index()))
+
+    return output_df
+
+
+def process_csv(
+    input_file: str,
+    output_file: str = "format_clarity_output.csv",
+    limit_rows: Optional[int] = None,
+    model_name: Optional[str] = None,
+    non_interactive: bool = False,
+) -> None:
+    """
+    Main processing function that reads the input CSV, parses logs, evaluates format similarity,
+    and writes the results to the output CSV.
+
+    Args:
+        input_file: Path to the input CSV file
+        output_file: Path to the output CSV file (default: format_clarity_output.csv)
+        limit_rows: Optional limit on number of rows to process (for cost control)
+        model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
+        non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
+    """
+    # Model name can be set via parameter or environment variable
+    if model_name is None:
+        model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
+
+    # Initialize OpenAI client
+    client, is_azure = initialize_openai_client_format_clarity(model_name)
+
+    # Read and validate CSV
+    df = read_and_validate_csv_format_clarity(input_file)
+
+    # Apply row limit and confirm if needed
+    df = apply_row_limit_and_confirm_format_clarity(df, limit_rows, model_name, non_interactive)
+
+    # Process each row with progress bar
+    log_info("\nParsing logs and evaluating format similarity...")
+    results = []
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
+        result_row = process_single_row_format_clarity(
+            row, client, model_name, is_azure, FORMAT_CLARITY_OUTPUT_COLUMNS
+        )
+        results.append(result_row)
+
+    # Write results to CSV
+    write_results_to_csv_format_clarity(results, output_file, FORMAT_CLARITY_OUTPUT_COLUMNS)
 
 
 def main():
