@@ -292,25 +292,25 @@ def main():
         epilog="""
 Examples:
     # Run pipeline with default llm-judge evaluator
-    python run_full_pipeline.py questions.txt
+    python scripts/run_full_pipeline.py questions.txt
 
     # Run pipeline with ragas evaluator
-    python run_full_pipeline.py questions.txt --evaluator ragas
+    python scripts/run_full_pipeline.py questions.txt --evaluator ragas
 
     # Run pipeline with all evaluators
-    python run_full_pipeline.py questions.txt --evaluator all
+    python scripts/run_full_pipeline.py questions.txt --evaluator all
 
     # Skip collection step (use existing CSV)
-    python run_full_pipeline.py questions.txt --skip-collect
+    python scripts/run_full_pipeline.py questions.txt --skip-collect
 
     # Skip visualization step
-    python run_full_pipeline.py questions.txt --skip-visualize
+    python scripts/run_full_pipeline.py questions.txt --skip-visualize
 
     # Custom models and API URL
-    python run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
+    python scripts/run_full_pipeline.py questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku --api-url http://localhost:8080/api/v2/questions
 
     # Custom judge model for evaluation
-    python run_full_pipeline.py questions.txt --judge-model gpt-5
+    python scripts/run_full_pipeline.py questions.txt --judge-model gpt-5
         """,
     )
 

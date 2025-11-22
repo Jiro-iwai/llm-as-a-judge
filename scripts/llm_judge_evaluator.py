@@ -719,7 +719,7 @@ def process_csv(
                 )
                 if response != "y" and response != "yes":
                     print(
-                        "キャンセルしました。少ない行数でテストする場合は -n フラグを使用してください: python llm_judge_evaluator.py input.csv -n 5"
+                        "キャンセルしました。少ない行数でテストする場合は -n フラグを使用してください: python scripts/llm_judge_evaluator.py input.csv -n 5"
                     )
                     sys.exit(0)
             except (KeyboardInterrupt, EOFError):
@@ -915,8 +915,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python llm_judge_evaluator.py my_test_data.csv
-    python llm_judge_evaluator.py /path/to/input.csv
+    python scripts/llm_judge_evaluator.py examples/sample_input_llm_judge.csv
+    python scripts/llm_judge_evaluator.py my_test_data.csv -o output/evaluation_output.csv
+    python scripts/llm_judge_evaluator.py /path/to/input.csv -n 5  # Test with first 5 rows
 
 Setup for Azure OpenAI:
     1. Install dependencies: pip install -r requirements.txt
@@ -926,14 +927,14 @@ Setup for Azure OpenAI:
        export MODEL_NAME='gpt-4.1'  # or 'gpt-5', 'gpt-4-turbo'
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional, defaults to this
     3. Run the script with your input CSV file:
-       python llm_judge_evaluator.py input.csv -m gpt-5  # Use -m to specify model
+       python scripts/llm_judge_evaluator.py input.csv -m gpt-5  # Use -m to specify model
 
 Setup for Standard OpenAI:
     1. Install dependencies: pip install -r requirements.txt
     2. Set API key: export OPENAI_API_KEY='your-api-key-here'
     3. Optionally set model: export MODEL_NAME='gpt-4-turbo'
     4. Run the script with your input CSV file:
-       python llm_judge_evaluator.py input.csv -m gpt-4-turbo  # Use -m to specify model
+       python scripts/llm_judge_evaluator.py input.csv -m gpt-4-turbo  # Use -m to specify model
 
 Supported Models:
     - gpt-5: GPT-5 (uses max_completion_tokens, temperature=1.0)
@@ -956,7 +957,7 @@ You can specify the model via:
         "-o",
         "--output",
         default="evaluation_output.csv",
-        help="Path to the output CSV file (default: evaluation_output.csv)",
+        help="Path to the output CSV file (default: evaluation_output.csv). Note: It's recommended to use output/ directory (e.g., output/evaluation_output.csv)",
     )
 
     parser.add_argument(

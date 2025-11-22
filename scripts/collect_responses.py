@@ -627,16 +627,16 @@ def main():
         epilog="""
 Examples:
     # Collect responses from questions.txt
-    python collect_responses.py questions.txt -o responses.csv
+    python scripts/collect_responses.py questions.txt -o output/collected_responses.csv
     
     # Use custom API URL
-    python collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls
+    python scripts/collect_responses.py questions.txt --api-url http://localhost:8080/api/v1/urls -o output/responses.csv
     
     # Use custom models
-    python collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+    python scripts/collect_responses.py questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku -o output/responses.csv
     
     # Use custom identity
-    python collect_responses.py questions.txt --identity YOUR_IDENTITY
+    python scripts/collect_responses.py questions.txt --identity YOUR_IDENTITY -o output/responses.csv
 
 Input file format:
     - Text file (.txt): One question per line. Lines starting with # are treated as comments.
@@ -664,7 +664,7 @@ Input file format:
         "-o",
         "--output",
         default="collected_responses.csv",
-        help="Path to the output CSV file (default: collected_responses.csv)",
+        help="Path to the output CSV file (default: collected_responses.csv). Note: It's recommended to use output/ directory (e.g., output/collected_responses.csv)",
     )
 
     parser.add_argument(

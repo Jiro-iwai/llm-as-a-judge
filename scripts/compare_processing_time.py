@@ -4,6 +4,7 @@
 tmp.txtから処理時間を抽出して2つのモデルを比較します。
 """
 
+import argparse
 import platform
 import re
 import sys
@@ -404,15 +405,67 @@ def create_summary_table(
 
 def main():
     """メイン処理"""
-    log_file = "tmp.txt"
+    # Get default log file from config
+    output_files = get_output_file_names()
+    default_log_file = output_files.get(
+        "processing_time_log", "output/processing_time_log.txt"
+    )
 
-    if len(sys.argv) > 1:
-        log_file = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description="処理時間比較スクリプト - 処理時間ログから処理時間を抽出して2つのモデルを比較します",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+使用例:
+    # デフォルトの{default_log_file}を使用
+    python scripts/compare_processing_time.py
+    
+    # カスタムログファイルを指定
+    python scripts/compare_processing_time.py output/processing_time_log.txt
+    
+    # モデル名を指定（動的パターン生成）
+    python scripts/compare_processing_time.py output/processing_time_log.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+
+入力ファイル形式:
+    処理時間ログファイルには以下の形式の行が含まれている必要があります:
+    📥 [Model_A_Name] ... 経過時間: 1.23秒
+    📥 [Model_B_Name] ... 経過時間: 2.45秒
+
+出力ファイル:
+    - {output_files.get("processing_time_comparison", "output/processing_time_comparison.png")}: 処理時間比較チャート
+    - {output_files.get("processing_time_statistics", "output/processing_time_statistics.png")}: 統計チャート
+    - {output_files.get("processing_time_summary", "output/processing_time_summary.txt")}: サマリーテーブル
+        """,
+    )
+
+    parser.add_argument(
+        "log_file",
+        nargs="?",
+        default=default_log_file,
+        help=f"処理時間ログファイルのパス（デフォルト: {default_log_file}）",
+    )
+
+    parser.add_argument(
+        "--model-a",
+        type=str,
+        default=None,
+        help="Model Aの名前（指定すると動的パターン生成を使用）",
+    )
+
+    parser.add_argument(
+        "--model-b",
+        type=str,
+        default=None,
+        help="Model Bの名前（指定すると動的パターン生成を使用）",
+    )
+
+    args = parser.parse_args()
 
     log_section("処理時間比較分析")
 
     # 処理時間を抽出
-    question_numbers, model_a_times, model_b_times = extract_processing_times(log_file)
+    question_numbers, model_a_times, model_b_times = extract_processing_times(
+        args.log_file, model_a_name=args.model_a, model_b_name=args.model_b
+    )
 
     if len(model_a_times) == 0 or len(model_b_times) == 0:
         log_error("処理時間データが見つかりません")

@@ -733,22 +733,26 @@ def create_summary_table(
 
 def main():
     """メイン処理"""
+    # Get output file names from config
+    output_files = get_output_file_names()
+    default_input_csv = "output/evaluation_output.csv"
+
     parser = argparse.ArgumentParser(
         description="評価結果を可視化するスクリプト",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 使用例:
-    # デフォルトのevaluation_output.csvを使用
-    python visualize_results.py
+    # デフォルトの{default_input_csv}を使用
+    python scripts/visualize_results.py
     
     # カスタムCSVファイルを指定
-    python visualize_results.py my_evaluation_results.csv
+    python scripts/visualize_results.py my_evaluation_results.csv
     
     # モデル名を指定して可視化
-    python visualize_results.py evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
+    python scripts/visualize_results.py output/evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
     
     # ragas_evaluation_output.csvを可視化
-    python visualize_results.py ragas_evaluation_output.csv
+    python scripts/visualize_results.py output/ragas_evaluation_output.csv
 
 入力CSV形式:
     以下の評価スクリプトの出力CSVに対応しています:
@@ -775,18 +779,18 @@ def main():
     評価スクリプトの種類は自動検出されます。
 
 出力ファイル:
-    - evaluation_comparison.png: Model AとModel Bのスコア比較チャート
-    - evaluation_distribution.png: スコア分布のヒストグラム
-    - evaluation_boxplot.png: スコア分布の箱ひげ図
-    - evaluation_summary.txt: 統計サマリーテーブル
+    - {output_files.get("evaluation_comparison", "output/evaluation_comparison.png")}: Model AとModel Bのスコア比較チャート
+    - {output_files.get("evaluation_distribution", "output/evaluation_distribution.png")}: スコア分布のヒストグラム
+    - {output_files.get("evaluation_boxplot", "output/evaluation_boxplot.png")}: スコア分布の箱ひげ図
+    - {output_files.get("evaluation_summary", "output/evaluation_summary.txt")}: 統計サマリーテーブル
         """,
     )
 
     parser.add_argument(
         "input_csv",
         nargs="?",
-        default="evaluation_output.csv",
-        help="評価結果のCSVファイル（デフォルト: evaluation_output.csv）",
+        default=default_input_csv,
+        help=f"評価結果のCSVファイル（デフォルト: {default_input_csv}）",
     )
 
     parser.add_argument(
