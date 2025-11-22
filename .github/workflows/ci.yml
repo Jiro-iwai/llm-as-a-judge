@@ -40,10 +40,14 @@ jobs:
       - name: Install dependencies
         run: uv pip install --python .venv/bin/python -r requirements.txt
 
-      - name: Create required directories
+      - name: Create required directories and sample files
         run: |
           mkdir -p output
           mkdir -p examples
+          # Create sample files for tests
+          echo "Question,Model_A_Response,Model_B_Response" > examples/sample_input_llm_judge.csv
+          echo "question,answer,contexts" > examples/sample_input_ragas.csv
+          echo "Question,Model_A_Response,Model_B_Response" > examples/sample_input_format_clarity.csv
 
       - name: Run tests
         run: make test
