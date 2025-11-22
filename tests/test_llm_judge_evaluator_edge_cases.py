@@ -146,20 +146,28 @@ class TestExtractScoresEdgeCases:
 class TestCallJudgeModelEdgeCases:
     """Tests for call_judge_model edge cases."""
 
-    @patch("scripts.llm_judge_evaluator.time.sleep")
-    def test_call_judge_model_with_none_client(self, mock_sleep):
+    @patch("scripts.llm_judge_evaluator.call_judge_model_common")
+    @patch("time.sleep")
+    def test_call_judge_model_with_none_client(self, mock_sleep, mock_common):
         """Test call_judge_model handles None client."""
         from scripts.llm_judge_evaluator import call_judge_model
 
+        # Mock the common function to return None (simulating failure after retries)
+        mock_common.return_value = None
+
         # call_judge_model signature: (client, question, model_a_response, model_b_response, model_name, ...)
-        # When client is None, it will fail after retries and return None
-        # Mock time.sleep to avoid actual delays during retries
+        # When client is None, the common function will fail after retries and return None
         result = call_judge_model(
             None, "question", "response_a", "response_b", "model", timeout=10
         )  # type: ignore[call-arg]
 
         # Should return None after all retries fail
         assert result is None
-        # Verify that time.sleep was called during retries
-        assert mock_sleep.called
+        # Verify that the common function was called
+        assert mock_common.called
+        # Verify that common function was called with correct parameters
+        call_args = mock_common.call_args
+        assert call_args is not None
+        assert call_args.kwargs.get("enable_token_estimation") is True
+        assert call_args.kwargs.get("response_validation_keys") == ["model_a_evaluation", "model_b_evaluation"]
 

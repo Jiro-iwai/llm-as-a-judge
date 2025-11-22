@@ -18,11 +18,9 @@ Requirements:
 """
 
 import argparse
-import json
 import os
 import re
 import sys
-import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Union
 
@@ -47,10 +45,7 @@ from src.utils.logging_config import (  # noqa: E402
     log_section,
     setup_logging,
 )
-from src.config.app_config import (  # noqa: E402
-    get_max_retries,
-    get_retry_delay,
-)
+from src.utils.judge_model_common import call_judge_model_common  # noqa: E402
 
 # Format clarity evaluator uses gpt-4-turbo as default (different from common default)
 DEFAULT_MODEL = "gpt-4-turbo"
@@ -202,6 +197,9 @@ def call_judge_model(
     """
     Call the OpenAI API to evaluate the format similarity.
 
+    This function is a wrapper around the common call_judge_model_common function,
+    providing a convenient interface for format_clarity_evaluator.py.
+
     Args:
         client: OpenAI or AzureOpenAI client instance
         question: The original user question
@@ -215,114 +213,25 @@ def call_judge_model(
     Returns:
         Parsed JSON response from the judge model, or None if all retries fail
     """
-    # Use config values if not provided
-    if max_retries is None:
-        max_retries = get_max_retries()
-    if retry_delay is None:
-        retry_delay = get_retry_delay()
-
+    # Create user prompt
     user_prompt = create_user_prompt(question, model_a_answer, model_b_answer)
 
-    for attempt in range(max_retries):
-        response: Any = None
-        try:
-            # Prepare API call parameters
-            api_params = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "response_format": {"type": "json_object"},
-            }
+    # Get model configuration
+    model_config = get_model_config(model_name)
 
-            # Get model configuration
-            model_config = get_model_config(model_name)
-
-            # Set parameters based on model configuration
-            if model_config["use_max_completion_tokens"]:
-                api_params["max_completion_tokens"] = model_config[
-                    "max_completion_tokens"
-                ]
-            else:
-                api_params["max_tokens"] = model_config["max_tokens"]
-
-            api_params["temperature"] = model_config["temperature"]
-
-            response = client.chat.completions.create(**api_params)
-
-            # Check if response was truncated
-            finish_reason = response.choices[0].finish_reason
-            if finish_reason == "length":
-                log_warning("Response was truncated (hit max_completion_tokens limit)")
-
-            # Extract the response content
-            content = response.choices[0].message.content
-
-            if not content:
-                raise ValueError(
-                    f"Empty response from API. Finish reason: {finish_reason}"
-                )
-
-            # Parse and validate JSON
-            evaluation = json.loads(content)
-
-            # Basic validation of the response structure
-            if "format_clarity_evaluation" not in evaluation:
-                raise ValueError(
-                    "Response missing required 'format_clarity_evaluation' key"
-                )
-
-            return evaluation
-
-        except json.JSONDecodeError as e:
-            error_msg = (
-                f"JSON parsing error on attempt {attempt + 1}/{max_retries}: {e}"
-            )
-            log_error(error_msg)
-
-            # Log error details for debugging (without storing in debug variable)
-            if response is not None:
-                try:
-                    received_content = (
-                        response.choices[0].message.content
-                        if response.choices
-                        else None
-                    )
-                    if received_content:
-                        log_info(
-                            f"Received content (first 500 chars): {received_content[:500]}"
-                        )
-                    else:
-                        response_str = (
-                            str(response)[:200] if response else "No response"
-                        )
-                        log_info(
-                            f"Content was empty or None. Full response: {response_str}"
-                        )
-                except (AttributeError, IndexError):
-                    log_info("Failed to parse response")
-
-            if attempt == max_retries - 1:
-                return None
-            time.sleep(retry_delay)
-
-        except (TimeoutError, ValueError) as e:
-            # タイムアウトや値エラーは再試行しない
-            error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {type(e).__name__}: {e}"
-            log_error(error_msg)
-            if attempt == max_retries - 1:
-                return None
-            time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-        except Exception as e:
-            # その他のAPIエラー（接続エラー、認証エラーなど）は再試行
-            error_msg = f"API error on attempt {attempt + 1}/{max_retries}: {type(e).__name__}: {e}"
-            log_error(error_msg)
-            if attempt == max_retries - 1:
-                return None
-            time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-
-    return None
+    # Call common function
+    return call_judge_model_common(
+        client=client,
+        system_prompt=JUDGE_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        model_name=model_name,
+        model_config=model_config,
+        response_validation_keys=["format_clarity_evaluation"],
+        enable_token_estimation=False,
+        max_retries=max_retries,
+        retry_delay=retry_delay,
+        timeout=None,  # format_clarity_evaluator doesn't use timeout
+    )
 
 
 def extract_scores_from_evaluation(

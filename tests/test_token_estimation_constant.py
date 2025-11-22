@@ -17,33 +17,34 @@ class TestTokenEstimationConstant:
     """Tests for token estimation constant usage"""
 
     def test_llm_judge_evaluator_uses_constant_for_token_estimation(self):
-        """Test that llm_judge_evaluator.py uses a constant instead of magic number 4"""
-        script_path = Path(__file__).parent.parent / "scripts" / "llm_judge_evaluator.py"
-        content = script_path.read_text(encoding="utf-8")
+        """Test that token estimation uses a constant instead of magic number 4"""
+        # After refactoring, llm_judge_evaluator.py uses call_judge_model_common
+        # which defines TOKEN_ESTIMATION_CHARS_PER_TOKEN in src/utils/judge_model_common.py
+        common_module_path = Path(__file__).parent.parent / "src" / "utils" / "judge_model_common.py"
+        common_content = common_module_path.read_text(encoding="utf-8")
         
-        # Check that magic number / 4 is not used directly
+        # Check that magic number / 4 is not used directly in common module
         magic_number_pattern = r"estimated_input_tokens\s*=\s*\([^)]+\)\s*/\s*4\b"
-        matches = re.findall(magic_number_pattern, content)
+        matches = re.findall(magic_number_pattern, common_content)
         assert len(matches) == 0, (
-            "llm_judge_evaluator.py should use a constant instead of magic number 4 "
+            "judge_model_common.py should use a constant instead of magic number 4 "
             f"for token estimation. Found: {matches}"
         )
         
         # Check that a constant is defined for token estimation
         constant_patterns = [
-            r"TOKEN_ESTIMATION",
-            r"CHARS_PER_TOKEN",
-            r"TOKEN.*ESTIMATION",
+            r"TOKEN_ESTIMATION_CHARS_PER_TOKEN",
         ]
-        has_constant = any(re.search(pattern, content, re.IGNORECASE) for pattern in constant_patterns)
+        has_constant = any(re.search(pattern, common_content, re.IGNORECASE) for pattern in constant_patterns)
         assert has_constant, (
-            "llm_judge_evaluator.py should define a constant for token estimation "
-            "(e.g., TOKEN_ESTIMATION_CHARS_PER_TOKEN)"
+            "judge_model_common.py should define TOKEN_ESTIMATION_CHARS_PER_TOKEN constant "
+            "for token estimation"
         )
         
         # Check that the constant is used in token estimation
-        usage_pattern = r"estimated_input_tokens\s*=\s*\([^)]+\)\s*/\s*[A-Z_]+"
-        assert re.search(usage_pattern, content), (
-            "llm_judge_evaluator.py should use the constant in token estimation calculation"
+        usage_pattern = r"estimated_input_tokens\s*=\s*\([^)]+\)\s*/\s*TOKEN_ESTIMATION_CHARS_PER_TOKEN"
+        assert re.search(usage_pattern, common_content), (
+            "judge_model_common.py should use TOKEN_ESTIMATION_CHARS_PER_TOKEN "
+            "in token estimation calculation"
         )
 
