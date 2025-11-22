@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install dependencies
+        run: uv pip install --python .venv/bin/python -r requirements.txt
+
+      - name: Create required directories and sample files
+        run: |
+          mkdir -p output
+          mkdir -p examples
+          # Create sample files for tests (minimal content to satisfy test requirements)
+          cat > examples/sample_input_llm_judge.csv << 'EOF'
+          Question,Model A Response,Model B Response
+          "Test question","Test response A","Test response B"
+          EOF
+          cat > examples/sample_input_ragas.csv << 'EOF'
+          question,answer,contexts
+          "Test question","Test answer","Test context"
+          EOF
+          cat > examples/sample_input_format_clarity.csv << 'EOF'
+          Question,Model A Response,Model B Response
+          "Test question","Test response A","Test response B"
+          EOF
+
+      - name: Run tests
+        run: make test
+
