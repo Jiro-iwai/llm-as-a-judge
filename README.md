@@ -1114,6 +1114,28 @@ python scripts/run_full_pipeline.py examples/questions.txt --judge-model gpt-5
 - `--skip-collect`: 収集ステップをスキップ（既存の`output/collected_responses.csv`を使用）
 - `--skip-visualize`: 可視化ステップをスキップ
 - `--collect-output`: 収集ステップの出力ファイル名（デフォルト: `output/collected_responses.csv`）
+- `--max-workers`: 並列処理のワーカー数（評価スクリプトに渡される、デフォルト: 環境変数`APP_MAX_WORKERS`または`None`=順次処理）
+
+**並列処理を有効化：**
+
+```bash
+# 環境変数で並列処理を有効化（4ワーカー）
+export APP_MAX_WORKERS=4
+python scripts/run_full_pipeline.py examples/questions.txt
+
+# コマンドライン引数で並列処理を有効化（4ワーカー）
+python scripts/run_full_pipeline.py examples/questions.txt --max-workers 4
+
+# 順次処理に戻す（デフォルト）
+export APP_MAX_WORKERS=None
+# または
+unset APP_MAX_WORKERS
+```
+
+**注意**: 
+- 並列処理は`llm_judge_evaluator.py`、`format_clarity_evaluator.py`、`collect_responses.py`でサポートされています
+- `ragas_llm_judge_evaluator.py`は現状並列処理をサポートしていません（Ragasフレームワークの制約により）
+- APIのレート制限に注意してください。過度な並列処理はAPIエラーを引き起こす可能性があります
 
 **実行フロー：**
 
