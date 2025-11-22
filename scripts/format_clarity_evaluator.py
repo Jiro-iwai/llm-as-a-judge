@@ -508,7 +508,7 @@ def process_csv(
                 )
                 if response != "y" and response != "yes":
                     log_info(
-                        "Cancelled. Use -n flag to test with fewer rows: python format_clarity_evaluator.py input.csv -n 5"
+                        "Cancelled. Use -n flag to test with fewer rows: python scripts/format_clarity_evaluator.py input.csv -n 5"
                     )
                     sys.exit(0)
             except (KeyboardInterrupt, EOFError):
@@ -638,9 +638,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python format_clarity_evaluator.py test_5_rows.csv
-    python format_clarity_evaluator.py /path/to/input.csv -o my_format_results.csv
-    python format_clarity_evaluator.py input.csv -n 5  # Test with first 5 rows only
+    python scripts/format_clarity_evaluator.py examples/sample_input_format_clarity.csv
+    python scripts/format_clarity_evaluator.py input.csv -o output/format_clarity_output.csv
+    python scripts/format_clarity_evaluator.py input.csv -n 5 -o output/test_results.csv  # Test with first 5 rows
 
 Input CSV Format:
     - Header row optional
@@ -656,14 +656,14 @@ Setup for Azure OpenAI:
        export MODEL_NAME='gpt-4-turbo'  # or 'gpt-5', 'gpt-4.1'
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional, defaults to this
     3. Run the script with your input CSV file:
-       python format_clarity_evaluator.py input.csv -m gpt-5  # Use -m to specify model
+       python scripts/format_clarity_evaluator.py input.csv -m gpt-5  # Use -m to specify model
 
 Setup for Standard OpenAI:
     1. Install dependencies: pip install -r requirements.txt
     2. Set API key: export OPENAI_API_KEY='your-api-key-here'
     3. Optionally set model: export MODEL_NAME='gpt-4-turbo'
     4. Run the script with your input CSV file:
-       python format_clarity_evaluator.py input.csv -m gpt-4-turbo  # Use -m to specify model
+       python scripts/format_clarity_evaluator.py input.csv -m gpt-4-turbo  # Use -m to specify model
 
 Supported Models:
     - gpt-5: GPT-5 (uses max_completion_tokens, temperature=1.0)
@@ -692,7 +692,7 @@ How It Works:
         "-o",
         "--output",
         default="format_clarity_output.csv",
-        help="Path to the output CSV file (default: format_clarity_output.csv)",
+        help="Path to the output CSV file (default: format_clarity_output.csv). Note: It's recommended to use output/ directory (e.g., output/format_clarity_output.csv)",
     )
 
     parser.add_argument(

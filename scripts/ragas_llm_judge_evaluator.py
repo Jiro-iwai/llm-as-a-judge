@@ -590,9 +590,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python ragas_llm_judge_evaluator.py test_5_rows.csv
-    python ragas_llm_judge_evaluator.py /path/to/input.csv -o my_ragas_results.csv
-    python ragas_llm_judge_evaluator.py input.csv -n 3  # Test with 3 rows only
+    python scripts/ragas_llm_judge_evaluator.py examples/sample_input_ragas.csv
+    python scripts/ragas_llm_judge_evaluator.py input.csv -o output/ragas_evaluation_output.csv
+    python scripts/ragas_llm_judge_evaluator.py input.csv -n 3 -o output/test_results.csv  # Test with 3 rows only
 
 Setup:
     1. Install dependencies:
@@ -614,7 +614,7 @@ Setup:
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional
        
     4. Run the script:
-       python ragas_llm_judge_evaluator.py input.csv -m gpt-4.1  # Use -m to specify model
+       python scripts/ragas_llm_judge_evaluator.py input.csv -m gpt-4.1  # Use -m to specify model
        
     5. Prepare input CSV with columns:
        - Question
@@ -645,7 +645,7 @@ Output:
         "-o",
         "--output",
         default="ragas_evaluation_output.csv",
-        help="Path to the output CSV file (default: ragas_evaluation_output.csv)",
+        help="Path to the output CSV file (default: ragas_evaluation_output.csv). Note: It's recommended to use output/ directory (e.g., output/ragas_evaluation_output.csv)",
     )
 
     parser.add_argument(

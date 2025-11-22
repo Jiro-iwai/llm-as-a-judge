@@ -153,14 +153,14 @@ default_identity: "CONFIG_USER"
 
 # 出力ファイル名
 output_files:
-  evaluation_comparison: "custom_comparison.png"
-  evaluation_distribution: "evaluation_distribution.png"
-  evaluation_boxplot: "evaluation_boxplot.png"
-  evaluation_summary: "evaluation_summary.txt"
-  processing_time_comparison: "processing_time_comparison.png"
-  processing_time_statistics: "processing_time_statistics.png"
-  processing_time_summary: "processing_time_summary.txt"
-  processing_time_log: "processing_time_log.txt"
+  evaluation_comparison: "output/custom_comparison.png"
+  evaluation_distribution: "output/evaluation_distribution.png"
+  evaluation_boxplot: "output/evaluation_boxplot.png"
+  evaluation_summary: "output/evaluation_summary.txt"
+  processing_time_comparison: "output/processing_time_comparison.png"
+  processing_time_statistics: "output/processing_time_statistics.png"
+  processing_time_summary: "output/processing_time_summary.txt"
+  processing_time_log: "output/processing_time_log.txt"
 
 # 正規表現パターン（compare_processing_time.py用）
 regex_patterns:
@@ -803,8 +803,8 @@ python scripts/collect_responses.py questions.txt --time-log custom_time_log.txt
 
 **出力：**
 - `output/collected_responses.csv`（デフォルト）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
-- `processing_time_log.txt`: 各API呼び出しの処理時間ログ
-- `processing_time_comparison.png`, `processing_time_statistics.png`, `processing_time_summary.txt`: 処理時間比較チャートと統計サマリー
+- `output/processing_time_log.txt`: 各API呼び出しの処理時間ログ（デフォルト）
+- `output/processing_time_comparison.png`, `output/processing_time_statistics.png`, `output/processing_time_summary.txt`: 処理時間比較チャートと統計サマリー
 
 **注意：**
 - このスクリプトの出力は`llm_judge_evaluator.py`、`ragas_llm_judge_evaluator.py`、`format_clarity_evaluator.py`の入力として使用可能です
@@ -820,7 +820,7 @@ echo "会社の休暇制度について教えてください" > questions.txt
 python scripts/collect_responses.py questions.txt -o responses.csv
 
 # 3. 処理時間レポートを確認
-ls -la processing_time_*.png processing_time_summary.txt processing_time_log.txt
+ls -la output/processing_time_*.png output/processing_time_summary.txt output/processing_time_log.txt
 
 # 4. 収集したデータを評価
 python scripts/llm_judge_evaluator.py responses.csv -n 5
@@ -843,11 +843,11 @@ python scripts/llm_judge_evaluator.py responses.csv -n 5
 **使用方法：**
 
 ```bash
-# 基本的な使用方法（デフォルトのログファイル名: tmp.txt）
+# 基本的な使用方法（デフォルトのログファイル名: output/processing_time_log.txt）
 python scripts/compare_processing_time.py
 
 # カスタムログファイルを指定
-python scripts/compare_processing_time.py log_file.txt
+python scripts/compare_processing_time.py output/processing_time_log.txt
 ```
 
 **設定値の外部化：**
@@ -875,9 +875,9 @@ python scripts/compare_processing_time.py log_file.txt
 
 **出力ファイル：**
 
-- `processing_time_comparison.png`: Model AとModel Bの処理時間比較チャート（バーチャート）
-- `processing_time_statistics.png`: 統計チャート（平均、分布、トレンド、速度比の4つのサブプロット）
-- `processing_time_summary.txt`: 詳細な統計サマリーテーブル（各質問の処理時間、差分、速度比、全体統計）
+- `output/processing_time_comparison.png`: Model AとModel Bの処理時間比較チャート（バーチャート）
+- `output/processing_time_statistics.png`: 統計チャート（平均、分布、トレンド、速度比の4つのサブプロット）
+- `output/processing_time_summary.txt`: 詳細な統計サマリーテーブル（各質問の処理時間、差分、速度比、全体統計）
 
 **使用例：**
 
@@ -887,7 +887,7 @@ python scripts/compare_processing_time.py log_file.txt
 python scripts/compare_processing_time.py api_logs.txt
 
 # 3. 生成されたファイルを確認
-ls -la processing_time_*.png processing_time_summary.txt
+ls -la output/processing_time_*.png output/processing_time_summary.txt
 ```
 
 **注意：**
