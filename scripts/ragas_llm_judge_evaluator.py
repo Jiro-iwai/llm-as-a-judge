@@ -768,7 +768,7 @@ def merge_ragas_results_and_write(
         + score_columns_b
     )
 
-    output_df = df[output_columns]
+    output_df = pd.DataFrame(df[output_columns])
 
     # Save to CSV
     output_path = Path(output_file)
