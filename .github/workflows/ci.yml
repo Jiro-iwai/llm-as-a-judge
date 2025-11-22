@@ -44,10 +44,19 @@ jobs:
         run: |
           mkdir -p output
           mkdir -p examples
-          # Create sample files for tests
-          echo "Question,Model_A_Response,Model_B_Response" > examples/sample_input_llm_judge.csv
-          echo "question,answer,contexts" > examples/sample_input_ragas.csv
-          echo "Question,Model_A_Response,Model_B_Response" > examples/sample_input_format_clarity.csv
+          # Create sample files for tests (minimal content to satisfy test requirements)
+          cat > examples/sample_input_llm_judge.csv << 'EOF'
+          Question,Model A Response,Model B Response
+          "Test question","Test response A","Test response B"
+          EOF
+          cat > examples/sample_input_ragas.csv << 'EOF'
+          question,answer,contexts
+          "Test question","Test answer","Test context"
+          EOF
+          cat > examples/sample_input_format_clarity.csv << 'EOF'
+          Question,Model A Response,Model B Response
+          "Test question","Test response A","Test response B"
+          EOF
 
       - name: Run tests
         run: make test
