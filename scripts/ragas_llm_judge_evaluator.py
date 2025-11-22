@@ -12,7 +12,7 @@ This metric doesn't require ground truth, making it suitable for evaluation when
 reference answers are not available.
 
 Usage:
-    python ragas_llm_judge_evaluator.py <input_csv_file>
+    python scripts/ragas_llm_judge_evaluator.py <input_csv_file>
 
 Requirements:
     - Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and MODEL_NAME environment variables
