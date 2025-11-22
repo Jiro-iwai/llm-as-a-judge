@@ -5,10 +5,11 @@ evaluation_output.csvの評価結果をグラフで表示します。
 """
 
 import argparse
+import math
 import platform
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 # Add project root to Python path (must be before other imports)
 project_root = Path(__file__).parent.parent
@@ -100,11 +101,8 @@ def detect_evaluator_type(df: pd.DataFrame) -> str:
     if "Model_A_Citation_Score" in columns and "Model_B_Citation_Score" in columns:
         return "llm-judge"
 
-    # Check for ragas format (faithfulness_score columns)
-    if (
-        "Model_A_faithfulness_score" in columns
-        and "Model_B_faithfulness_score" in columns
-    ):
+    # Check for ragas format (parsed answers + score columns)
+    if {"model_A_answer", "model_B_answer"}.issubset(columns):
         return "ragas"
 
     # Check for format-clarity format (single Format_Clarity_Score column)
@@ -112,6 +110,48 @@ def detect_evaluator_type(df: pd.DataFrame) -> str:
         return "format-clarity"
 
     return "unknown"
+
+
+def get_ragas_metric_keys(df: pd.DataFrame) -> List[str]:
+    """
+    Extract available Ragas metric keys based on Model_A_*/Model_B_* score columns.
+    """
+    metrics = []
+    for column in df.columns:
+        prefix = "Model_A_"
+        suffix = "_score"
+        if column.startswith(prefix) and column.endswith(suffix):
+            metric_key = column[len(prefix) : -len(suffix)]
+            model_b_col = f"Model_B_{metric_key}_score"
+            if model_b_col in df.columns:
+                metrics.append(metric_key)
+    # Preserve order of appearance
+    seen = set()
+    ordered_metrics = []
+    for metric in metrics:
+        if metric not in seen:
+            ordered_metrics.append(metric)
+            seen.add(metric)
+    return ordered_metrics
+
+
+def format_metric_label(metric_key: str) -> str:
+    """Convert metric key (e.g., answer_relevance) to a display label."""
+    return metric_key.replace("_", " ").title()
+
+
+def flatten_axes(axes):
+    """
+    Normalize matplotlib axes output (single Axes, ndarray, or list) to a list.
+    """
+    try:
+        # ndarray has flatten method
+        flattened = axes.flatten().tolist()  # type: ignore[attr-defined]
+        return flattened
+    except AttributeError:
+        if isinstance(axes, (list, tuple)):
+            return list(axes)
+        return [axes]
 
 
 def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -190,8 +230,13 @@ def create_score_comparison_chart(
         y_max = 5.5
         y_ticks = range(0, 6)
     elif evaluator_type == "ragas":
+        metric_keys = get_ragas_metric_keys(df)
+        if not metric_keys:
+            log_error("Ragasスコア列が見つかりません")
+            return
         metrics = [
-            ("Faithfulness", "faithfulness_score"),
+            (format_metric_label(metric_key), f"{metric_key}_score")
+            for metric_key in metric_keys
         ]
         y_max = 1.1
         y_ticks = [i / 10 for i in range(0, 12, 2)]
@@ -368,14 +413,21 @@ def create_score_distribution_chart(
         fig_size = (15, 10)
         subplot_layout = (2, 3)
     elif evaluator_type == "ragas":
+        metric_keys = get_ragas_metric_keys(df)
+        if not metric_keys:
+            log_error("Ragasスコア列が見つかりません")
+            return
         metrics = [
-            ("Faithfulness", "faithfulness_score"),
+            (format_metric_label(metric_key), f"{metric_key}_score")
+            for metric_key in metric_keys
         ]
         x_ticks = [i / 10 for i in range(0, 12, 2)]
         x_lim = (-0.05, 1.05)
         bins = 10
-        fig_size = (8, 6)
-        subplot_layout = (1, 1)
+        cols = 2 if len(metrics) > 1 else 1
+        rows = math.ceil(len(metrics) / cols)
+        fig_size = (cols * 6, rows * 4)
+        subplot_layout = (rows, cols)
     elif evaluator_type == "format-clarity":
         if "Format_Clarity_Score" not in df.columns:
             log_error("Format_Clarity_Score column not found")
@@ -405,13 +457,12 @@ def create_score_distribution_chart(
         return
 
     fig, axes = plt.subplots(*subplot_layout, figsize=fig_size)
-    if evaluator_type == "ragas":
-        axes = [axes]
-    else:
-        axes = axes.flatten()
+    axes_list = flatten_axes(axes)
 
     for idx, (metric_name, score_col) in enumerate(metrics):
-        ax = axes[idx]
+        if idx >= len(axes_list):
+            break
+        ax = axes_list[idx]
         model_a_col = f"Model_A_{score_col}"
         model_b_col = f"Model_B_{score_col}"
 
@@ -438,9 +489,10 @@ def create_score_distribution_chart(
                 ax.legend(fontsize=9)
                 ax.grid(axis="y", alpha=0.3)
 
-    # 最後のサブプロットを非表示（llm-judgeの場合のみ）
-    if evaluator_type == "llm-judge" and len(metrics) < len(axes):
-        axes[5].axis("off")
+    # 余ったサブプロットを非表示
+    if len(metrics) < len(axes_list):
+        for extra_ax in axes_list[len(metrics) :]:
+            extra_ax.axis("off")
 
     plt.suptitle(
         f"スコア分布（{label_a} vs {label_b}）", fontsize=14, fontweight="bold", y=0.995
@@ -493,8 +545,13 @@ def create_boxplot_chart(
         y_lim = (0.5, 5.5)
         y_ticks = range(1, 6)
     elif evaluator_type == "ragas":
+        metric_keys = get_ragas_metric_keys(df)
+        if not metric_keys:
+            log_error("Ragasスコア列が見つかりません")
+            return
         metrics = [
-            ("Faithfulness", "faithfulness_score"),
+            (format_metric_label(metric_key), f"{metric_key}_score")
+            for metric_key in metric_keys
         ]
         y_lim = (-0.05, 1.05)
         y_ticks = [i / 10 for i in range(0, 12, 2)]
@@ -629,8 +686,13 @@ def create_summary_table(
             ("Information Integration", "Information_Integration_Score"),
         ]
     elif evaluator_type == "ragas":
+        metric_keys = get_ragas_metric_keys(df)
+        if not metric_keys:
+            log_error("Ragasスコア列が見つかりません")
+            return
         metrics = [
-            ("Faithfulness", "faithfulness_score"),
+            (format_metric_label(metric_key), f"{metric_key}_score")
+            for metric_key in metric_keys
         ]
     elif evaluator_type == "format-clarity":
         if "Format_Clarity_Score" not in df.columns:
@@ -769,6 +831,9 @@ def main():
     2. ragas (ragas_llm_judge_evaluator.py):
        - Question
        - Model_A_faithfulness_score, Model_B_faithfulness_score
+       - Model_A_answer_relevance_score, Model_B_answer_relevance_score
+       - Model_A_context_precision_score, Model_B_context_precision_score
+       - Model_A_context_recall_score, Model_B_context_recall_score
        - Evaluation_Error (オプション)
     
     3. format-clarity (format_clarity_evaluator.py):
@@ -779,10 +844,14 @@ def main():
     評価スクリプトの種類は自動検出されます。
 
 出力ファイル:
-    - {output_files.get("evaluation_comparison", "output/evaluation_comparison.png")}: Model AとModel Bのスコア比較チャート
-    - {output_files.get("evaluation_distribution", "output/evaluation_distribution.png")}: スコア分布のヒストグラム
-    - {output_files.get("evaluation_boxplot", "output/evaluation_boxplot.png")}: スコア分布の箱ひげ図
-    - {output_files.get("evaluation_summary", "output/evaluation_summary.txt")}: 統計サマリーテーブル
+    - {output_files.get("evaluation_comparison", "output/evaluation_comparison.png")}: Model AとModel Bのスコア比較チャート（llm-judge / format-clarity共通）
+    - {output_files.get("evaluation_distribution", "output/evaluation_distribution.png")}: スコア分布のヒストグラム（llm-judge / format-clarity共通）
+    - {output_files.get("evaluation_boxplot", "output/evaluation_boxplot.png")}: スコア分布の箱ひげ図（llm-judge / format-clarity共通）
+    - {output_files.get("evaluation_summary", "output/evaluation_summary.txt")}: 統計サマリーテーブル（llm-judge / format-clarity共通）
+    - {output_files.get("ragas_evaluation_comparison", output_files.get("evaluation_comparison", "output/evaluation_comparison.png"))}: Ragas向けのスコア比較チャート
+    - {output_files.get("ragas_evaluation_distribution", output_files.get("evaluation_distribution", "output/evaluation_distribution.png"))}: Ragas向けのスコア分布ヒストグラム
+    - {output_files.get("ragas_evaluation_boxplot", output_files.get("evaluation_boxplot", "output/evaluation_boxplot.png"))}: Ragas向けのスコア箱ひげ図
+    - {output_files.get("ragas_evaluation_summary", output_files.get("evaluation_summary", "output/evaluation_summary.txt"))}: Ragas向けの統計サマリー
         """,
     )
 
@@ -837,33 +906,60 @@ def main():
 
     # Get output file names from config
     output_files = get_output_file_names()
+    resolved_outputs = {
+        "comparison": output_files.get(
+            "evaluation_comparison", "output/evaluation_comparison.png"
+        ),
+        "distribution": output_files.get(
+            "evaluation_distribution", "output/evaluation_distribution.png"
+        ),
+        "boxplot": output_files.get(
+            "evaluation_boxplot", "output/evaluation_boxplot.png"
+        ),
+        "summary": output_files.get(
+            "evaluation_summary", "output/evaluation_summary.txt"
+        ),
+    }
+    if evaluator_type == "ragas":
+        resolved_outputs["comparison"] = output_files.get(
+            "ragas_evaluation_comparison", resolved_outputs["comparison"]
+        )
+        resolved_outputs["distribution"] = output_files.get(
+            "ragas_evaluation_distribution", resolved_outputs["distribution"]
+        )
+        resolved_outputs["boxplot"] = output_files.get(
+            "ragas_evaluation_boxplot", resolved_outputs["boxplot"]
+        )
+        resolved_outputs["summary"] = output_files.get(
+            "ragas_evaluation_summary", resolved_outputs["summary"]
+        )
 
     # グラフを作成
     log_info("グラフを作成中...")
     create_score_comparison_chart(
         df_clean,
-        output_files["evaluation_comparison"],
+        resolved_outputs["comparison"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
         evaluator_type=evaluator_type,
     )
     create_score_distribution_chart(
         df_clean,
-        output_files["evaluation_distribution"],
+        resolved_outputs["distribution"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
         evaluator_type=evaluator_type,
     )
     create_boxplot_chart(
         df_clean,
-        output_files["evaluation_boxplot"],
+        resolved_outputs["boxplot"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
         evaluator_type=evaluator_type,
     )
     create_summary_table(
         df_clean,
-        output_files["evaluation_summary"],
+        resolved_outputs["summary"],
         model_a_name=args.model_a,
         model_b_name=args.model_b,
         evaluator_type=evaluator_type,
@@ -872,14 +968,10 @@ def main():
     log_info("")
     log_section("✓ 可視化完了!")
     log_info("生成されたファイル:")
-    log_info(
-        f"  - {output_files['evaluation_comparison']}: スコア比較チャート", indent=1
-    )
-    log_info(
-        f"  - {output_files['evaluation_distribution']}: スコア分布チャート", indent=1
-    )
-    log_info(f"  - {output_files['evaluation_boxplot']}: 箱ひげ図", indent=1)
-    log_info(f"  - {output_files['evaluation_summary']}: サマリーテーブル", indent=1)
+    log_info(f"  - {resolved_outputs['comparison']}: スコア比較チャート", indent=1)
+    log_info(f"  - {resolved_outputs['distribution']}: スコア分布チャート", indent=1)
+    log_info(f"  - {resolved_outputs['boxplot']}: 箱ひげ図", indent=1)
+    log_info(f"  - {resolved_outputs['summary']}: サマリーテーブル", indent=1)
 
 
 if __name__ == "__main__":

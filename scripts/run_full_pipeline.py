@@ -17,7 +17,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 # Add project root to Python path (must be before other imports)
 project_root = Path(__file__).parent.parent
@@ -40,6 +40,17 @@ DEFAULT_COLLECT_OUTPUT = "output/collected_responses.csv"
 DEFAULT_LLM_JUDGE_OUTPUT = "output/evaluation_output.csv"
 DEFAULT_RAGAS_OUTPUT = "output/ragas_evaluation_output.csv"
 DEFAULT_FORMAT_CLARITY_OUTPUT = "output/format_clarity_output.csv"
+
+RAGAS_METRIC_CHOICES = [
+    "faithfulness",
+    "answer_relevance",
+    "context_precision",
+    "context_recall",
+]
+RAGAS_METRIC_PRESETS = {
+    "basic": ["faithfulness", "answer_relevance"],
+    "with_reference": RAGAS_METRIC_CHOICES,
+}
 
 
 def run_collect_step(
@@ -117,6 +128,8 @@ def run_evaluation_step(
     input_file: str,
     limit: Optional[int] = None,
     model_name: Optional[str] = None,
+    ragas_metrics: Optional[List[str]] = None,
+    ragas_metrics_preset: Optional[str] = None,
     **kwargs,
 ) -> Tuple[bool, str]:
     """
@@ -127,6 +140,8 @@ def run_evaluation_step(
         input_file: Input CSV file path
         limit: Limit number of rows to process (optional)
         model_name: Model name for evaluation (optional)
+        ragas_metrics: Optional list of metrics when evaluator is 'ragas'
+        ragas_metrics_preset: Optional preset name when evaluator is 'ragas'
         **kwargs: Additional arguments to pass to evaluation script
 
     Returns:
@@ -152,6 +167,12 @@ def run_evaluation_step(
         results = []
         for eval_name, eval_config in evaluators.items():
             log_section(f"Step 2: Running {eval_name} Evaluation")
+            extra_args = kwargs.copy()
+            if eval_name == "ragas":
+                if ragas_metrics:
+                    extra_args = {**extra_args, "metrics": ragas_metrics}
+                elif ragas_metrics_preset:
+                    extra_args = {**extra_args, "metrics_preset": ragas_metrics_preset}
             success, output_file = run_single_evaluation(
                 eval_name,
                 eval_config["script"],
@@ -159,7 +180,7 @@ def run_evaluation_step(
                 input_file,
                 limit,
                 model_name,
-                **kwargs,
+                **extra_args,
             )
             results.append((success, output_file))
             if not success:
@@ -174,6 +195,13 @@ def run_evaluation_step(
 
         eval_config = evaluators[evaluator]
         log_section(f"Step 2: Running {evaluator} Evaluation")
+        extra_args = kwargs.copy()
+        if evaluator == "ragas":
+            if ragas_metrics:
+                extra_args = {**extra_args, "metrics": ragas_metrics}
+            elif ragas_metrics_preset:
+                extra_args = {**extra_args, "metrics_preset": ragas_metrics_preset}
+
         return run_single_evaluation(
             evaluator,
             eval_config["script"],
@@ -181,7 +209,7 @@ def run_evaluation_step(
             input_file,
             limit,
             model_name,
-            **kwargs,
+            **extra_args,
         )
 
 
@@ -227,8 +255,19 @@ def run_single_evaluation(
 
     # Add any additional kwargs as command-line arguments
     for key, value in kwargs.items():
-        if value is not None:
-            cmd.extend([f"--{key.replace('_', '-')}", str(value)])
+        if value is None:
+            continue
+        flag = f"--{key.replace('_', '-')}"
+        if isinstance(value, bool):
+            if value:
+                cmd.append(flag)
+        elif isinstance(value, (list, tuple)):
+            if len(value) == 0:
+                continue
+            cmd.append(flag)
+            cmd.extend([str(v) for v in value])
+        else:
+            cmd.extend([flag, str(value)])
 
     try:
         # Run without capturing output so progress is visible in real-time
@@ -362,6 +401,30 @@ Examples:
     )
 
     parser.add_argument(
+        "--ragas-metrics",
+        nargs="+",
+        choices=RAGAS_METRIC_CHOICES,
+        default=None,
+        help=(
+            "Explicit metrics to compute when evaluator is 'ragas'. "
+            "Only applied when running ragas evaluator. "
+            "Overrides --ragas-metrics-preset when both are provided."
+        ),
+    )
+    parser.add_argument(
+        "--ragas-metrics-preset",
+        choices=sorted(RAGAS_METRIC_PRESETS.keys()),
+        default=None,
+        help=(
+            "Preset of metrics when evaluator is 'ragas'. "
+            "basic: faithfulness + answer_relevance (default). "
+            "with_reference: full metric set including context_precision and "
+            "context_recall (requires reference column/ground truth). "
+            "Ignored if --ragas-metrics is provided."
+        ),
+    )
+
+    parser.add_argument(
         "--skip-collect",
         action="store_true",
         help="Skip collection step (use existing collected_responses.csv)",
@@ -421,11 +484,28 @@ Examples:
             actual_model_b = "claude4.5-haiku"
 
     # Step 2: Run evaluation
+    if args.ragas_metrics and args.evaluator not in ("ragas", "all"):
+        log_warning(
+            "--ragas-metrics was specified but evaluator is not 'ragas' or 'all'; "
+            "the option will be ignored."
+        )
+    if args.ragas_metrics_preset and args.evaluator not in ("ragas", "all"):
+        log_warning(
+            "--ragas-metrics-preset was specified but evaluator is not 'ragas' or 'all'; "
+            "the option will be ignored."
+        )
+    if args.ragas_metrics and args.ragas_metrics_preset:
+        log_warning(
+            "--ragas-metrics overrides --ragas-metrics-preset; preset selection will be ignored."
+        )
+
     success, eval_output_file = run_evaluation_step(
         args.evaluator,
         args.collect_output,
         limit=args.limit,
         model_name=args.judge_model,
+        ragas_metrics=args.ragas_metrics,
+        ragas_metrics_preset=args.ragas_metrics_preset,
     )
     if not success:
         log_error("Pipeline failed at evaluation step")

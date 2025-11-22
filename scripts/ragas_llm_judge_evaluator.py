@@ -3,8 +3,10 @@
 Ragas-Based Evaluation Pipeline for ReAct Chatbot Responses
 
 This script uses the Ragas framework to evaluate two models' responses by automatically
-parsing ReAct logs to extract Final Answers and Contexts, then running the faithfulness
-metric to measure how grounded the answers are in the retrieved context.
+parsing ReAct logs to extract Final Answers and Contexts, then running multiple Ragas
+metrics (faithfulness, answer_relevance, context_precision, context_recall) to measure
+how grounded and relevant the answers are with respect to the retrieved context and
+original question.
 
 This metric doesn't require ground truth, making it suitable for evaluation when
 reference answers are not available.
@@ -26,7 +28,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 # Add project root to Python path (must be before other imports)
 project_root = Path(__file__).parent.parent
@@ -37,13 +39,54 @@ from datasets import Dataset  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 from openai import AzureOpenAI  # noqa: E402
 from ragas import evaluate  # noqa: E402
-from ragas.metrics import (  # noqa: E402
+from ragas.metrics import (  # type: ignore[attr-defined] # noqa: E402
+    answer_relevancy,
+    context_precision,
+    context_recall,
     faithfulness,
 )
+
+# Supported Ragas metrics (extendable)
+AVAILABLE_METRICS = {
+    "faithfulness": faithfulness,
+    "answer_relevance": answer_relevancy,
+    "context_precision": context_precision,
+    "context_recall": context_recall,
+}
+
+BASIC_METRICS = ["faithfulness", "answer_relevance"]
+# Note: context_precision and context_recall require 'reference' column (ground truth)
+# These metrics are only available when reference answers are provided
+METRICS_WITH_REFERENCE = [
+    "faithfulness",
+    "answer_relevance",
+    "context_precision",
+    "context_recall",
+]
+METRIC_PRESETS = {
+    "basic": BASIC_METRICS,
+    "with_reference": METRICS_WITH_REFERENCE,  # Requires reference column (ground truth)
+}
+
+# Default to basic metrics since we don't have ground truth
+DEFAULT_METRICS = tuple(BASIC_METRICS)
+
+
+def resolve_metrics(metrics: Optional[List[str]], preset: Optional[str]) -> List[str]:
+    """
+    Determine which metrics to run based on explicit metrics or preset.
+    """
+    if metrics:
+        return list(metrics)
+    if preset:
+        return list(METRIC_PRESETS[preset])
+    return list(DEFAULT_METRICS)
+
+
 from tqdm import tqdm  # noqa: E402
 
 if TYPE_CHECKING:
-    from langchain_openai import AzureChatOpenAI  # noqa: E402
+    from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings  # noqa: E402
 
 from src.config.model_configs import (  # noqa: E402
     DEFAULT_MODEL,
@@ -200,7 +243,7 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
 
 def initialize_azure_openai_for_ragas(
     model_name: Optional[str] = None,
-) -> Tuple["AzureChatOpenAI", AzureOpenAI]:
+) -> Tuple["AzureChatOpenAI", AzureOpenAI, "AzureOpenAIEmbeddings"]:
     """
     Initialize Azure OpenAI client and wrap it for Ragas.
 
@@ -208,15 +251,38 @@ def initialize_azure_openai_for_ragas(
         model_name: Optional model name. If None, uses environment variable or default.
 
     Returns:
-        Tuple of (ragas_llm, client) where:
+        Tuple of (ragas_llm, client, embeddings) where:
         - ragas_llm is the LangChain LLM for Ragas
         - client is the Azure OpenAI client
+        - embeddings is the Azure OpenAI Embeddings for Ragas
     """
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
     if model_name is None:
         model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
+
+    # For embeddings, deployment name is required (chat models cannot be used for embeddings)
+    embedding_deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
+    if not embedding_deployment:
+        log_error("Azure OpenAI Embeddings deployment name not found.")
+        log_error("\nRagas evaluation requires an embeddings deployment.")
+        log_error(
+            "Chat models (like gpt-4.1) cannot be used for embeddings operations."
+        )
+        log_error("\nPlease set the following environment variable in your .env file:")
+        log_error(
+            "  AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312"
+        )
+        log_error("  # Replace with your actual embedding deployment name")
+        log_error("\nOptional:")
+        log_error("  AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312")
+        sys.exit(1)
+
+    # Embedding model name (e.g., text-embedding-3-large-20240312)
+    embedding_model_name = os.getenv(
+        "AZURE_OPENAI_EMBEDDING_MODEL_NAME", "text-embedding-3-large-20240312"
+    )
 
     if not azure_endpoint or not azure_api_key:
         log_error("Azure OpenAI credentials not found.")
@@ -228,9 +294,16 @@ def initialize_azure_openai_for_ragas(
         log_error(
             "  export MODEL_NAME='gpt-5'  # or your deployment name (e.g., 'gpt-4.1')"
         )
+        log_error("\nOptional (for Ragas embeddings):")
+        log_error(
+            "  export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-3-large'"
+        )
+        log_error(
+            "  export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-3-large-20240312'"
+        )
         sys.exit(1)
 
-    log_info("Initializing Azure OpenAI for Ragas evaluation (Faithfulness only)")
+    log_info("Initializing Azure OpenAI for Ragas evaluation")
     log_info(f"Endpoint: {azure_endpoint}")
     log_info(f"Model/Deployment: {model_name}")
     log_info(f"API Version: {azure_api_version}")
@@ -243,7 +316,7 @@ def initialize_azure_openai_for_ragas(
     )
 
     # Create LangChain-compatible LLM for Ragas
-    from langchain_openai import AzureChatOpenAI
+    from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 
     # Configure parameters based on model type
 
@@ -280,7 +353,21 @@ def initialize_azure_openai_for_ragas(
 
     langchain_llm = AzureChatOpenAI(**llm_params)
 
-    return langchain_llm, client
+    # Create Azure OpenAI Embeddings for Ragas
+    # Note: Chat models (like gpt-4.1) cannot be used for embeddings operations
+    # embedding_deployment is already validated above (must be set via environment variable)
+    embeddings = AzureOpenAIEmbeddings(
+        azure_endpoint=azure_endpoint,
+        api_key=azure_api_key,  # type: ignore[arg-type]
+        api_version=azure_api_version,
+        azure_deployment=embedding_deployment,
+        model=embedding_model_name,
+    )
+    log_info(
+        f"Embeddings Model: {embedding_model_name} (Deployment: {embedding_deployment})"
+    )
+
+    return langchain_llm, client, embeddings
 
 
 def evaluate_with_ragas(
@@ -289,9 +376,12 @@ def evaluate_with_ragas(
     contexts_list: List[List[str]],
     llm: "AzureChatOpenAI",
     model_name: str = "Model",
+    metric_names: Optional[Sequence[str]] = None,
+    references: Optional[List[str]] = None,
+    embeddings: Optional["AzureOpenAIEmbeddings"] = None,
 ) -> pd.DataFrame:
     """
-    Evaluate responses using Ragas faithfulness metric.
+    Evaluate responses using Ragas metrics.
 
     Args:
         questions: List of questions
@@ -299,11 +389,49 @@ def evaluate_with_ragas(
         contexts_list: List of context lists (each answer has multiple contexts)
         llm: The LLM to use for evaluation (LangChain-compatible)
         model_name: Name for labeling (e.g., "Model_A" or "Model_B")
+        metric_names: List of metrics to evaluate
+        references: Optional list of reference answers (ground truth) for metrics that require it
+        embeddings: Optional Azure OpenAI Embeddings instance (required for Azure OpenAI)
 
     Returns:
-        DataFrame with Ragas faithfulness scores
+        DataFrame with Ragas scores for the requested metrics.
     """
-    log_info(f"\nEvaluating {model_name} with Ragas (Faithfulness only)...")
+    metrics_to_run = list(metric_names) if metric_names else list(DEFAULT_METRICS)
+    invalid_metrics = [
+        metric for metric in metrics_to_run if metric not in AVAILABLE_METRICS
+    ]
+    if invalid_metrics:
+        raise ValueError(f"Unsupported metrics requested: {', '.join(invalid_metrics)}")
+
+    # Check for metrics that require reference column
+    metrics_requiring_reference = ["context_precision", "context_recall"]
+    requested_metrics_requiring_reference = [
+        m for m in metrics_to_run if m in metrics_requiring_reference
+    ]
+
+    if requested_metrics_requiring_reference:
+        if references is None:
+            log_warning(
+                f"The following metrics require 'reference' column (ground truth): {', '.join(requested_metrics_requiring_reference)}"
+            )
+            log_warning(
+                "Skipping these metrics. Use --metrics-preset basic or specify metrics that don't require reference."
+            )
+            # Remove metrics that require reference
+            metrics_to_run = [
+                m for m in metrics_to_run if m not in metrics_requiring_reference
+            ]
+            if not metrics_to_run:
+                log_error(
+                    "No valid metrics remaining after removing metrics requiring reference."
+                )
+                # Return empty DataFrame with expected structure
+                empty_data: Dict[str, List[Any]] = {"question": questions}
+                return pd.DataFrame(empty_data)
+
+    log_info(
+        f"\nEvaluating {model_name} with Ragas metrics: {', '.join(metrics_to_run)}"
+    )
 
     # Prepare dataset for Ragas
     data = {
@@ -312,36 +440,61 @@ def evaluate_with_ragas(
         "contexts": contexts_list,
     }
 
+    # Add reference column if provided and needed
+    if references is not None:
+        data["reference"] = references
+
     dataset = Dataset.from_dict(data)
 
-    # Define metrics to evaluate (only faithfulness - no embeddings required)
-    metrics_to_use = [
-        faithfulness,
-    ]
+    # Define metrics to evaluate (only those that don't require reference or have reference)
+    metrics_to_use = [AVAILABLE_METRICS[metric] for metric in metrics_to_run]
 
     # Run evaluation
     try:
-        results = evaluate(
-            dataset=dataset,
-            metrics=metrics_to_use,
-            llm=llm,
-        )
+        # Pass embeddings explicitly if provided (required for Azure OpenAI)
+        evaluate_kwargs: Dict[str, Any] = {
+            "dataset": dataset,
+            "metrics": metrics_to_use,
+            "llm": llm,
+        }
+        if embeddings is not None:
+            evaluate_kwargs["embeddings"] = embeddings
+
+        results = evaluate(**evaluate_kwargs)
 
         # Convert results to DataFrame
         # Type checker may not recognize to_pandas() method, but it exists
         results_df: pd.DataFrame = results.to_pandas()  # type: ignore[attr-defined]
 
-        # Rename columns with model prefix
+        # Ragas returns column names based on metric object names (e.g., "answer_relevancy")
+        # but we use normalized names (e.g., "answer_relevance") in our code
+        # Map Ragas column names to our normalized names
+        ragas_to_normalized = {
+            "answer_relevancy": "answer_relevance",
+            "faithfulness": "faithfulness",
+            "context_precision": "context_precision",
+            "context_recall": "context_recall",
+        }
+
+        # First, rename Ragas column names to normalized names
+        column_mapping = {}
+        for col in results_df.columns:
+            if col in ragas_to_normalized:
+                column_mapping[col] = ragas_to_normalized[col]
+        if column_mapping:
+            results_df = results_df.rename(columns=column_mapping)
+
+        # Then rename columns with model prefix
         score_columns = {
-            "faithfulness": f"{model_name}_faithfulness_score",
+            metric: f"{model_name}_{metric}_score" for metric in metrics_to_run
         }
 
         results_df = results_df.rename(columns=score_columns)
 
         return results_df
 
-    except (ValueError, KeyError, AttributeError) as e:
-        # データ構造のエラーは詳細な情報を記録
+    except (ValueError, KeyError, AttributeError, Exception) as e:
+        # エラー内容を詳細に記録し、期待される列構造を維持したDataFrameを返す
         log_error(
             f"ERROR during Ragas evaluation for {model_name}: {type(e).__name__}: {e}"
         )
@@ -349,47 +502,18 @@ def evaluate_with_ragas(
         import traceback
 
         traceback.print_exc(file=sys.stderr)
-        # エラー時は空のDataFrameを返す
-        error_df = pd.DataFrame(
-            {
-                "question": questions,
-                f"{model_name}_faithfulness_score": [None] * len(questions),
-            }
-        )
-        return error_df
-    except Exception as e:
-        # その他の予期しないエラー
-        log_error(
-            f"ERROR during Ragas evaluation for {model_name}: {type(e).__name__}: {e}"
-        )
-        log_error("Traceback:")
-        import traceback
-
-        traceback.print_exc(file=sys.stderr)
-        # エラー時は空のDataFrameを返す
-        error_df = pd.DataFrame(
-            {
-                "question": questions,
-                f"{model_name}_faithfulness_score": [None] * len(questions),
-            }
-        )
-        return error_df
-
-        # Return empty DataFrame with expected columns
-        error_df = pd.DataFrame(
-            {
-                f"{model_name}_faithfulness_score": [None] * len(questions),
-            }
-        )
-
-        return error_df
+        error_data: Dict[str, List[Any]] = {"question": questions}
+        for metric in metrics_to_run:
+            error_data[f"{model_name}_{metric}_score"] = [None] * len(questions)
+        return pd.DataFrame(error_data)
 
 
 def process_csv(
     input_file: str,
-    output_file: str = "ragas_evaluation_output.csv",
+    output_file: str = "output/ragas_evaluation_output.csv",
     limit_rows: Optional[int] = None,
     model_name: Optional[str] = None,
+    metric_names: Optional[List[str]] = None,
 ) -> None:
     """
     Main processing function that reads the input CSV, parses ReAct logs,
@@ -400,9 +524,11 @@ def process_csv(
         output_file: Path to the output CSV file
         limit_rows: Optional limit on number of rows to process
         model_name: Optional model name. If None, uses environment variable or default.
+        metric_names: List of Ragas metrics to compute (defaults to preset/CLI selection)
     """
     # Initialize Azure OpenAI for Ragas
-    llm, client = initialize_azure_openai_for_ragas(model_name=model_name)
+    llm, client, embeddings = initialize_azure_openai_for_ragas(model_name=model_name)
+    metrics_to_run = metric_names or DEFAULT_METRICS
 
     # Read input CSV
     log_info(f"\nReading input file: {input_file}")
@@ -515,6 +641,8 @@ def process_csv(
         contexts_list=model_a_contexts,
         llm=llm,
         model_name="Model_A",
+        metric_names=metrics_to_run,
+        embeddings=embeddings,
     )
 
     # Evaluate Model B with Ragas
@@ -525,6 +653,8 @@ def process_csv(
         contexts_list=model_b_contexts,
         llm=llm,
         model_name="Model_B",
+        metric_names=metrics_to_run,
+        embeddings=embeddings,
     )
 
     # Merge results back into main DataFrame
@@ -564,21 +694,25 @@ def process_csv(
     output_df = df[output_columns]
 
     # Save to CSV
-    output_df.to_csv(output_file, index=False)
+    output_path = Path(output_file)
+    if output_path.parent and output_path.parent != Path(""):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_df.to_csv(output_path, index=False)
 
     log_section("✓ EVALUATION COMPLETE!")
-    log_success(f"Results written to: {output_file}")
+    log_success(f"Results written to: {output_path}")
     log_success(f"Processed {len(output_df)} rows")
 
     # Print summary statistics
     log_section("SUMMARY STATISTICS")
 
-    for model_name, prefix in [("Model A", "Model_A_"), ("Model B", "Model_B_")]:
-        log_info(f"\n{model_name}:")
-        col_name = f"{prefix}faithfulness_score"
-        if col_name in output_df.columns:
-            mean_score = output_df[col_name].mean()
-            log_info(f"  faithfulness        : {mean_score:.4f}")
+    for display_name, prefix in [("Model A", "Model_A_"), ("Model B", "Model_B_")]:
+        log_info(f"\n{display_name}:")
+        for metric in metrics_to_run:
+            col_name = f"{prefix}{metric}_score"
+            if col_name in output_df.columns:
+                mean_score = output_df[col_name].mean()
+                log_info(f"  {metric:<18}: {mean_score:.4f}")
 
 
 def main():
@@ -613,6 +747,15 @@ Setup:
        export MODEL_NAME='gpt-4.1'  # or 'gpt-5', 'gpt-4-turbo' (recommended: gpt-4.1 for Ragas)
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional
        
+       # REQUIRED for Ragas evaluation (chat models cannot be used for embeddings):
+       export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-3-large-20240312'
+       # Optional (defaults to text-embedding-3-large-20240312):
+       export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-3-large-20240312'
+       
+       # Or add to .env file:
+       # AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312
+       # AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312
+       
     4. Run the script:
        python scripts/ragas_llm_judge_evaluator.py input.csv -m gpt-4.1  # Use -m to specify model
        
@@ -628,11 +771,14 @@ Input Format:
     - Results separated by ################################################
     
 Output:
-    A CSV file (ragas_evaluation_output.csv by default) containing:
+    A CSV file (output/ragas_evaluation_output.csv by default) containing:
     - Original columns (Question, Model_A_Response, Model_B_Response)
     - Parsed columns (model_A_answer, model_A_contexts, etc.)
-    - Ragas scores for both models (no ground truth required):
+    - Ragas scores for both models (configurable via --metrics / --metrics-preset):
       * Model_A_faithfulness_score / Model_B_faithfulness_score
+      * Model_A_answer_relevance_score / Model_B_answer_relevance_score
+      * Model_A_context_precision_score / Model_B_context_precision_score
+      * Model_A_context_recall_score / Model_B_context_recall_score
         """,
     )
 
@@ -644,8 +790,8 @@ Output:
     parser.add_argument(
         "-o",
         "--output",
-        default="ragas_evaluation_output.csv",
-        help="Path to the output CSV file (default: ragas_evaluation_output.csv). Note: It's recommended to use output/ directory (e.g., output/ragas_evaluation_output.csv)",
+        default="output/ragas_evaluation_output.csv",
+        help="Path to the output CSV file (default: output/ragas_evaluation_output.csv)",
     )
 
     parser.add_argument(
@@ -662,6 +808,30 @@ Output:
         type=str,
         default=None,
         help=f"Model to use for evaluation (default: {DEFAULT_MODEL}). Supported models: {', '.join(SUPPORTED_MODELS)}",
+    )
+
+    parser.add_argument(
+        "--metrics",
+        nargs="+",
+        choices=sorted(AVAILABLE_METRICS.keys()),
+        default=None,
+        help=(
+            "List of Ragas metrics to compute. "
+            f"Choices: {', '.join(sorted(AVAILABLE_METRICS.keys()))}. "
+            f"Default: {', '.join(DEFAULT_METRICS)}"
+        ),
+    )
+
+    parser.add_argument(
+        "--metrics-preset",
+        choices=sorted(METRIC_PRESETS.keys()),
+        default=None,
+        help=(
+            "Preset of Ragas metrics to compute. "
+            "basic: faithfulness + answer_relevance (default, no ground truth required). "
+            "with_reference: full metric set including context_precision and context_recall (requires reference column/ground truth). "
+            "Ignored when --metrics is provided."
+        ),
     )
 
     parser.add_argument(
@@ -691,8 +861,19 @@ Output:
     if model_name:
         log_info(f"Using model: {model_name}")
 
+    if args.metrics and args.metrics_preset:
+        log_warning(
+            "--metrics overrides --metrics-preset; ignoring the preset selection."
+        )
+    selected_metrics = resolve_metrics(args.metrics, args.metrics_preset)
+    log_info(f"Using Ragas metrics: {', '.join(selected_metrics)}")
+
     process_csv(
-        args.input_csv, args.output, limit_rows=args.limit, model_name=model_name
+        args.input_csv,
+        args.output,
+        limit_rows=args.limit,
+        model_name=model_name,
+        metric_names=selected_metrics,
     )
 
 

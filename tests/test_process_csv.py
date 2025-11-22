@@ -510,7 +510,8 @@ class TestRagasProcessCsv:
             mock_evaluate.side_effect = [mock_result_a, mock_result_b]
             mock_llm = MagicMock()
             mock_client = MagicMock()
-            mock_init.return_value = (mock_llm, mock_client)
+            mock_embeddings = MagicMock()
+            mock_init.return_value = (mock_llm, mock_client, mock_embeddings)
 
             ragas_process_csv(temp_file, output_file, limit_rows=2)
 
@@ -532,8 +533,81 @@ class TestRagasProcessCsv:
         # Mock initialize to return tuple
         mock_llm = MagicMock()
         mock_client = MagicMock()
-        mock_init.return_value = (mock_llm, mock_client)
+        mock_embeddings = MagicMock()
+        mock_init.return_value = (mock_llm, mock_client, mock_embeddings)
         
         with pytest.raises(SystemExit):
             ragas_process_csv("nonexistent_file.csv", "output.csv")
+
+    @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
+    @patch("scripts.ragas_llm_judge_evaluator.log_error")
+    @patch("scripts.ragas_llm_judge_evaluator.log_section")
+    @patch("scripts.ragas_llm_judge_evaluator.log_success")
+    @patch("scripts.ragas_llm_judge_evaluator.log_warning")
+    @patch("scripts.ragas_llm_judge_evaluator.log_info")
+    @patch("scripts.ragas_llm_judge_evaluator.tqdm")
+    @patch("scripts.ragas_llm_judge_evaluator.parse_react_log")
+    @patch("scripts.ragas_llm_judge_evaluator.evaluate_with_ragas")
+    @patch("scripts.ragas_llm_judge_evaluator.initialize_azure_openai_for_ragas")
+    def test_process_csv_with_four_metrics(self, mock_init, mock_evaluate, mock_parse_react, mock_tqdm, mock_log_info, mock_log_warning, mock_log_success, mock_log_section, mock_log_error):
+        """Test process_csv with all four metrics (faithfulness, answer_relevance, context_precision, context_recall)"""
+        # Mock tqdm to return the iterable directly
+        mock_tqdm.side_effect = lambda x, **kwargs: x
+        
+        # Mock parse_react_log to return simple parsed data
+        mock_parse_react.return_value = ("Final Answer", ["Context1", "Context2"])
+        
+        test_data = pd.DataFrame({
+            "Question": ["Q1", "Q2"],
+            "Model_A_Response": ["Answer A1", "Answer A2"],
+            "Model_B_Response": ["Answer B1", "Answer B2"],
+        })
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
+            test_data.to_csv(f.name, index=False)
+            temp_file = f.name
+
+        try:
+            output_file = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv").name
+
+            # Mock Ragas evaluation results with all four metrics
+            metrics = ["faithfulness", "answer_relevance", "context_precision", "context_recall"]
+            mock_result_a = pd.DataFrame({
+                "question": ["Q1", "Q2"],
+                **{f"Model_A_{metric}_score": [0.8 + i * 0.05, 0.9 + i * 0.05] for i, metric in enumerate(metrics)}
+            })
+            mock_result_b = pd.DataFrame({
+                "question": ["Q1", "Q2"],
+                **{f"Model_B_{metric}_score": [0.7 + i * 0.05, 0.85 + i * 0.05] for i, metric in enumerate(metrics)}
+            })
+
+            mock_evaluate.side_effect = [mock_result_a, mock_result_b]
+            mock_llm = MagicMock()
+            mock_client = MagicMock()
+            mock_embeddings = MagicMock()
+            mock_init.return_value = (mock_llm, mock_client, mock_embeddings)
+
+            ragas_process_csv(temp_file, output_file, limit_rows=2, metric_names=metrics)
+
+            # Verify evaluate_with_ragas was called twice (once for each model) with correct metrics
+            assert mock_evaluate.call_count == 2
+            
+            # Check that both calls used the correct metrics
+            call_a = mock_evaluate.call_args_list[0]
+            call_b = mock_evaluate.call_args_list[1]
+            assert call_a.kwargs["metric_names"] == metrics
+            assert call_b.kwargs["metric_names"] == metrics
+
+            # Verify output file was created
+            assert os.path.exists(output_file)
+            output_df = pd.read_csv(output_file)
+            
+            # Verify all four metric columns are present for both models
+            for metric in metrics:
+                assert f"Model_A_{metric}_score" in output_df.columns
+                assert f"Model_B_{metric}_score" in output_df.columns
+        finally:
+            for f in [temp_file, output_file]:
+                if os.path.exists(f):
+                    os.unlink(f)
 

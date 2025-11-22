@@ -98,6 +98,11 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-actual-azure-key
 MODEL_NAME=gpt-5  # または gpt-4.1
 AZURE_OPENAI_API_VERSION=2024-08-01-preview
+
+# Ragas評価用のEmbeddings設定（必須）
+# チャットモデル（gpt-4.1など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312  # あなたのEmbeddingsデプロイメント名に置き換えてください
+AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312  # モデル名（デフォルト: text-embedding-3-large-20240312、オプション）
 ```
 
 **Standard OpenAI の場合：**
@@ -157,6 +162,10 @@ output_files:
   evaluation_distribution: "output/evaluation_distribution.png"
   evaluation_boxplot: "output/evaluation_boxplot.png"
   evaluation_summary: "output/evaluation_summary.txt"
+  ragas_evaluation_comparison: "output/ragas_evaluation_comparison.png"
+  ragas_evaluation_distribution: "output/ragas_evaluation_distribution.png"
+  ragas_evaluation_boxplot: "output/ragas_evaluation_boxplot.png"
+  ragas_evaluation_summary: "output/ragas_evaluation_summary.txt"
   processing_time_comparison: "output/processing_time_comparison.png"
   processing_time_statistics: "output/processing_time_statistics.png"
   processing_time_summary: "output/processing_time_summary.txt"
@@ -479,7 +488,7 @@ python scripts/llm_judge_evaluator.py my_test_data.csv
 ### 主な機能
 
   - **自動ログ解析**：生のReActログから最終回答（Final Answer）とコンテキスト（Contexts）を自動的に抽出
-  - **標準化されたメトリクス**：Ragasのメトリクスの1つである faithfulness を使用
+  - **標準化されたメトリクス**：4つのRagasメトリクス（faithfulness, answer_relevance, context_precision, context_recall）が利用可能。デフォルトでは2つのメトリクス（faithfulness, answer_relevance）が使用されます。
   - **手動でのデータ準備不要**：生のチャットボット出力ログを直接処理
   - **並列比較**：カスタムジャッジ評価との比較が可能
 
@@ -571,7 +580,7 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv -m gpt-5
 **カスタム出力ファイルを指定：**
 
 ```bash
-python scripts/ragas_llm_judge_evaluator.py my_data.csv -o ragas_results.csv
+python scripts/ragas_llm_judge_evaluator.py my_data.csv -o output/ragas_results.csv
 ```
 
 **最初のN行でテスト：**
@@ -582,6 +591,16 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3
 
 # モデルを指定して最初の3行をテスト
 python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
+```
+
+**メトリクスを切り替える：**
+
+```bash
+# faithfulness / answer_relevance / context_precision / context_recall の中から選択
+python scripts/ragas_llm_judge_evaluator.py my_data.csv --metrics faithfulness context_precision
+
+# プリセット（basic: faithfulness+answer_relevance, with_reference: 全メトリクス）
+python scripts/ragas_llm_judge_evaluator.py my_data.csv --metrics-preset basic
 ```
 
 ### モデル指定オプション
@@ -599,9 +618,28 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 
 **重要**: Ragasフレームワークは一貫したメトリクスのためにTemperature制御が必要です。GPT-5の固定Temperature=1.0は問題を引き起こす可能性があるため、**GPT-4.1の使用を強く推奨**します。
 
+### Embeddings設定（必須）
+
+Ragas評価では、内部的にEmbeddingsモデルを使用します。**チャットモデル（`gpt-4.1`など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です。**
+
+`.env`ファイルに以下の環境変数を追加してください：
+
+- **`AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`**: Embeddings用のデプロイメント名（**必須**）
+  - Azure OpenAIリソースで作成したEmbeddingsデプロイメント名を指定してください
+  - 例: `text-embedding-3-large-20240312`
+- **`AZURE_OPENAI_EMBEDDING_MODEL_NAME`**: Embeddingsモデル名（オプション、デフォルト: `text-embedding-3-large-20240312`）
+
+`.env`ファイルに追加する例：
+```env
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312
+AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312
+```
+
+**重要**: `AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`が`.env`ファイルに設定されていない場合、スクリプトはエラーで終了します。
+
 ### 出力CSVの形式
 
-出力ファイル（デフォルトは `ragas_evaluation_output.csv`、`run_full_pipeline.py`経由の場合は `output/ragas_evaluation_output.csv`）には以下が含まれます：
+出力ファイル（デフォルトは `output/ragas_evaluation_output.csv`）には以下が含まれます：
 
   - **元の列**：Question, Model\_A\_Response, Model\_B\_Response
   - **解析された列**：
@@ -609,16 +647,29 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
       - `model_A_contexts`: モデルAのログから抽出されたコンテキストのリスト
       - `model_B_answer`: モデルBから抽出された最終回答
       - `model_B_contexts`: モデルBのログから抽出されたコンテキストのリスト
-  - **モデルAのRagasスコア**：
-      - `Model_A_faithfulness_score`: コンテキストとの事実上の一貫性 (0-1)
-  - **モデルBのRagasスコア**：Model\_Bプレフィックス付きの同じメトリクス
-      - `Model_A_faithfulness_score`: コンテキストとの事実上の一貫性 (0-1)
+  - **Ragasスコア（Model\_A\_*/Model\_B\_* プレフィックスでペアを構成）**：
+      - `*_faithfulness_score`: コンテキストとの事実上一貫性 (0-1)
+      - `*_answer_relevance_score`: 質問への回答適合度 (0-1)
+      - `*_context_precision_score`: 取得したコンテキストのうち回答に寄与した割合 (0-1)
+      - `*_context_recall_score`: 回答に必要な情報がどれだけ取得できたか (0-1)
 
 ### Ragasメトリクスの説明
 
 #### [Faithfulness](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/) (0-1)
 
 回答が、与えられたコンテキストと事実上整合しているかを測定します。スコアが高いほど、回答がハルシネーション（幻覚）を起こさず、検索された情報に忠実であることを示します。
+
+#### [Answer Relevance](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/answer_relevance/) (0-1)
+
+質問に対してどれだけ適切に回答しているかを評価します。高スコアの回答は、ユーザーの質問意図を正確に捉えています。
+
+#### [Context Precision](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_precision/) (0-1)
+
+検索・取得した複数のコンテキストのうち、回答に実際に貢献した情報の割合を測定します。余計な検索結果が多い場合はスコアが下がります。
+
+#### [Context Recall](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_recall/) (0-1)
+
+回答に必要な情報が、取得できたコンテキストにどれだけ含まれていたかを測定します。重要な証拠が欠落している場合はスコアが下がります。
 
 -----
 
@@ -920,9 +971,7 @@ python scripts/visualize_results.py my_evaluation_results.csv
 # モデル名を指定して可視化（PNGファイルに実際のモデル名が表示されます）
 python scripts/visualize_results.py output/evaluation_output.csv --model-a claude4.5-sonnet --model-b claude4.5-haiku
 
-# ragas_evaluation_output.csvを可視化（直接実行した場合）
-python scripts/visualize_results.py ragas_evaluation_output.csv
-# または、run_full_pipeline.py経由で実行した場合
+# ragas_evaluation_output.csvを可視化
 python scripts/visualize_results.py output/ragas_evaluation_output.csv
 
 # output/format_clarity_output.csvを可視化
@@ -945,6 +994,9 @@ python scripts/visualize_results.py output/format_clarity_output.csv
 2. **ragas** (`ragas_llm_judge_evaluator.py`の出力):
    - `Question`
    - `Model_A_faithfulness_score`, `Model_B_faithfulness_score`
+   - `Model_A_answer_relevance_score`, `Model_B_answer_relevance_score`
+   - `Model_A_context_precision_score`, `Model_B_context_precision_score`
+   - `Model_A_context_recall_score`, `Model_B_context_recall_score`
    - `Evaluation_Error` (オプション)
 
 3. **format-clarity** (`format_clarity_evaluator.py`の出力):
@@ -958,6 +1010,10 @@ python scripts/visualize_results.py output/format_clarity_output.csv
 - `output/evaluation_distribution.png`: スコア分布のヒストグラム
 - `output/evaluation_boxplot.png`: スコア分布の箱ひげ図
 - `output/evaluation_summary.txt`: 統計サマリーテーブル（平均、最小、最大、標準偏差など）
+- `output/ragas_evaluation_comparison.png`: Ragasメトリクスのスコア比較チャート（ragas結果を可視化した場合）
+- `output/ragas_evaluation_distribution.png`: Ragasメトリクスのスコア分布ヒストグラム
+- `output/ragas_evaluation_boxplot.png`: Ragasメトリクスの箱ひげ図
+- `output/ragas_evaluation_summary.txt`: Ragasメトリクス用の統計サマリーテーブル
 
 **使用例：**
 
@@ -1006,6 +1062,12 @@ python scripts/run_full_pipeline.py questions.txt --evaluator ragas
 
 # 全ての評価スクリプトを実行
 python scripts/run_full_pipeline.py questions.txt --evaluator all
+
+# ragas評価でメトリクスを指定
+python scripts/run_full_pipeline.py questions.txt --evaluator ragas --ragas-metrics faithfulness context_precision
+
+# ragas評価でプリセットを指定（basic / with_reference）
+python scripts/run_full_pipeline.py questions.txt --evaluator ragas --ragas-metrics-preset basic
 
 # 収集ステップをスキップ（既存のCSVファイルを使用）
 python scripts/run_full_pipeline.py questions.txt --skip-collect
