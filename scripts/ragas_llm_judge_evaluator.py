@@ -28,7 +28,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 # Add project root to Python path (must be before other imports)
 project_root = Path(__file__).parent.parent
@@ -55,7 +55,9 @@ AVAILABLE_METRICS = {
 }
 
 BASIC_METRICS = ["faithfulness", "answer_relevance"]
-EXTENDED_METRICS = [
+# Note: context_precision and context_recall require 'reference' column (ground truth)
+# These metrics are only available when reference answers are provided
+METRICS_WITH_REFERENCE = [
     "faithfulness",
     "answer_relevance",
     "context_precision",
@@ -63,10 +65,11 @@ EXTENDED_METRICS = [
 ]
 METRIC_PRESETS = {
     "basic": BASIC_METRICS,
-    "extended": EXTENDED_METRICS,
+    "with_reference": METRICS_WITH_REFERENCE,  # Requires reference column (ground truth)
 }
 
-DEFAULT_METRICS = tuple(EXTENDED_METRICS)
+# Default to basic metrics since we don't have ground truth
+DEFAULT_METRICS = tuple(BASIC_METRICS)
 
 
 def resolve_metrics(metrics: Optional[List[str]], preset: Optional[str]) -> List[str]:
@@ -83,7 +86,7 @@ def resolve_metrics(metrics: Optional[List[str]], preset: Optional[str]) -> List
 from tqdm import tqdm  # noqa: E402
 
 if TYPE_CHECKING:
-    from langchain_openai import AzureChatOpenAI  # noqa: E402
+    from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings  # noqa: E402
 
 from src.config.model_configs import (  # noqa: E402
     DEFAULT_MODEL,
@@ -240,7 +243,7 @@ def get_model_config(model_name: str) -> Dict[str, Any]:
 
 def initialize_azure_openai_for_ragas(
     model_name: Optional[str] = None,
-) -> Tuple["AzureChatOpenAI", AzureOpenAI]:
+) -> Tuple["AzureChatOpenAI", AzureOpenAI, "AzureOpenAIEmbeddings"]:
     """
     Initialize Azure OpenAI client and wrap it for Ragas.
 
@@ -248,15 +251,38 @@ def initialize_azure_openai_for_ragas(
         model_name: Optional model name. If None, uses environment variable or default.
 
     Returns:
-        Tuple of (ragas_llm, client) where:
+        Tuple of (ragas_llm, client, embeddings) where:
         - ragas_llm is the LangChain LLM for Ragas
         - client is the Azure OpenAI client
+        - embeddings is the Azure OpenAI Embeddings for Ragas
     """
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
     if model_name is None:
         model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
+
+    # For embeddings, deployment name is required (chat models cannot be used for embeddings)
+    embedding_deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
+    if not embedding_deployment:
+        log_error("Azure OpenAI Embeddings deployment name not found.")
+        log_error("\nRagas evaluation requires an embeddings deployment.")
+        log_error(
+            "Chat models (like gpt-4.1) cannot be used for embeddings operations."
+        )
+        log_error("\nPlease set the following environment variable in your .env file:")
+        log_error(
+            "  AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312"
+        )
+        log_error("  # Replace with your actual embedding deployment name")
+        log_error("\nOptional:")
+        log_error("  AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312")
+        sys.exit(1)
+
+    # Embedding model name (e.g., text-embedding-3-large-20240312)
+    embedding_model_name = os.getenv(
+        "AZURE_OPENAI_EMBEDDING_MODEL_NAME", "text-embedding-3-large-20240312"
+    )
 
     if not azure_endpoint or not azure_api_key:
         log_error("Azure OpenAI credentials not found.")
@@ -267,6 +293,13 @@ def initialize_azure_openai_for_ragas(
         log_error("  export AZURE_OPENAI_API_KEY='your-api-key'")
         log_error(
             "  export MODEL_NAME='gpt-5'  # or your deployment name (e.g., 'gpt-4.1')"
+        )
+        log_error("\nOptional (for Ragas embeddings):")
+        log_error(
+            "  export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-3-large'"
+        )
+        log_error(
+            "  export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-3-large-20240312'"
         )
         sys.exit(1)
 
@@ -283,7 +316,7 @@ def initialize_azure_openai_for_ragas(
     )
 
     # Create LangChain-compatible LLM for Ragas
-    from langchain_openai import AzureChatOpenAI
+    from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 
     # Configure parameters based on model type
 
@@ -320,7 +353,21 @@ def initialize_azure_openai_for_ragas(
 
     langchain_llm = AzureChatOpenAI(**llm_params)
 
-    return langchain_llm, client
+    # Create Azure OpenAI Embeddings for Ragas
+    # Note: Chat models (like gpt-4.1) cannot be used for embeddings operations
+    # embedding_deployment is already validated above (must be set via environment variable)
+    embeddings = AzureOpenAIEmbeddings(
+        azure_endpoint=azure_endpoint,
+        api_key=azure_api_key,  # type: ignore[arg-type]
+        api_version=azure_api_version,
+        azure_deployment=embedding_deployment,
+        model=embedding_model_name,
+    )
+    log_info(
+        f"Embeddings Model: {embedding_model_name} (Deployment: {embedding_deployment})"
+    )
+
+    return langchain_llm, client, embeddings
 
 
 def evaluate_with_ragas(
@@ -329,7 +376,9 @@ def evaluate_with_ragas(
     contexts_list: List[List[str]],
     llm: "AzureChatOpenAI",
     model_name: str = "Model",
-    metric_names: Optional[List[str]] = None,
+    metric_names: Optional[Sequence[str]] = None,
+    references: Optional[List[str]] = None,
+    embeddings: Optional["AzureOpenAIEmbeddings"] = None,
 ) -> pd.DataFrame:
     """
     Evaluate responses using Ragas metrics.
@@ -340,6 +389,9 @@ def evaluate_with_ragas(
         contexts_list: List of context lists (each answer has multiple contexts)
         llm: The LLM to use for evaluation (LangChain-compatible)
         model_name: Name for labeling (e.g., "Model_A" or "Model_B")
+        metric_names: List of metrics to evaluate
+        references: Optional list of reference answers (ground truth) for metrics that require it
+        embeddings: Optional Azure OpenAI Embeddings instance (required for Azure OpenAI)
 
     Returns:
         DataFrame with Ragas scores for the requested metrics.
@@ -350,6 +402,32 @@ def evaluate_with_ragas(
     ]
     if invalid_metrics:
         raise ValueError(f"Unsupported metrics requested: {', '.join(invalid_metrics)}")
+
+    # Check for metrics that require reference column
+    metrics_requiring_reference = ["context_precision", "context_recall"]
+    requested_metrics_requiring_reference = [
+        m for m in metrics_to_run if m in metrics_requiring_reference
+    ]
+
+    if requested_metrics_requiring_reference:
+        if references is None:
+            log_warning(
+                f"The following metrics require 'reference' column (ground truth): {', '.join(requested_metrics_requiring_reference)}"
+            )
+            log_warning(
+                "Skipping these metrics. Use --metrics-preset basic or specify metrics that don't require reference."
+            )
+            # Remove metrics that require reference
+            metrics_to_run = [
+                m for m in metrics_to_run if m not in metrics_requiring_reference
+            ]
+            if not metrics_to_run:
+                log_error(
+                    "No valid metrics remaining after removing metrics requiring reference."
+                )
+                # Return empty DataFrame with expected structure
+                empty_data: Dict[str, List[Any]] = {"question": questions}
+                return pd.DataFrame(empty_data)
 
     log_info(
         f"\nEvaluating {model_name} with Ragas metrics: {', '.join(metrics_to_run)}"
@@ -362,18 +440,27 @@ def evaluate_with_ragas(
         "contexts": contexts_list,
     }
 
+    # Add reference column if provided and needed
+    if references is not None:
+        data["reference"] = references
+
     dataset = Dataset.from_dict(data)
 
-    # Define metrics to evaluate
+    # Define metrics to evaluate (only those that don't require reference or have reference)
     metrics_to_use = [AVAILABLE_METRICS[metric] for metric in metrics_to_run]
 
     # Run evaluation
     try:
-        results = evaluate(
-            dataset=dataset,
-            metrics=metrics_to_use,
-            llm=llm,
-        )
+        # Pass embeddings explicitly if provided (required for Azure OpenAI)
+        evaluate_kwargs: Dict[str, Any] = {
+            "dataset": dataset,
+            "metrics": metrics_to_use,
+            "llm": llm,
+        }
+        if embeddings is not None:
+            evaluate_kwargs["embeddings"] = embeddings
+
+        results = evaluate(**evaluate_kwargs)
 
         # Convert results to DataFrame
         # Type checker may not recognize to_pandas() method, but it exists
@@ -422,7 +509,7 @@ def process_csv(
         metric_names: List of Ragas metrics to compute (defaults to preset/CLI selection)
     """
     # Initialize Azure OpenAI for Ragas
-    llm, client = initialize_azure_openai_for_ragas(model_name=model_name)
+    llm, client, embeddings = initialize_azure_openai_for_ragas(model_name=model_name)
     metrics_to_run = metric_names or DEFAULT_METRICS
 
     # Read input CSV
@@ -537,6 +624,7 @@ def process_csv(
         llm=llm,
         model_name="Model_A",
         metric_names=metrics_to_run,
+        embeddings=embeddings,
     )
 
     # Evaluate Model B with Ragas
@@ -548,6 +636,7 @@ def process_csv(
         llm=llm,
         model_name="Model_B",
         metric_names=metrics_to_run,
+        embeddings=embeddings,
     )
 
     # Merge results back into main DataFrame
@@ -712,8 +801,8 @@ Output:
         default=None,
         help=(
             "Preset of Ragas metrics to compute. "
-            "basic: faithfulness + answer_relevance. "
-            "extended: full metric set (default). "
+            "basic: faithfulness + answer_relevance (default, no ground truth required). "
+            "with_reference: full metric set including context_precision and context_recall (requires reference column/ground truth). "
             "Ignored when --metrics is provided."
         ),
     )

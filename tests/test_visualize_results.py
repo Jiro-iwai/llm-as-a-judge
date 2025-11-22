@@ -134,6 +134,28 @@ class TestRagasHelpers:
         metrics = get_ragas_metric_keys(df)
         assert metrics == ["faithfulness", "context_precision"]
 
+    def test_get_ragas_metric_keys_all_four_metrics(self):
+        """Test that all four metrics (faithfulness, answer_relevance, context_precision, context_recall) are detected"""
+        df = pd.DataFrame(
+            {
+                "Model_A_faithfulness_score": [0.9, 0.8],
+                "Model_B_faithfulness_score": [0.7, 0.6],
+                "Model_A_answer_relevance_score": [0.85, 0.88],
+                "Model_B_answer_relevance_score": [0.75, 0.73],
+                "Model_A_context_precision_score": [0.82, 0.86],
+                "Model_B_context_precision_score": [0.72, 0.76],
+                "Model_A_context_recall_score": [0.78, 0.84],
+                "Model_B_context_recall_score": [0.68, 0.74],
+            }
+        )
+
+        metrics = get_ragas_metric_keys(df)
+        assert len(metrics) == 4
+        assert "faithfulness" in metrics
+        assert "answer_relevance" in metrics
+        assert "context_precision" in metrics
+        assert "context_recall" in metrics
+
 
 class TestCreateSummaryTable:
     """Tests for create_summary_table function"""
@@ -319,6 +341,46 @@ class TestCreateScoreDistributionChart:
             assert args[0] == 1  # rows
             assert args[1] == 2  # cols
             assert kwargs["figsize"] == (12, 4)
+            mock_plt.savefig.assert_called_once()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    @patch("scripts.visualize_results.plt")
+    def test_create_score_distribution_chart_ragas_four_metrics(self, mock_plt):
+        """Test ragas distribution chart handles all four metrics correctly"""
+        mock_fig = MagicMock()
+        mock_axes = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
+        mock_plt.subplots.return_value = (mock_fig, mock_axes)
+
+        df = pd.DataFrame(
+            {
+                "Question": ["Q1", "Q2"],
+                "Model_A_faithfulness_score": [0.9, 0.85],
+                "Model_B_faithfulness_score": [0.8, 0.75],
+                "Model_A_answer_relevance_score": [0.88, 0.82],
+                "Model_B_answer_relevance_score": [0.78, 0.72],
+                "Model_A_context_precision_score": [0.86, 0.84],
+                "Model_B_context_precision_score": [0.76, 0.74],
+                "Model_A_context_recall_score": [0.84, 0.80],
+                "Model_B_context_recall_score": [0.74, 0.70],
+            }
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".png") as f:
+            temp_file = f.name
+
+        try:
+            create_score_distribution_chart(
+                df, temp_file, evaluator_type="ragas", model_a_name="A", model_b_name="B"
+            )
+
+            mock_plt.subplots.assert_called_once()
+            args, kwargs = mock_plt.subplots.call_args
+            # For 4 metrics: cols=2, rows=ceil(4/2)=2
+            assert args[0] == 2  # rows
+            assert args[1] == 2  # cols
+            assert kwargs["figsize"] == (12, 8)  # cols * 6, rows * 4
             mock_plt.savefig.assert_called_once()
         finally:
             if os.path.exists(temp_file):

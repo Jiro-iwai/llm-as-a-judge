@@ -98,6 +98,11 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-actual-azure-key
 MODEL_NAME=gpt-5  # または gpt-4.1
 AZURE_OPENAI_API_VERSION=2024-08-01-preview
+
+# Ragas評価用のEmbeddings設定（必須）
+# チャットモデル（gpt-4.1など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312  # あなたのEmbeddingsデプロイメント名に置き換えてください
+AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312  # モデル名（デフォルト: text-embedding-3-large-20240312、オプション）
 ```
 
 **Standard OpenAI の場合：**
@@ -612,6 +617,25 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv --metrics-preset basic
 - `gpt-4-turbo`: GPT-4 Turbo（`max_tokens`使用、temperature=0.7）
 
 **重要**: Ragasフレームワークは一貫したメトリクスのためにTemperature制御が必要です。GPT-5の固定Temperature=1.0は問題を引き起こす可能性があるため、**GPT-4.1の使用を強く推奨**します。
+
+### Embeddings設定（必須）
+
+Ragas評価では、内部的にEmbeddingsモデルを使用します。**チャットモデル（`gpt-4.1`など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です。**
+
+`.env`ファイルに以下の環境変数を追加してください：
+
+- **`AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`**: Embeddings用のデプロイメント名（**必須**）
+  - Azure OpenAIリソースで作成したEmbeddingsデプロイメント名を指定してください
+  - 例: `text-embedding-3-large-20240312`
+- **`AZURE_OPENAI_EMBEDDING_MODEL_NAME`**: Embeddingsモデル名（オプション、デフォルト: `text-embedding-3-large-20240312`）
+
+`.env`ファイルに追加する例：
+```env
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312
+AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312
+```
+
+**重要**: `AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`が`.env`ファイルに設定されていない場合、スクリプトはエラーで終了します。
 
 ### 出力CSVの形式
 
