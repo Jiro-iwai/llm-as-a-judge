@@ -23,16 +23,21 @@ class TestParallelProcessingSupport:
 
     def test_process_csv_supports_max_workers_parameter(self):
         """Test that process_csv functions accept max_workers parameter for parallel processing"""
-        # This test will fail initially, then we'll implement the feature
-        from scripts.llm_judge_evaluator import process_csv
-
-        # Check if process_csv accepts max_workers parameter
         import inspect
 
-        sig = inspect.signature(process_csv)
+        # Test llm_judge_evaluator
+        from scripts.llm_judge_evaluator import process_csv as llm_process_csv
+        sig = inspect.signature(llm_process_csv)
         assert (
             "max_workers" in sig.parameters
-        ), "process_csv should accept max_workers parameter for parallel processing"
+        ), "llm_judge_evaluator.process_csv should accept max_workers parameter"
+
+        # Test format_clarity_evaluator
+        from scripts.format_clarity_evaluator import process_csv as format_process_csv
+        sig = inspect.signature(format_process_csv)
+        assert (
+            "max_workers" in sig.parameters
+        ), "format_clarity_evaluator.process_csv should accept max_workers parameter"
 
     @patch.dict(os.environ, {"AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/", "AZURE_OPENAI_API_KEY": "test-key"})
     @patch("builtins.input")
