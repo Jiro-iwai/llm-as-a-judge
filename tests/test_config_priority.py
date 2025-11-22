@@ -232,7 +232,12 @@ class TestConfigPriority:
             temp_file = f.name
 
         try:
-            with patch.dict(os.environ, {"APP_CONFIG_FILE": temp_file}):
+            # Clear APP_MAX_WORKERS to ensure YAML value is used
+            env_vars = {"APP_CONFIG_FILE": temp_file}
+            with patch.dict(os.environ, env_vars, clear=False):
+                # Explicitly remove APP_MAX_WORKERS if it was set to ensure YAML value is used
+                if "APP_MAX_WORKERS" in os.environ:
+                    del os.environ["APP_MAX_WORKERS"]
                 # Load should succeed but validation should catch issues
                 config = load_config()
                 # Invalid values should still be in config, but get_max_workers should fix them
