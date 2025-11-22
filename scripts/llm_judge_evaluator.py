@@ -201,6 +201,13 @@ def create_user_prompt(
 Provide your evaluation as a JSON object following the specified format."""
 
 
+# Token estimation constant
+# OpenAI tokenizer: approximately 4 characters per token for English
+# Note: This is an approximation. For accurate token counting, use tiktoken library.
+# Japanese text typically requires 2-3 characters per token.
+TOKEN_ESTIMATION_CHARS_PER_TOKEN = 4
+
+
 def call_judge_model(
     client: Union[OpenAI, AzureOpenAI],
     question: str,
@@ -260,7 +267,9 @@ def call_judge_model(
             # 入力トークン数に応じて動的に出力トークン数を調整
             user_prompt_len = len(user_prompt)
             system_prompt_len = len(JUDGE_SYSTEM_PROMPT)
-            estimated_input_tokens = (user_prompt_len + system_prompt_len) / 4
+            estimated_input_tokens = (
+                user_prompt_len + system_prompt_len
+            ) / TOKEN_ESTIMATION_CHARS_PER_TOKEN
 
             # モデル設定から値を取得
             max_total_tokens = model_config["max_total_tokens"]
@@ -419,7 +428,6 @@ def call_judge_model(
                     )
                     # Continue processing - truncated response may still be usable
 
-            # Debug: Check if content is empty or None
             if not content:
                 raise ValueError(
                     f"Empty response from API. Finish reason: {finish_reason}"
@@ -442,25 +450,25 @@ def call_judge_model(
                 f"JSON解析エラー (試行 {attempt + 1}/{max_retries}): {e}", indent=1
             )
 
-            # Debug: Print what we actually received
-            content_for_debug: Optional[str] = None
+            # Log error details for debugging (without storing in debug variable)
             if response is not None:
                 try:
-                    content_for_debug = (
+                    received_content = (
                         response.choices[0].message.content
                         if response.choices
                         else None
                     )
+                    if received_content:
+                        log_info(
+                            f"受信したコンテンツ（最初の500文字）: {received_content[:500]}",
+                            indent=2,
+                        )
+                    else:
+                        log_info(
+                            "受信したコンテンツが空または取得できませんでした", indent=2
+                        )
                 except (AttributeError, IndexError):
-                    pass
-
-            if content_for_debug:
-                log_info(
-                    f"受信したコンテンツ（最初の500文字）: {content_for_debug[:500]}",
-                    indent=2,
-                )
-            else:
-                log_info("受信したコンテンツが空または取得できませんでした", indent=2)
+                    log_info("レスポンスの解析に失敗しました", indent=2)
 
             if attempt == max_retries - 1:
                 return None
