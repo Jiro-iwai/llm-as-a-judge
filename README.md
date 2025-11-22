@@ -869,7 +869,7 @@ python scripts/collect_responses.py examples/questions.txt --time-log custom_tim
 
 ```bash
 # 1. 質問ファイルを準備
-echo "会社の休暇制度について教えてください" > questions.txt
+echo "会社の休暇制度について教えてください" > examples/questions.txt
 
 # 2. 応答を収集（処理時間ログとチャートが自動生成されます）
 python scripts/collect_responses.py examples/questions.txt -o responses.csv
