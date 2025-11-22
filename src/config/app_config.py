@@ -36,6 +36,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "retry_delay": 2,
     "api_delay": 1.0,
     "default_identity": "USER",
+    "max_workers": None,  # None means sequential processing, int means parallel with that many workers
     "output_files": {
         "evaluation_comparison": "output/evaluation_comparison.png",
         "evaluation_distribution": "output/evaluation_distribution.png",
@@ -140,6 +141,16 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
 
     if "APP_DEFAULT_IDENTITY" in os.environ:
         config["default_identity"] = os.environ["APP_DEFAULT_IDENTITY"]
+
+    if "APP_MAX_WORKERS" in os.environ:
+        try:
+            max_workers_str = os.environ["APP_MAX_WORKERS"]
+            if max_workers_str.lower() in ("none", "null", ""):
+                config["max_workers"] = None
+            else:
+                config["max_workers"] = int(max_workers_str)
+        except ValueError:
+            pass
 
     # Output files from env vars
     output_files = config.get("output_files", {})
@@ -252,6 +263,23 @@ def get_default_identity(override: Optional[str] = None) -> str:
         return override
     config = get_app_config()
     return config.get("default_identity", DEFAULT_CONFIG["default_identity"])
+
+
+def get_max_workers(override: Optional[int] = None) -> Optional[int]:
+    """
+    Get maximum number of workers for parallel processing.
+
+    Args:
+        override: Optional override value. If provided, returns this value instead.
+                 None means sequential processing, int means parallel with that many workers.
+
+    Returns:
+        Maximum number of workers (None for sequential, int for parallel).
+    """
+    if override is not None:
+        return override
+    config = get_app_config()
+    return config.get("max_workers", DEFAULT_CONFIG["max_workers"])
 
 
 def get_output_file_names() -> Dict[str, str]:

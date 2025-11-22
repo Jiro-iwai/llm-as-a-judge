@@ -18,6 +18,7 @@ Requirements:
 import argparse
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
@@ -45,6 +46,7 @@ from src.utils.logging_config import (  # noqa: E402
 )
 from src.config.app_config import (  # noqa: E402
     get_timeout,
+    get_max_workers,
 )
 from src.utils.judge_model_common import call_judge_model_common  # noqa: E402
 
@@ -693,6 +695,7 @@ def process_csv(
     limit_rows: Optional[int] = None,
     model_name: Optional[str] = None,
     non_interactive: bool = False,
+    max_workers: Optional[int] = None,
 ) -> None:
     """
     Main processing function that reads the input CSV, evaluates each row,
@@ -704,6 +707,7 @@ def process_csv(
         limit_rows: Optional limit on number of rows to process (for cost control)
         model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
         non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
+        max_workers: Maximum number of parallel workers. If None, uses config value or sequential processing.
     """
     # Model name can be set via command line argument, environment variable, or default
     if model_name is None:
@@ -723,14 +727,72 @@ def process_csv(
     # Apply row limit and confirm if needed
     df = apply_row_limit_and_confirm(df, limit_rows, model_name, non_interactive)
 
+    # Determine max_workers for parallel processing
+    if max_workers is None:
+        max_workers = get_max_workers()
+
     # Process each row with progress bar
     log_section("評価処理の開始")
     results = []
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="評価中"):
-        result_row = process_single_row(
-            row, client, model_name, is_azure, LLM_JUDGE_OUTPUT_COLUMNS
-        )
-        results.append(result_row)
+
+    if max_workers is None or max_workers == 1:
+        # Sequential processing (default behavior)
+        for idx, row in tqdm(df.iterrows(), total=len(df), desc="評価中"):
+            result_row = process_single_row(
+                row, client, model_name, is_azure, LLM_JUDGE_OUTPUT_COLUMNS
+            )
+            results.append(result_row)
+    else:
+        # Parallel processing with ThreadPoolExecutor
+        log_info(f"並列処理モード: {max_workers}ワーカー", indent=1)
+        # Create list of (index, row) tuples to maintain order
+        rows_with_index = [(idx, row) for idx, row in df.iterrows()]
+
+        def process_row_with_index(idx_row_tuple):
+            """Wrapper function to process a single row with its index"""
+            idx, row = idx_row_tuple
+            return idx, process_single_row(
+                row, client, model_name, is_azure, LLM_JUDGE_OUTPUT_COLUMNS
+            )
+
+        # Process rows in parallel while maintaining order
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_idx = {
+                executor.submit(process_row_with_index, idx_row): idx_row[0]
+                for idx_row in rows_with_index
+            }
+
+            # Collect results in order
+            results_dict = {}
+            for future in tqdm(
+                as_completed(future_to_idx), total=len(rows_with_index), desc="評価中"
+            ):
+                idx = future_to_idx[future]
+                try:
+                    result_idx, result_row = future.result()
+                    results_dict[result_idx] = result_row
+                except Exception as e:
+                    log_error(f"行 {idx} の処理中にエラーが発生しました: {e}", indent=1)
+                    # Create error result row
+                    result_row = {
+                        "Question": df.loc[idx, "Question"] if idx in df.index else "",
+                        "Model_A_Response": (
+                            df.loc[idx, "Model_A_Response"] if idx in df.index else ""
+                        ),
+                        "Model_B_Response": (
+                            df.loc[idx, "Model_B_Response"] if idx in df.index else ""
+                        ),
+                        "Evaluation_Error": f"Parallel processing error: {e}",
+                    }
+                    # Fill in empty values for all score columns
+                    for col in LLM_JUDGE_OUTPUT_COLUMNS:
+                        if col not in result_row:
+                            result_row[col] = ""
+                    results_dict[idx] = result_row
+
+        # Convert results_dict to ordered list
+        results = [results_dict[idx] for idx, _ in rows_with_index]
 
     # Write results to CSV
     write_results_to_csv(results, output_file, LLM_JUDGE_OUTPUT_COLUMNS)
