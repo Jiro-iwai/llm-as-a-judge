@@ -488,7 +488,7 @@ python scripts/llm_judge_evaluator.py my_test_data.csv
 ### 主な機能
 
   - **自動ログ解析**：生のReActログから最終回答（Final Answer）とコンテキスト（Contexts）を自動的に抽出
-  - **標準化されたメトリクス**：Ragasのメトリクスの1つである faithfulness を使用
+  - **標準化されたメトリクス**：4つのRagasメトリクス（faithfulness, answer_relevance, context_precision, context_recall）が利用可能。デフォルトでは2つのメトリクス（faithfulness, answer_relevance）が使用されます。
   - **手動でのデータ準備不要**：生のチャットボット出力ログを直接処理
   - **並列比較**：カスタムジャッジ評価との比較が可能
 

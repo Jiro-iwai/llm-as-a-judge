@@ -49,7 +49,7 @@ RAGAS_METRIC_CHOICES = [
 ]
 RAGAS_METRIC_PRESETS = {
     "basic": ["faithfulness", "answer_relevance"],
-    "extended": RAGAS_METRIC_CHOICES,
+    "with_reference": RAGAS_METRIC_CHOICES,
 }
 
 
@@ -417,8 +417,9 @@ Examples:
         default=None,
         help=(
             "Preset of metrics when evaluator is 'ragas'. "
-            "basic: faithfulness + answer_relevance. "
-            "extended: full metric set (default). "
+            "basic: faithfulness + answer_relevance (default). "
+            "with_reference: full metric set including context_precision and "
+            "context_recall (requires reference column/ground truth). "
             "Ignored if --ragas-metrics is provided."
         ),
     )
