@@ -100,8 +100,23 @@ class TestExtractScoresEdgeCases:
 
         result = extract_scores_from_evaluation({}, "model_a_evaluation")
 
-        # Should return empty dict or default values
+        # Should return dict with all keys, but scores are None and justifications are empty strings
         assert isinstance(result, dict)
+        assert len(result) == 10  # 5 scores + 5 justifications
+        
+        # All scores should be None
+        assert result["citation_score"] is None
+        assert result["relevance_score"] is None
+        assert result["react_performance_thought_score"] is None
+        assert result["rag_retrieval_observation_score"] is None
+        assert result["information_integration_score"] is None
+        
+        # All justifications should be empty strings
+        assert result["citation_justification"] == ""
+        assert result["relevance_justification"] == ""
+        assert result["react_performance_thought_justification"] == ""
+        assert result["rag_retrieval_observation_justification"] == ""
+        assert result["information_integration_justification"] == ""
 
     def test_extract_scores_with_missing_key(self):
         """Test extract_scores_from_evaluation handles missing model key."""
@@ -109,8 +124,23 @@ class TestExtractScoresEdgeCases:
 
         result = extract_scores_from_evaluation({"other_key": "value"}, "model_a_evaluation")
 
-        # Should handle missing key gracefully
+        # Should handle missing key gracefully - same behavior as empty evaluation
         assert isinstance(result, dict)
+        assert len(result) == 10  # 5 scores + 5 justifications
+        
+        # All scores should be None (model_key doesn't exist in evaluation)
+        assert result["citation_score"] is None
+        assert result["relevance_score"] is None
+        assert result["react_performance_thought_score"] is None
+        assert result["rag_retrieval_observation_score"] is None
+        assert result["information_integration_score"] is None
+        
+        # All justifications should be empty strings
+        assert result["citation_justification"] == ""
+        assert result["relevance_justification"] == ""
+        assert result["react_performance_thought_justification"] == ""
+        assert result["rag_retrieval_observation_justification"] == ""
+        assert result["information_integration_justification"] == ""
 
 
 class TestCallJudgeModelEdgeCases:
