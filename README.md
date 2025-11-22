@@ -102,7 +102,7 @@ AZURE_OPENAI_API_VERSION=2024-08-01-preview
 # Ragas評価用のEmbeddings設定（必須）
 # チャットモデル（gpt-4.1など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002  # あなたのEmbeddingsデプロイメント名に置き換えてください
-AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002  # モデル名（デフォルト: デプロイメント名と同じ、オプション）
+# AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002  # モデル名（オプション、通常は設定不要）
 ```
 
 **Standard OpenAI の場合：**
@@ -681,7 +681,7 @@ Ragas評価では、内部的にEmbeddingsモデルを使用します。**チャ
   - Azure OpenAIリソースで作成したEmbeddingsデプロイメント名を指定してください
   - 例: `text-embedding-ada-002` または `your-embedding-deployment-name`
 - **`AZURE_OPENAI_EMBEDDING_MODEL_NAME`**: Embeddingsモデル名（**オプション**）
-  - デフォルト値が使用されるため、通常は設定不要です
+  - デフォルト値（`text-embedding-3-large-20240312`）が使用されるため、通常は設定不要です
   - デプロイメント名とモデル名が異なる場合のみ設定してください
 
 `.env`ファイルに追加する例（最小構成）：
