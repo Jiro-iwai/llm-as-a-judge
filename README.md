@@ -132,6 +132,12 @@ export APP_RETRY_DELAY=3           # リトライ間隔（秒、デフォルト:
 export APP_API_DELAY=2.0           # API呼び出し間隔（秒、デフォルト: 1.0）
 export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト値は設定ファイルまたはコード内のデフォルト値を参照）
 
+# 並列処理設定
+export APP_MAX_WORKERS=4            # 並列処理のワーカー数（デフォルト: None=順次処理）
+                                    # Noneまたは未設定: 順次処理（デフォルト）
+                                    # 1以上: 指定した数のワーカーで並列処理
+                                    # 例: export APP_MAX_WORKERS=4  # 4ワーカーで並列処理
+
 # 出力ファイル名（オプション）
 export APP_OUTPUT_FILE_PROCESSING_TIME_LOG="custom_time_log.txt"  # 処理時間ログファイル名
 export APP_OUTPUT_FILE_EVALUATION_COMPARISON="custom_comparison.png"  # 評価比較チャートのファイル名
@@ -157,6 +163,7 @@ max_retries: 5
 retry_delay: 3
 api_delay: 2.0
 default_identity: "CONFIG_USER"
+max_workers: 4  # 並列処理のワーカー数（Noneまたは未設定: 順次処理、1以上: 並列処理）
 
 # 出力ファイル名
 output_files:
@@ -427,7 +434,22 @@ python scripts/llm_judge_evaluator.py my_test_data.csv --yes
 python scripts/llm_judge_evaluator.py my_test_data.csv
 ```
 
-**注意**: 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
+**並列処理を有効化：**
+
+```bash
+# 環境変数で並列処理を有効化（4ワーカー）
+export APP_MAX_WORKERS=4
+python scripts/llm_judge_evaluator.py my_test_data.csv
+
+# 順次処理に戻す（デフォルト）
+export APP_MAX_WORKERS=None
+# または
+unset APP_MAX_WORKERS
+```
+
+**注意**: 
+- 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
+- 並列処理は環境変数`APP_MAX_WORKERS`で制御されます。デフォルトは順次処理（`None`）です。並列処理を有効にするには、`APP_MAX_WORKERS`に1以上の整数を設定してください。
 
 ### モデル指定オプション
 
@@ -757,7 +779,17 @@ python scripts/format_clarity_evaluator.py input.csv --yes
 python scripts/format_clarity_evaluator.py input.csv
 ```
 
-**注意**: 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
+**並列処理を有効化：**
+
+```bash
+# 環境変数で並列処理を有効化（4ワーカー）
+export APP_MAX_WORKERS=4
+python scripts/format_clarity_evaluator.py input.csv
+```
+
+**注意**: 
+- 10行を超えるCSVファイルを処理する場合、デフォルトでは確認プロンプトが表示されます。CI/バッチ環境や自動実行の場合は`--yes`フラグを使用してください。`run_full_pipeline.py`から実行する場合は自動的に`--yes`フラグが付与されます。
+- 並列処理は環境変数`APP_MAX_WORKERS`で制御されます。デフォルトは順次処理（`None`）です。
 
 ### モデル指定オプション
 
@@ -844,6 +876,12 @@ python scripts/collect_responses.py examples/questions.txt --identity YOUR_IDENT
 
 # カスタム処理時間ログファイルを指定
 python scripts/collect_responses.py examples/questions.txt --time-log custom_time_log.txt
+
+# 並列処理を有効化（4ワーカー）
+export APP_MAX_WORKERS=4
+python scripts/collect_responses.py examples/questions.txt
+# 注意: 並列処理時も各質問内のModel AとModel Bの呼び出し間にはdelayが適用されます
+# 質問間の並列処理により、全体の処理時間を大幅に短縮できます
 ```
 
 **設定値の外部化：**
@@ -1175,11 +1213,26 @@ python scripts/run_full_pipeline.py examples/questions.txt --judge-model gpt-5
 make pipeline ARGS="examples/questions.txt --evaluator llm-judge --judge-model gpt-5"
 ```
 
+**並列処理を有効化：**
+
+```bash
+# 環境変数で並列処理を有効化（パイプライン全体に適用）
+export APP_MAX_WORKERS=4
+python scripts/run_full_pipeline.py examples/questions.txt
+
+# 並列処理は以下のスクリプトに適用されます：
+# - collect_responses.py（質問間の並列処理）
+# - llm_judge_evaluator.py（行間の並列処理）
+# - format_clarity_evaluator.py（行間の並列処理）
+# 注意: ragas_llm_judge_evaluator.pyは現状並列処理をサポートしていません
+```
+
 **注意：**
 - 可視化は現在`llm-judge`評価の結果のみサポートされています
 - 各ステップでエラーが発生した場合、パイプラインは適切に停止します
 - 可視化ステップでエラーが発生した場合、警告を表示してパイプラインは続行します
 - **非対話実行**: `run_full_pipeline.py`から実行する場合、評価スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`）には自動的に`--yes`フラグが付与され、10行を超える場合でも確認プロンプトが表示されずに実行されます。これにより、CI/バッチ環境での自動実行が可能です。個別に評価スクリプトを実行する場合は、`--yes`フラグを明示的に指定することで非対話実行できます。
+- **並列処理**: パイプライン実行時も環境変数`APP_MAX_WORKERS`で並列処理を制御できます。`collect_responses.py`、`llm_judge_evaluator.py`、`format_clarity_evaluator.py`に適用されます。`ragas_llm_judge_evaluator.py`は現状並列処理をサポートしていません。
 - **出力ファイル名のカスタマイズ**: 評価結果や処理時間レポートの出力ファイル名（`evaluation_*.png`、`processing_time_*.png`など）は`src/config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`、`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
@@ -1207,7 +1260,12 @@ make pipeline ARGS="examples/questions.txt --evaluator llm-judge --judge-model g
 
 ## パフォーマンスに関する考慮事項
 
-  - APIコールはリトライロジックと共に順次実行されます
+  - **並列処理**: 3つの主要スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`、`collect_responses.py`）は並列処理をサポートしています。環境変数`APP_MAX_WORKERS`で並列ワーカー数を設定できます（デフォルト: 順次処理）。
+    - 例: `export APP_MAX_WORKERS=4` で4ワーカー並列処理
+    - 並列処理により、大量のデータ処理時間を大幅に短縮できます
+    - 注意: APIのレート制限に注意してください。過度な並列処理はAPIエラーを引き起こす可能性があります
+    - 注意: `ragas_llm_judge_evaluator.py`は現状並列処理をサポートしていません（Ragasフレームワークの制約により）
+  - APIコールはリトライロジックと共に実行されます（並列処理時も各タスクでリトライが機能します）
   - 進捗はtqdmプログレスバーを介して表示されます
   - Temperatureは一貫した評価のために最適化されています
   - Max tokensは各エバリュエーターに適切に設定されています

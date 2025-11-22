@@ -17,6 +17,7 @@ import os
 import sys
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Optional
 
@@ -53,6 +54,7 @@ from src.config.app_config import (  # noqa: E402
     get_api_delay,
     get_default_identity,
     get_output_file_names,
+    get_max_workers,
 )
 
 # Set up logging system
@@ -288,6 +290,7 @@ def collect_responses(
     delay: Optional[float] = None,
     verbose: bool = True,
     time_log_path: Optional[str] = None,
+    max_workers: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Collect responses from both models for all questions.
@@ -302,6 +305,9 @@ def collect_responses(
         delay: Delay between API calls in seconds (defaults to config value)
         verbose: Whether to print detailed logs
         time_log_path: Optional path to record processing times for visualization
+        max_workers: Maximum number of parallel workers. If None, uses config value or sequential processing.
+                    Note: When parallel processing is enabled, delay is ignored for inter-question parallelism,
+                    but still applies between Model A and Model B calls within the same question.
 
     Returns:
         DataFrame with Question, Model_A_Response, Model_B_Response columns
@@ -339,13 +345,19 @@ def collect_responses(
     failed_count_a = 0
     failed_count_b = 0
 
-    for idx, question in enumerate(tqdm(questions, desc="📊 進捗"), 1):
+    # Determine max_workers for parallel processing
+    if max_workers is None:
+        max_workers = get_max_workers()
+
+    def process_single_question(idx_question_tuple):
+        """Process a single question (Model A and Model B)"""
+        idx, question = idx_question_tuple
+        question_start_time = time.time()
+
         if verbose:
             log_section(f"📝 質問 {idx}/{len(questions)}")
             log_info(f"質問: {question}")
             print()
-
-        question_start_time = time.time()
 
         # Call Model A
         if verbose:
@@ -367,10 +379,10 @@ def collect_responses(
             if verbose:
                 log_info("🔧 Model A レスポンスを整形中...", indent=1)
             response_a = format_response(response_a_raw)
-            success_count_a += 1
+            success_a = True
         else:
             response_a = ""
-            failed_count_a += 1
+            success_a = False
 
         # Wait between Model A and Model B calls
         if verbose:
@@ -397,20 +409,10 @@ def collect_responses(
             if verbose:
                 log_info("🔧 Model B レスポンスを整形中...", indent=1)
             response_b = format_response(response_b_raw)
-            success_count_b += 1
+            success_b = True
         else:
             response_b = ""
-            failed_count_b += 1
-
-        # Store formatted responses
-        # Column names compatible with both llm_judge_evaluator.py and ragas_llm_judge_evaluator.py
-        results.append(
-            {
-                "Question": question,
-                "Model_A_Response": response_a,
-                "Model_B_Response": response_b,
-            }
-        )
+            success_b = False
 
         question_elapsed = time.time() - question_start_time
 
@@ -421,16 +423,178 @@ def collect_responses(
                 f"\n📊 質問 {idx} 完了 (経過時間: {question_elapsed:.2f}秒)", indent=1
             )
             log_info(f"Model A: {status_a} | Model B: {status_b}", indent=2)
-            log_info(
-                f"成功数: A={success_count_a}/{idx}, B={success_count_b}/{idx}",
-                indent=2,
+
+        return {
+            "idx": idx,
+            "question": question,
+            "response_a": response_a,
+            "response_b": response_b,
+            "success_a": success_a,
+            "success_b": success_b,
+        }
+
+    if max_workers is None or max_workers == 1:
+        # Sequential processing (default behavior)
+        for idx, question in enumerate(tqdm(questions, desc="📊 進捗"), 1):
+            if verbose:
+                log_section(f"📝 質問 {idx}/{len(questions)}")
+                log_info(f"質問: {question}")
+                print()
+
+            question_start_time = time.time()
+
+            # Call Model A
+            if verbose:
+                log_info(
+                    f"[{idx}/{len(questions)}] Model A ({model_a}) を呼び出し中..."
+                )
+            response_a_raw = call_api(
+                question,
+                api_url,
+                model_a,
+                identity,
+                timeout,
+                verbose=verbose,
+                time_log_path=time_log_path,
+                question_number=idx,
+                model_label="Model A",
             )
 
-        # Wait before next question (if not the last question)
-        if idx < len(questions):
+            # Format the response using log simplifier
+            if response_a_raw:
+                if verbose:
+                    log_info("🔧 Model A レスポンスを整形中...", indent=1)
+                response_a = format_response(response_a_raw)
+                success_count_a += 1
+            else:
+                response_a = ""
+                failed_count_a += 1
+
+            # Wait between Model A and Model B calls
             if verbose:
-                log_info(f"⏸️  次の質問まで{delay}秒待機中...", indent=1)
+                log_info(f"⏸️  Model B呼び出しまで{delay}秒待機中...", indent=1)
             time.sleep(delay)  # Rate limiting
+
+            # Call Model B
+            if verbose:
+                log_info(
+                    f"[{idx}/{len(questions)}] Model B ({model_b}) を呼び出し中..."
+                )
+            response_b_raw = call_api(
+                question,
+                api_url,
+                model_b,
+                identity,
+                timeout,
+                verbose=verbose,
+                time_log_path=time_log_path,
+                question_number=idx,
+                model_label="Model B",
+            )
+
+            # Format the response using log simplifier
+            if response_b_raw:
+                if verbose:
+                    log_info("🔧 Model B レスポンスを整形中...", indent=1)
+                response_b = format_response(response_b_raw)
+                success_count_b += 1
+            else:
+                response_b = ""
+                failed_count_b += 1
+
+            # Store formatted responses
+            # Column names compatible with both llm_judge_evaluator.py and ragas_llm_judge_evaluator.py
+            results.append(
+                {
+                    "Question": question,
+                    "Model_A_Response": response_a,
+                    "Model_B_Response": response_b,
+                }
+            )
+
+            question_elapsed = time.time() - question_start_time
+
+            if verbose:
+                status_a = "✅" if response_a else "❌"
+                status_b = "✅" if response_b else "❌"
+                log_info(
+                    f"\n📊 質問 {idx} 完了 (経過時間: {question_elapsed:.2f}秒)",
+                    indent=1,
+                )
+                log_info(f"Model A: {status_a} | Model B: {status_b}", indent=2)
+                log_info(
+                    f"成功数: A={success_count_a}/{idx}, B={success_count_b}/{idx}",
+                    indent=2,
+                )
+
+            # Wait before next question (if not the last question)
+            if idx < len(questions):
+                if verbose:
+                    log_info(f"⏸️  次の質問まで{delay}秒待機中...", indent=1)
+                time.sleep(delay)  # Rate limiting
+    else:
+        # Parallel processing with ThreadPoolExecutor
+        log_info(f"並列処理モード: {max_workers}ワーカー", indent=1)
+        # Create list of (index, question) tuples to maintain order
+        questions_with_index = [
+            (idx, question) for idx, question in enumerate(questions, 1)
+        ]
+
+        # Process questions in parallel while maintaining order
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_idx = {
+                executor.submit(process_single_question, q_tuple): q_tuple[0]
+                for q_tuple in questions_with_index
+            }
+
+            # Collect results in order
+            results_dict = {}
+            for future in tqdm(
+                as_completed(future_to_idx),
+                total=len(questions_with_index),
+                desc="📊 進捗",
+            ):
+                idx = future_to_idx[future]
+                try:
+                    result = future.result()
+                    results_dict[result["idx"]] = result
+                    # Update counters
+                    if result["success_a"]:
+                        success_count_a += 1
+                    else:
+                        failed_count_a += 1
+                    if result["success_b"]:
+                        success_count_b += 1
+                    else:
+                        failed_count_b += 1
+                except Exception as e:
+                    log_error(
+                        f"質問 {idx} の処理中にエラーが発生しました: {e}", indent=1
+                    )
+                    # Create error result
+                    results_dict[idx] = {
+                        "idx": idx,
+                        "question": questions[idx - 1] if idx <= len(questions) else "",
+                        "response_a": "",
+                        "response_b": "",
+                        "success_a": False,
+                        "success_b": False,
+                    }
+                    failed_count_a += 1
+                    failed_count_b += 1
+
+        # Convert results_dict to ordered list
+        for idx, _ in questions_with_index:
+            if idx in results_dict:
+                result = results_dict[idx]
+                results.append(
+                    {
+                        "Question": result["question"],
+                        "Model_A_Response": result["response_a"],
+                        "Model_B_Response": result["response_b"],
+                    }
+                )
 
     total_elapsed = time.time() - total_start_time
 

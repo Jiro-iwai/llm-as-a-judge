@@ -21,6 +21,7 @@ import argparse
 import os
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Union
 
@@ -46,6 +47,7 @@ from src.utils.logging_config import (  # noqa: E402
     setup_logging,
 )
 from src.utils.judge_model_common import call_judge_model_common  # noqa: E402
+from src.config.app_config import get_max_workers  # noqa: E402
 
 # Format clarity evaluator uses gpt-4-turbo as default (different from common default)
 DEFAULT_MODEL = "gpt-4-turbo"
@@ -607,6 +609,7 @@ def process_csv(
     limit_rows: Optional[int] = None,
     model_name: Optional[str] = None,
     non_interactive: bool = False,
+    max_workers: Optional[int] = None,
 ) -> None:
     """
     Main processing function that reads the input CSV, parses logs, evaluates format similarity,
@@ -618,6 +621,7 @@ def process_csv(
         limit_rows: Optional limit on number of rows to process (for cost control)
         model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
         non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
+        max_workers: Maximum number of parallel workers. If None, uses config value or sequential processing.
     """
     # Model name can be set via parameter or environment variable
     if model_name is None:
@@ -634,14 +638,74 @@ def process_csv(
         df, limit_rows, model_name, non_interactive
     )
 
+    # Determine max_workers for parallel processing
+    if max_workers is None:
+        max_workers = get_max_workers()
+
     # Process each row with progress bar
     log_info("\nParsing logs and evaluating format similarity...")
     results = []
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
-        result_row = process_single_row_format_clarity(
-            row, client, model_name, is_azure, FORMAT_CLARITY_OUTPUT_COLUMNS
-        )
-        results.append(result_row)
+
+    if max_workers is None or max_workers == 1:
+        # Sequential processing (default behavior)
+        for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing rows"):
+            result_row = process_single_row_format_clarity(
+                row, client, model_name, is_azure, FORMAT_CLARITY_OUTPUT_COLUMNS
+            )
+            results.append(result_row)
+    else:
+        # Parallel processing with ThreadPoolExecutor
+        log_info(f"並列処理モード: {max_workers}ワーカー", indent=1)
+        # Create list of (index, row) tuples to maintain order
+        rows_with_index = [(idx, row) for idx, row in df.iterrows()]
+
+        def process_row_with_index(idx_row_tuple):
+            """Wrapper function to process a single row with its index"""
+            idx, row = idx_row_tuple
+            return idx, process_single_row_format_clarity(
+                row, client, model_name, is_azure, FORMAT_CLARITY_OUTPUT_COLUMNS
+            )
+
+        # Process rows in parallel while maintaining order
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_idx = {
+                executor.submit(process_row_with_index, idx_row): idx_row[0]
+                for idx_row in rows_with_index
+            }
+
+            # Collect results in order
+            results_dict = {}
+            for future in tqdm(
+                as_completed(future_to_idx),
+                total=len(rows_with_index),
+                desc="Processing rows",
+            ):
+                idx = future_to_idx[future]
+                try:
+                    result_idx, result_row = future.result()
+                    results_dict[result_idx] = result_row
+                except Exception as e:
+                    log_error(f"行 {idx} の処理中にエラーが発生しました: {e}", indent=1)
+                    # Create error result row
+                    result_row = {
+                        "Question": df.loc[idx, "Question"] if idx in df.index else "",
+                        "Model_A_Final_Answer": (
+                            df.loc[idx, "Model_A_Response"] if idx in df.index else ""
+                        ),
+                        "Model_B_Final_Answer": (
+                            df.loc[idx, "Model_B_Response"] if idx in df.index else ""
+                        ),
+                        "Evaluation_Error": f"Parallel processing error: {e}",
+                    }
+                    # Fill in empty values for all score columns
+                    for col in FORMAT_CLARITY_OUTPUT_COLUMNS:
+                        if col not in result_row:
+                            result_row[col] = ""
+                    results_dict[idx] = result_row
+
+        # Convert results_dict to ordered list
+        results = [results_dict[idx] for idx, _ in rows_with_index]
 
     # Write results to CSV
     write_results_to_csv_format_clarity(
