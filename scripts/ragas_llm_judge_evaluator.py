@@ -466,7 +466,25 @@ def evaluate_with_ragas(
         # Type checker may not recognize to_pandas() method, but it exists
         results_df: pd.DataFrame = results.to_pandas()  # type: ignore[attr-defined]
 
-        # Rename columns with model prefix
+        # Ragas returns column names based on metric object names (e.g., "answer_relevancy")
+        # but we use normalized names (e.g., "answer_relevance") in our code
+        # Map Ragas column names to our normalized names
+        ragas_to_normalized = {
+            "answer_relevancy": "answer_relevance",
+            "faithfulness": "faithfulness",
+            "context_precision": "context_precision",
+            "context_recall": "context_recall",
+        }
+
+        # First, rename Ragas column names to normalized names
+        column_mapping = {}
+        for col in results_df.columns:
+            if col in ragas_to_normalized:
+                column_mapping[col] = ragas_to_normalized[col]
+        if column_mapping:
+            results_df = results_df.rename(columns=column_mapping)
+
+        # Then rename columns with model prefix
         score_columns = {
             metric: f"{model_name}_{metric}_score" for metric in metrics_to_run
         }

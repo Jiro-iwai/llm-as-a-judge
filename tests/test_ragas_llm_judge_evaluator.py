@@ -246,9 +246,10 @@ class TestEvaluateWithRagas:
         metrics_to_run = ["faithfulness", "answer_relevance", "context_precision", "context_recall"]
 
         # Mock successful evaluation result (only for metrics that don't require reference)
+        # Note: Ragas returns column names based on metric object names (answer_relevancy, not answer_relevance)
         mock_result = pd.DataFrame({
             "faithfulness": [0.8, 0.9],
-            "answer_relevance": [0.7, 0.85],
+            "answer_relevancy": [0.7, 0.85],  # Ragas uses "answer_relevancy" as column name
         })
         mock_dataset = Mock()
         mock_dataset.to_pandas = Mock(return_value=mock_result)
