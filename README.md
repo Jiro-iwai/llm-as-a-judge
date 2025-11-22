@@ -599,7 +599,7 @@ python scripts/ragas_llm_judge_evaluator.py my_data.csv -n 3 -m gpt-4.1
 # faithfulness / answer_relevance / context_precision / context_recall の中から選択
 python scripts/ragas_llm_judge_evaluator.py my_data.csv --metrics faithfulness context_precision
 
-# プリセット（basic: faithfulness+answer_relevance, extended: 全メトリクス）
+# プリセット（basic: faithfulness+answer_relevance, with_reference: 全メトリクス）
 python scripts/ragas_llm_judge_evaluator.py my_data.csv --metrics-preset basic
 ```
 
@@ -1066,7 +1066,7 @@ python scripts/run_full_pipeline.py questions.txt --evaluator all
 # ragas評価でメトリクスを指定
 python scripts/run_full_pipeline.py questions.txt --evaluator ragas --ragas-metrics faithfulness context_precision
 
-# ragas評価でプリセットを指定（basic / extended）
+# ragas評価でプリセットを指定（basic / with_reference）
 python scripts/run_full_pipeline.py questions.txt --evaluator ragas --ragas-metrics-preset basic
 
 # 収集ステップをスキップ（既存のCSVファイルを使用）

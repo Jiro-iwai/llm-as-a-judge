@@ -729,6 +729,15 @@ Setup:
        export MODEL_NAME='gpt-4.1'  # or 'gpt-5', 'gpt-4-turbo' (recommended: gpt-4.1 for Ragas)
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional
        
+       # REQUIRED for Ragas evaluation (chat models cannot be used for embeddings):
+       export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-3-large-20240312'
+       # Optional (defaults to text-embedding-3-large-20240312):
+       export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-3-large-20240312'
+       
+       # Or add to .env file:
+       # AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312
+       # AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312
+       
     4. Run the script:
        python scripts/ragas_llm_judge_evaluator.py input.csv -m gpt-4.1  # Use -m to specify model
        
