@@ -802,7 +802,7 @@ python scripts/collect_responses.py questions.txt --time-log custom_time_log.txt
 - **CSVファイル（.csv）**: 最初の列に質問（ヘッダー行は任意）
 
 **出力：**
-- `collected_responses.csv`（デフォルト、`run_full_pipeline.py`経由の場合は `output/collected_responses.csv`）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
+- `output/collected_responses.csv`（デフォルト）: `Question`, `Model_A_Response`, `Model_B_Response`の列を持つCSV
 - `processing_time_log.txt`: 各API呼び出しの処理時間ログ
 - `processing_time_comparison.png`, `processing_time_statistics.png`, `processing_time_summary.txt`: 処理時間比較チャートと統計サマリー
 
