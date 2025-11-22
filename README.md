@@ -1191,11 +1191,26 @@ python scripts/run_full_pipeline.py examples/questions.txt --judge-model gpt-5
 make pipeline ARGS="examples/questions.txt --evaluator llm-judge --judge-model gpt-5"
 ```
 
+**並列処理を有効化：**
+
+```bash
+# 環境変数で並列処理を有効化（パイプライン全体に適用）
+export APP_MAX_WORKERS=4
+python scripts/run_full_pipeline.py examples/questions.txt
+
+# 並列処理は以下のスクリプトに適用されます：
+# - collect_responses.py（質問間の並列処理）
+# - llm_judge_evaluator.py（行間の並列処理）
+# - format_clarity_evaluator.py（行間の並列処理）
+# 注意: ragas_llm_judge_evaluator.pyは現状並列処理をサポートしていません
+```
+
 **注意：**
 - 可視化は現在`llm-judge`評価の結果のみサポートされています
 - 各ステップでエラーが発生した場合、パイプラインは適切に停止します
 - 可視化ステップでエラーが発生した場合、警告を表示してパイプラインは続行します
 - **非対話実行**: `run_full_pipeline.py`から実行する場合、評価スクリプト（`llm_judge_evaluator.py`、`format_clarity_evaluator.py`）には自動的に`--yes`フラグが付与され、10行を超える場合でも確認プロンプトが表示されずに実行されます。これにより、CI/バッチ環境での自動実行が可能です。個別に評価スクリプトを実行する場合は、`--yes`フラグを明示的に指定することで非対話実行できます。
+- **並列処理**: パイプライン実行時も環境変数`APP_MAX_WORKERS`で並列処理を制御できます。`collect_responses.py`、`llm_judge_evaluator.py`、`format_clarity_evaluator.py`に適用されます。`ragas_llm_judge_evaluator.py`は現状並列処理をサポートしていません。
 - **出力ファイル名のカスタマイズ**: 評価結果や処理時間レポートの出力ファイル名（`evaluation_*.png`、`processing_time_*.png`など）は`src/config/app_config.py`の`output_files`設定、または環境変数（`APP_OUTPUT_FILE_EVALUATION_COMPARISON`、`APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON`など）で変更できます。詳細は[アプリケーション設定](#アプリケーション設定設定値の外部化)セクションを参照してください。
 
 -----
@@ -1227,6 +1242,7 @@ make pipeline ARGS="examples/questions.txt --evaluator llm-judge --judge-model g
     - 例: `export APP_MAX_WORKERS=4` で4ワーカー並列処理
     - 並列処理により、大量のデータ処理時間を大幅に短縮できます
     - 注意: APIのレート制限に注意してください。過度な並列処理はAPIエラーを引き起こす可能性があります
+    - 注意: `ragas_llm_judge_evaluator.py`は現状並列処理をサポートしていません（Ragasフレームワークの制約により）
   - APIコールはリトライロジックと共に実行されます（並列処理時も各タスクでリトライが機能します）
   - 進捗はtqdmプログレスバーを介して表示されます
   - Temperatureは一貫した評価のために最適化されています
