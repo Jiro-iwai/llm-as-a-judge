@@ -125,7 +125,12 @@ class TestConfigValidationIntegration:
             temp_file = f.name
 
         try:
-            with patch.dict(os.environ, {"APP_CONFIG_FILE": temp_file}):
+            # Clear APP_MAX_WORKERS to ensure YAML value is used
+            env_vars = {"APP_CONFIG_FILE": temp_file}
+            with patch.dict(os.environ, env_vars, clear=False):
+                # Explicitly remove APP_MAX_WORKERS if it was set to ensure YAML value is used
+                if "APP_MAX_WORKERS" in os.environ:
+                    del os.environ["APP_MAX_WORKERS"]
                 config = load_config()
                 issues = validate_app_config(config)
                 assert any("max_workers" in str(issue).lower() for issue in issues)
