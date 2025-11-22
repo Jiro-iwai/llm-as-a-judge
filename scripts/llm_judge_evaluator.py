@@ -303,37 +303,56 @@ def extract_scores_from_evaluation(
     return result
 
 
-def process_csv(
-    input_file: str,
-    output_file: str = "evaluation_output.csv",
-    limit_rows: Optional[int] = None,
-    model_name: Optional[str] = None,
-    non_interactive: bool = False,
-) -> None:
+# Output columns definition for llm_judge_evaluator
+LLM_JUDGE_OUTPUT_COLUMNS = [
+    "Question",
+    "Model_A_Response",
+    "Model_B_Response",
+    # Model A scores and justifications
+    "Model_A_Citation_Score",
+    "Model_A_Citation_Justification",
+    "Model_A_Relevance_Score",
+    "Model_A_Relevance_Justification",
+    "Model_A_ReAct_Performance_Thought_Score",
+    "Model_A_ReAct_Performance_Thought_Justification",
+    "Model_A_RAG_Retrieval_Observation_Score",
+    "Model_A_RAG_Retrieval_Observation_Justification",
+    "Model_A_Information_Integration_Score",
+    "Model_A_Information_Integration_Justification",
+    # Model B scores and justifications
+    "Model_B_Citation_Score",
+    "Model_B_Citation_Justification",
+    "Model_B_Relevance_Score",
+    "Model_B_Relevance_Justification",
+    "Model_B_ReAct_Performance_Thought_Score",
+    "Model_B_ReAct_Performance_Thought_Justification",
+    "Model_B_RAG_Retrieval_Observation_Score",
+    "Model_B_RAG_Retrieval_Observation_Justification",
+    "Model_B_Information_Integration_Score",
+    "Model_B_Information_Integration_Justification",
+    # Error tracking
+    "Evaluation_Error",
+]
+
+
+def initialize_openai_client(
+    model_name: str,
+) -> tuple[Union[OpenAI, AzureOpenAI], bool]:
     """
-    Main processing function that reads the input CSV, evaluates each row,
-    and writes the results to the output CSV.
+    Initialize OpenAI client (Azure or Standard) based on environment variables.
 
     Args:
-        input_file: Path to the input CSV file
-        output_file: Path to the output CSV file (default: evaluation_output.csv)
-        limit_rows: Optional limit on number of rows to process (for cost control)
-        model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
-        non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
+        model_name: Model name for evaluation
+
+    Returns:
+        Tuple of (client, is_azure) where is_azure indicates if Azure OpenAI is used
+
+    Raises:
+        SystemExit: If no valid credentials are found
     """
-    # Check if using Azure OpenAI or standard OpenAI
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
     azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-    # Model name can be set via command line argument, environment variable, or default
-    if model_name is None:
-        model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
-
-    # Validate model name
-    if model_name not in SUPPORTED_MODELS:
-        # Try to get config (will warn if not found)
-        get_model_config(model_name)
-
     is_azure = bool(azure_endpoint and azure_api_key)
 
     if is_azure:
@@ -349,6 +368,7 @@ def process_csv(
             api_key=azure_api_key,
             api_version=azure_api_version,
         )
+        return client, True
     else:
         # Initialize standard OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
@@ -373,8 +393,22 @@ def process_csv(
         log_section("Standard OpenAI 設定")
         log_info(f"Model: {model_name}")
         client = OpenAI(api_key=api_key)
+        return client, False
 
-    # Read input CSV
+
+def read_and_validate_csv(input_file: str) -> pd.DataFrame:
+    """
+    Read and validate input CSV file.
+
+    Args:
+        input_file: Path to the input CSV file
+
+    Returns:
+        DataFrame with standardized column names
+
+    Raises:
+        SystemExit: If file cannot be read or validated
+    """
     log_section("入力ファイルの読み込み")
     log_info(f"ファイル: {input_file}")
     try:
@@ -416,8 +450,27 @@ def process_csv(
         sys.exit(1)
 
     log_success(f"{len(df)}行を読み込みました")
+    return df
 
-    # Apply row limit if specified (for cost control during testing)
+
+def apply_row_limit_and_confirm(
+    df: pd.DataFrame, limit_rows: Optional[int], model_name: str, non_interactive: bool
+) -> pd.DataFrame:
+    """
+    Apply row limit and prompt for confirmation if needed.
+
+    Args:
+        df: Input DataFrame
+        limit_rows: Optional limit on number of rows to process
+        model_name: Model name for logging
+        non_interactive: If True, skips confirmation prompt
+
+    Returns:
+        DataFrame with row limit applied
+
+    Raises:
+        SystemExit: If user cancels the operation
+    """
     log_section("処理設定")
     if limit_rows is not None and limit_rows < len(df):
         df = df.head(limit_rows)
@@ -450,157 +503,159 @@ def process_csv(
                 print("\nキャンセルしました。")
                 sys.exit(0)
 
-    # Prepare output columns
-    output_columns = [
-        "Question",
-        "Model_A_Response",
-        "Model_B_Response",
-        # Model A scores and justifications
-        "Model_A_Citation_Score",
-        "Model_A_Citation_Justification",
-        "Model_A_Relevance_Score",
-        "Model_A_Relevance_Justification",
-        "Model_A_ReAct_Performance_Thought_Score",
-        "Model_A_ReAct_Performance_Thought_Justification",
-        "Model_A_RAG_Retrieval_Observation_Score",
-        "Model_A_RAG_Retrieval_Observation_Justification",
-        "Model_A_Information_Integration_Score",
-        "Model_A_Information_Integration_Justification",
-        # Model B scores and justifications
-        "Model_B_Citation_Score",
-        "Model_B_Citation_Justification",
-        "Model_B_Relevance_Score",
-        "Model_B_Relevance_Justification",
-        "Model_B_ReAct_Performance_Thought_Score",
-        "Model_B_ReAct_Performance_Thought_Justification",
-        "Model_B_RAG_Retrieval_Observation_Score",
-        "Model_B_RAG_Retrieval_Observation_Justification",
-        "Model_B_Information_Integration_Score",
-        "Model_B_Information_Integration_Justification",
-        # Error tracking
-        "Evaluation_Error",
-    ]
+    return df
 
-    results = []
 
-    # Process each row with progress bar
-    log_section("評価処理の開始")
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="評価中"):
-        # Convert pandas Series to str if needed
-        question_val = row["Question"]
-        model_a_val = row["Model_A_Response"]
-        model_b_val = row["Model_B_Response"]
+def process_single_row(
+    row: pd.Series,
+    client: Union[OpenAI, AzureOpenAI],
+    model_name: str,
+    is_azure: bool,
+    output_columns: list[str],
+) -> Dict[str, Any]:
+    """
+    Process a single row from the input DataFrame.
 
-        # Use isinstance check to avoid Series condition operator error
-        question = (
-            str(question_val)
-            if not (isinstance(question_val, float) and pd.isna(question_val))
-            else ""
+    Args:
+        row: Single row from DataFrame
+        client: OpenAI or AzureOpenAI client
+        model_name: Model name for evaluation
+        is_azure: Whether using Azure OpenAI
+        output_columns: List of output column names
+
+    Returns:
+        Dictionary containing evaluation results for the row
+    """
+    # Convert pandas Series to str if needed
+    question_val = row["Question"]
+    model_a_val = row["Model_A_Response"]
+    model_b_val = row["Model_B_Response"]
+
+    # Use isinstance check to avoid Series condition operator error
+    question = (
+        str(question_val)
+        if not (isinstance(question_val, float) and pd.isna(question_val))
+        else ""
+    )
+    model_a_response = (
+        str(model_a_val)
+        if not (isinstance(model_a_val, float) and pd.isna(model_a_val))
+        else ""
+    )
+    model_b_response = (
+        str(model_b_val)
+        if not (isinstance(model_b_val, float) and pd.isna(model_b_val))
+        else ""
+    )
+
+    # Initialize result row with original data
+    result_row = {
+        "Question": question,
+        "Model_A_Response": model_a_response,
+        "Model_B_Response": model_b_response,
+    }
+
+    # Call judge model (timeout will be automatically set from model config)
+    evaluation = call_judge_model(
+        client,
+        question,
+        model_a_response,
+        model_b_response,
+        model_name=model_name,
+        is_azure=is_azure,
+        timeout=None,  # None means use model config default
+    )
+
+    if evaluation is None:
+        # If evaluation failed, record error and set all scores to None
+        result_row["Evaluation_Error"] = (
+            "Failed to get valid evaluation from judge model"
         )
-        model_a_response = (
-            str(model_a_val)
-            if not (isinstance(model_a_val, float) and pd.isna(model_a_val))
-            else ""
+        for col in output_columns:
+            if col not in result_row:
+                result_row[col] = ""
+    else:
+        # Extract scores for Model A
+        model_a_scores = extract_scores_from_evaluation(
+            evaluation, "model_a_evaluation"
         )
-        model_b_response = (
-            str(model_b_val)
-            if not (isinstance(model_b_val, float) and pd.isna(model_b_val))
-            else ""
+        result_row["Model_A_Citation_Score"] = model_a_scores["citation_score"]
+        result_row["Model_A_Citation_Justification"] = model_a_scores[
+            "citation_justification"
+        ]
+        result_row["Model_A_Relevance_Score"] = model_a_scores["relevance_score"]
+        result_row["Model_A_Relevance_Justification"] = model_a_scores[
+            "relevance_justification"
+        ]
+        result_row["Model_A_ReAct_Performance_Thought_Score"] = model_a_scores[
+            "react_performance_thought_score"
+        ]
+        result_row["Model_A_ReAct_Performance_Thought_Justification"] = model_a_scores[
+            "react_performance_thought_justification"
+        ]
+        result_row["Model_A_RAG_Retrieval_Observation_Score"] = model_a_scores[
+            "rag_retrieval_observation_score"
+        ]
+        result_row["Model_A_RAG_Retrieval_Observation_Justification"] = model_a_scores[
+            "rag_retrieval_observation_justification"
+        ]
+        result_row["Model_A_Information_Integration_Score"] = model_a_scores[
+            "information_integration_score"
+        ]
+        result_row["Model_A_Information_Integration_Justification"] = model_a_scores[
+            "information_integration_justification"
+        ]
+
+        # Extract scores for Model B
+        model_b_scores = extract_scores_from_evaluation(
+            evaluation, "model_b_evaluation"
         )
+        result_row["Model_B_Citation_Score"] = model_b_scores["citation_score"]
+        result_row["Model_B_Citation_Justification"] = model_b_scores[
+            "citation_justification"
+        ]
+        result_row["Model_B_Relevance_Score"] = model_b_scores["relevance_score"]
+        result_row["Model_B_Relevance_Justification"] = model_b_scores[
+            "relevance_justification"
+        ]
+        result_row["Model_B_ReAct_Performance_Thought_Score"] = model_b_scores[
+            "react_performance_thought_score"
+        ]
+        result_row["Model_B_ReAct_Performance_Thought_Justification"] = model_b_scores[
+            "react_performance_thought_justification"
+        ]
+        result_row["Model_B_RAG_Retrieval_Observation_Score"] = model_b_scores[
+            "rag_retrieval_observation_score"
+        ]
+        result_row["Model_B_RAG_Retrieval_Observation_Justification"] = model_b_scores[
+            "rag_retrieval_observation_justification"
+        ]
+        result_row["Model_B_Information_Integration_Score"] = model_b_scores[
+            "information_integration_score"
+        ]
+        result_row["Model_B_Information_Integration_Justification"] = model_b_scores[
+            "information_integration_justification"
+        ]
 
-        # Initialize result row with original data
-        result_row = {
-            "Question": question,
-            "Model_A_Response": model_a_response,
-            "Model_B_Response": model_b_response,
-        }
+        result_row["Evaluation_Error"] = ""
 
-        # Call judge model (timeout will be automatically set from model config)
-        evaluation = call_judge_model(
-            client,
-            question,
-            model_a_response,
-            model_b_response,
-            model_name=model_name,
-            is_azure=is_azure,
-            timeout=None,  # None means use model config default
-        )
+    return result_row
 
-        if evaluation is None:
-            # If evaluation failed, record error and set all scores to None
-            result_row["Evaluation_Error"] = (
-                "Failed to get valid evaluation from judge model"
-            )
-            for col in output_columns:
-                if col not in result_row:
-                    result_row[col] = ""
-        else:
-            # Extract scores for Model A
-            model_a_scores = extract_scores_from_evaluation(
-                evaluation, "model_a_evaluation"
-            )
-            result_row["Model_A_Citation_Score"] = model_a_scores["citation_score"]
-            result_row["Model_A_Citation_Justification"] = model_a_scores[
-                "citation_justification"
-            ]
-            result_row["Model_A_Relevance_Score"] = model_a_scores["relevance_score"]
-            result_row["Model_A_Relevance_Justification"] = model_a_scores[
-                "relevance_justification"
-            ]
-            result_row["Model_A_ReAct_Performance_Thought_Score"] = model_a_scores[
-                "react_performance_thought_score"
-            ]
-            result_row["Model_A_ReAct_Performance_Thought_Justification"] = (
-                model_a_scores["react_performance_thought_justification"]
-            )
-            result_row["Model_A_RAG_Retrieval_Observation_Score"] = model_a_scores[
-                "rag_retrieval_observation_score"
-            ]
-            result_row["Model_A_RAG_Retrieval_Observation_Justification"] = (
-                model_a_scores["rag_retrieval_observation_justification"]
-            )
-            result_row["Model_A_Information_Integration_Score"] = model_a_scores[
-                "information_integration_score"
-            ]
-            result_row["Model_A_Information_Integration_Justification"] = (
-                model_a_scores["information_integration_justification"]
-            )
 
-            # Extract scores for Model B
-            model_b_scores = extract_scores_from_evaluation(
-                evaluation, "model_b_evaluation"
-            )
-            result_row["Model_B_Citation_Score"] = model_b_scores["citation_score"]
-            result_row["Model_B_Citation_Justification"] = model_b_scores[
-                "citation_justification"
-            ]
-            result_row["Model_B_Relevance_Score"] = model_b_scores["relevance_score"]
-            result_row["Model_B_Relevance_Justification"] = model_b_scores[
-                "relevance_justification"
-            ]
-            result_row["Model_B_ReAct_Performance_Thought_Score"] = model_b_scores[
-                "react_performance_thought_score"
-            ]
-            result_row["Model_B_ReAct_Performance_Thought_Justification"] = (
-                model_b_scores["react_performance_thought_justification"]
-            )
-            result_row["Model_B_RAG_Retrieval_Observation_Score"] = model_b_scores[
-                "rag_retrieval_observation_score"
-            ]
-            result_row["Model_B_RAG_Retrieval_Observation_Justification"] = (
-                model_b_scores["rag_retrieval_observation_justification"]
-            )
-            result_row["Model_B_Information_Integration_Score"] = model_b_scores[
-                "information_integration_score"
-            ]
-            result_row["Model_B_Information_Integration_Justification"] = (
-                model_b_scores["information_integration_justification"]
-            )
+def write_results_to_csv(
+    results: list[Dict[str, Any]], output_file: str, output_columns: list[str]
+) -> pd.DataFrame:
+    """
+    Write evaluation results to CSV file.
 
-            result_row["Evaluation_Error"] = ""
+    Args:
+        results: List of result dictionaries
+        output_file: Path to output CSV file
+        output_columns: List of output column names
 
-        results.append(result_row)
-
+    Returns:
+        Output DataFrame
+    """
     # Create output DataFrame and write to CSV
     if results:
         output_df = pd.DataFrame(results)
@@ -628,6 +683,57 @@ def process_csv(
         log_warning(f"{errors}行で評価エラーが発生しました", indent=0)
     else:
         log_success("すべての行が正常に処理されました", indent=0)
+
+    return output_df
+
+
+def process_csv(
+    input_file: str,
+    output_file: str = "evaluation_output.csv",
+    limit_rows: Optional[int] = None,
+    model_name: Optional[str] = None,
+    non_interactive: bool = False,
+) -> None:
+    """
+    Main processing function that reads the input CSV, evaluates each row,
+    and writes the results to the output CSV.
+
+    Args:
+        input_file: Path to the input CSV file
+        output_file: Path to the output CSV file (default: evaluation_output.csv)
+        limit_rows: Optional limit on number of rows to process (for cost control)
+        model_name: Model name for evaluation. If None, uses MODEL_NAME environment variable or default model.
+        non_interactive: If True, skips confirmation prompt even for >10 rows. Default is False.
+    """
+    # Model name can be set via command line argument, environment variable, or default
+    if model_name is None:
+        model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL)
+
+    # Validate model name
+    if model_name not in SUPPORTED_MODELS:
+        # Try to get config (will warn if not found)
+        get_model_config(model_name)
+
+    # Initialize OpenAI client
+    client, is_azure = initialize_openai_client(model_name)
+
+    # Read and validate CSV
+    df = read_and_validate_csv(input_file)
+
+    # Apply row limit and confirm if needed
+    df = apply_row_limit_and_confirm(df, limit_rows, model_name, non_interactive)
+
+    # Process each row with progress bar
+    log_section("評価処理の開始")
+    results = []
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="評価中"):
+        result_row = process_single_row(
+            row, client, model_name, is_azure, LLM_JUDGE_OUTPUT_COLUMNS
+        )
+        results.append(result_row)
+
+    # Write results to CSV
+    write_results_to_csv(results, output_file, LLM_JUDGE_OUTPUT_COLUMNS)
 
 
 def main():
