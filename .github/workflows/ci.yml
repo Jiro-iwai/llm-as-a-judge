@@ -40,6 +40,11 @@ jobs:
       - name: Install dependencies
         run: uv pip install --python .venv/bin/python -r requirements.txt
 
+      - name: Create required directories
+        run: |
+          mkdir -p output
+          mkdir -p examples
+
       - name: Run tests
         run: make test
 
