@@ -663,8 +663,8 @@ Input file format:
     parser.add_argument(
         "-o",
         "--output",
-        default="collected_responses.csv",
-        help="Path to the output CSV file (default: collected_responses.csv). Note: It's recommended to use output/ directory (e.g., output/collected_responses.csv)",
+        default="output/collected_responses.csv",
+        help="Path to the output CSV file (default: output/collected_responses.csv). Recommended to use output/ directory.",
     )
 
     parser.add_argument(
