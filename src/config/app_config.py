@@ -14,6 +14,7 @@ Supported environment variables:
 - APP_RETRY_DELAY: Delay between retries in seconds
 - APP_API_DELAY: Delay between API calls in seconds
 - APP_DEFAULT_IDENTITY: Default identity for API calls
+- APP_MAX_WORKERS: Maximum number of parallel workers (None for sequential processing, int for parallel)
 """
 
 import copy
