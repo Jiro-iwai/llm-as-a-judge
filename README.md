@@ -120,96 +120,112 @@ MODEL_NAME=gpt-4-turbo  # または gpt-4.1
 
 このプロジェクトでは、多くの設定値を環境変数やYAML設定ファイルから読み込むことができます。これにより、コードを編集せずに設定を変更できます。
 
-#### 環境変数での設定
+**推奨構成**:
+- **必須**: 認証情報（環境変数）
+- **推奨**: アプリケーション設定（YAML設定ファイル）
+- **オーバーライド**: 必要に応じて環境変数で上書き
 
-以下の環境変数を使用して設定値を変更できます：
+#### 1. 認証情報（必須・環境変数）
+
+API認証情報は環境変数で設定する必要があります（`.env` ファイル参照）：
+
+**Azure OpenAI の場合：**
+- `AZURE_OPENAI_ENDPOINT`
+- `AZURE_OPENAI_API_KEY`
+- `MODEL_NAME`（オプション、コマンドライン引数でも指定可能）
+- `AZURE_OPENAI_API_VERSION`（オプション）
+- Ragas評価用: `AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`（必須）、`AZURE_OPENAI_EMBEDDING_MODEL_NAME`（オプション）
+
+**Standard OpenAI の場合：**
+- `OPENAI_API_KEY`
+- `MODEL_NAME`（オプション、コマンドライン引数でも指定可能）
+
+#### 2. YAML設定ファイル（推奨）
+
+アプリケーション設定は YAML 設定ファイルで管理することを推奨します。
+
+まず、`config.example.yaml` を `config.yaml` にコピーしてカスタマイズします：
 
 ```bash
-# API設定
-export APP_TIMEOUT=150              # リクエストタイムアウト（秒、デフォルト: 120）
-export APP_MAX_RETRIES=5           # 最大リトライ回数（デフォルト: 3）
-export APP_RETRY_DELAY=3           # リトライ間隔（秒、デフォルト: 2）
-export APP_API_DELAY=2.0           # API呼び出し間隔（秒、デフォルト: 1.0）
-export APP_DEFAULT_IDENTITY="USER" # デフォルトidentity（デフォルト値は設定ファイルまたはコード内のデフォルト値を参照）
-
-# 並列処理設定
-export APP_MAX_WORKERS=4            # 並列処理のワーカー数（デフォルト: None=順次処理）
-                                    # Noneまたは未設定: 順次処理（デフォルト）
-                                    # 1以上: 指定した数のワーカーで並列処理
-                                    # 例: export APP_MAX_WORKERS=4  # 4ワーカーで並列処理
-
-# 出力ファイル名（オプション）
-export APP_OUTPUT_FILE_PROCESSING_TIME_LOG="custom_time_log.txt"  # 処理時間ログファイル名
-export APP_OUTPUT_FILE_EVALUATION_COMPARISON="custom_comparison.png"  # 評価比較チャートのファイル名
-export APP_OUTPUT_FILE_EVALUATION_DISTRIBUTION="custom_distribution.png"  # 評価分布チャートのファイル名
-export APP_OUTPUT_FILE_EVALUATION_BOXPLOT="custom_boxplot.png"  # 評価箱ひげ図のファイル名
-export APP_OUTPUT_FILE_EVALUATION_SUMMARY="custom_summary.txt"  # 評価サマリーテーブルのファイル名
-export APP_OUTPUT_FILE_PROCESSING_TIME_COMPARISON="custom_time_comparison.png"  # 処理時間比較チャートのファイル名
-export APP_OUTPUT_FILE_PROCESSING_TIME_STATISTICS="custom_time_statistics.png"  # 処理時間統計チャートのファイル名
-export APP_OUTPUT_FILE_PROCESSING_TIME_SUMMARY="custom_time_summary.txt"  # 処理時間サマリーテーブルのファイル名
-
-# 設定ファイルのパス
-export APP_CONFIG_FILE=config.yaml  # YAML設定ファイルのパス（オプション）
+cp config.example.yaml config.yaml
 ```
 
-#### YAML設定ファイルでの設定
-
-プロジェクトルートに `config.yaml` ファイルを作成して設定を管理できます：
+`config.yaml` の例：
 
 ```yaml
 # API設定
-timeout: 180
-max_retries: 5
-retry_delay: 3
-api_delay: 2.0
-default_identity: "CONFIG_USER"
-max_workers: 4  # 並列処理のワーカー数（Noneまたは未設定: 順次処理、1以上: 並列処理）
+timeout: 180                    # リクエストタイムアウト（秒）
+max_retries: 5                  # 最大リトライ回数
+retry_delay: 3                  # リトライ間隔（秒）
+api_delay: 2.0                  # API呼び出し間隔（秒）
+default_identity: "USER"         # デフォルトidentity
+
+# 並列処理設定
+max_workers: null               # None: 順次処理（デフォルト）
+                                 # 1以上: 並列処理（例: max_workers: 4）
 
 # 出力ファイル名
 output_files:
-  evaluation_comparison: "output/custom_comparison.png"
+  evaluation_comparison: "output/evaluation_comparison.png"
   evaluation_distribution: "output/evaluation_distribution.png"
-  evaluation_boxplot: "output/evaluation_boxplot.png"
-  evaluation_summary: "output/evaluation_summary.txt"
-  ragas_evaluation_comparison: "output/ragas_evaluation_comparison.png"
-  ragas_evaluation_distribution: "output/ragas_evaluation_distribution.png"
-  ragas_evaluation_boxplot: "output/ragas_evaluation_boxplot.png"
-  ragas_evaluation_summary: "output/ragas_evaluation_summary.txt"
-  processing_time_comparison: "output/processing_time_comparison.png"
-  processing_time_statistics: "output/processing_time_statistics.png"
-  processing_time_summary: "output/processing_time_summary.txt"
-  processing_time_log: "output/processing_time_log.txt"
+  # ... その他の出力ファイル
 
 # 正規表現パターン（compare_processing_time.py用）
 regex_patterns:
-  model_a_pattern: "📥 \[claude3\.5-sonnet\].*?経過時間: ([\\d.]+)秒"
-  model_b_pattern: "📥 \[claude4\.5-haiku\].*?経過時間: ([\\d.]+)秒"
+  model_a_pattern: "📥 \\[claude3\\.5-sonnet\\].*?経過時間: ([\\d.]+)秒"
+  model_b_pattern: "📥 \\[claude4\\.5-haiku\\].*?経過時間: ([\\d.]+)秒"
 ```
 
-設定ファイルは `APP_CONFIG_FILE` 環境変数で指定できます：
+設定ファイルは `APP_CONFIG_FILE` 環境変数で指定できます（デフォルト: `config.yaml`）：
 
 ```bash
 export APP_CONFIG_FILE=/path/to/config.yaml
 ```
 
+#### 3. 環境変数によるオーバーライド（必要な場合のみ）
+
+YAML設定ファイルの値を環境変数で上書きできます。主に以下の用途で使用します：
+
+- **CI/CD やデプロイ環境での一時的な変更**
+- **並列処理の有効化など、実行時に変更したい設定**
+
+```bash
+# よく使う設定のオーバーライド例
+export APP_MAX_WORKERS=4        # 並列処理のワーカー数
+export APP_TIMEOUT=200          # リクエストタイムアウト（秒）
+
+# 設定ファイルのパス指定
+export APP_CONFIG_FILE=config.yaml
+```
+
+**非推奨**: 以下の環境変数は後方互換性のためサポートされていますが、YAML設定ファイルの使用を推奨します：
+- `APP_OUTPUT_FILE_*` 系（出力ファイル名）
+- `APP_REGEX_MODEL_A_PATTERN` / `APP_REGEX_MODEL_B_PATTERN`（正規表現パターン）
+
+これらは YAML の `output_files` と `regex_patterns` で設定してください。
+
 #### 優先順位
 
 設定値は以下の優先順位で読み込まれます：
 
-1. **環境変数**（最優先）
-2. **設定ファイル**（YAML）
+1. **環境変数**（オーバーライド用）
+2. **YAML設定ファイル**（推奨）
 3. **デフォルト値**（コード内）
 
-環境変数は設定ファイルの値を上書きします。
+環境変数は YAML 設定ファイルの値を上書きしますが、YAML 設定ファイルでの管理を推奨します。
 
 #### 使用例
 
 ```bash
-# 環境変数でタイムアウトを変更
-export APP_TIMEOUT=200
-python scripts/llm_judge_evaluator.py data.csv
+# YAML設定ファイルを使用（推奨）
+# config.yaml に設定を記述
+python scripts/llm_judge_evaluator.py examples/evaluation_input.csv
 
-# 設定ファイルを使用
+# 環境変数で一時的に並列処理を有効化
+export APP_MAX_WORKERS=4
+python scripts/llm_judge_evaluator.py examples/evaluation_input.csv
+
+# カスタム設定ファイルを指定
 export APP_CONFIG_FILE=my_config.yaml
 python scripts/collect_responses.py examples/questions.txt
 
