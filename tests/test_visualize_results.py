@@ -18,6 +18,7 @@ from scripts.visualize_results import (
     create_score_comparison_chart,
     create_score_distribution_chart,
     create_boxplot_chart,
+    get_ragas_metric_keys,
 )
 
 
@@ -114,6 +115,24 @@ class TestPrepareData:
         result = prepare_data(df)
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
+
+
+class TestRagasHelpers:
+    """Tests for helper utilities used by ragas visualizations"""
+
+    def test_get_ragas_metric_keys_multiple_metrics(self):
+        """Ensure helper returns ordered metric keys when both models have scores"""
+        df = pd.DataFrame(
+            {
+                "Model_A_faithfulness_score": [0.9, 0.8],
+                "Model_B_faithfulness_score": [0.7, 0.6],
+                "Model_A_context_precision_score": [0.85, 0.88],
+                "Model_B_context_precision_score": [0.75, 0.73],
+            }
+        )
+
+        metrics = get_ragas_metric_keys(df)
+        assert metrics == ["faithfulness", "context_precision"]
 
 
 class TestCreateSummaryTable:
@@ -266,6 +285,41 @@ class TestCreateScoreDistributionChart:
             # Verify plt.savefig was called
             mock_plt.savefig.assert_called_once()
             mock_plt.close.assert_called_once()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    @patch("scripts.visualize_results.plt")
+    def test_create_score_distribution_chart_ragas_multiple_metrics(self, mock_plt):
+        """Test ragas distribution chart handles multiple metrics with dynamic layout"""
+        mock_fig = MagicMock()
+        mock_axes = [MagicMock(), MagicMock()]
+        mock_plt.subplots.return_value = (mock_fig, mock_axes)
+
+        df = pd.DataFrame(
+            {
+                "Question": ["Q1", "Q2"],
+                "Model_A_faithfulness_score": [0.9, 0.85],
+                "Model_B_faithfulness_score": [0.8, 0.75],
+                "Model_A_context_recall_score": [0.6, 0.65],
+                "Model_B_context_recall_score": [0.55, 0.58],
+            }
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".png") as f:
+            temp_file = f.name
+
+        try:
+            create_score_distribution_chart(
+                df, temp_file, evaluator_type="ragas", model_a_name="A", model_b_name="B"
+            )
+
+            mock_plt.subplots.assert_called_once()
+            args, kwargs = mock_plt.subplots.call_args
+            assert args[0] == 1  # rows
+            assert args[1] == 2  # cols
+            assert kwargs["figsize"] == (12, 4)
+            mock_plt.savefig.assert_called_once()
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)

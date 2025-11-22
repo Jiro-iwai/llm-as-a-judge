@@ -232,6 +232,10 @@ class TestGetOutputFileNames:
         assert "evaluation_distribution" in file_names
         assert "evaluation_boxplot" in file_names
         assert "evaluation_summary" in file_names
+        assert "ragas_evaluation_comparison" in file_names
+        assert "ragas_evaluation_distribution" in file_names
+        assert "ragas_evaluation_boxplot" in file_names
+        assert "ragas_evaluation_summary" in file_names
         assert "processing_time_comparison" in file_names
         assert "processing_time_statistics" in file_names
         assert "processing_time_summary" in file_names

@@ -3,8 +3,10 @@
 Ragas-Based Evaluation Pipeline for ReAct Chatbot Responses
 
 This script uses the Ragas framework to evaluate two models' responses by automatically
-parsing ReAct logs to extract Final Answers and Contexts, then running the faithfulness
-metric to measure how grounded the answers are in the retrieved context.
+parsing ReAct logs to extract Final Answers and Contexts, then running multiple Ragas
+metrics (faithfulness, answer_relevance, context_precision, context_recall) to measure
+how grounded and relevant the answers are with respect to the retrieved context and
+original question.
 
 This metric doesn't require ground truth, making it suitable for evaluation when
 reference answers are not available.
@@ -37,9 +39,47 @@ from datasets import Dataset  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 from openai import AzureOpenAI  # noqa: E402
 from ragas import evaluate  # noqa: E402
-from ragas.metrics import (  # noqa: E402
+from ragas.metrics import (  # type: ignore[attr-defined] # noqa: E402
+    answer_relevancy,
+    context_precision,
+    context_recall,
     faithfulness,
 )
+
+# Supported Ragas metrics (extendable)
+AVAILABLE_METRICS = {
+    "faithfulness": faithfulness,
+    "answer_relevance": answer_relevancy,
+    "context_precision": context_precision,
+    "context_recall": context_recall,
+}
+
+BASIC_METRICS = ["faithfulness", "answer_relevance"]
+EXTENDED_METRICS = [
+    "faithfulness",
+    "answer_relevance",
+    "context_precision",
+    "context_recall",
+]
+METRIC_PRESETS = {
+    "basic": BASIC_METRICS,
+    "extended": EXTENDED_METRICS,
+}
+
+DEFAULT_METRICS = tuple(EXTENDED_METRICS)
+
+
+def resolve_metrics(metrics: Optional[List[str]], preset: Optional[str]) -> List[str]:
+    """
+    Determine which metrics to run based on explicit metrics or preset.
+    """
+    if metrics:
+        return list(metrics)
+    if preset:
+        return list(METRIC_PRESETS[preset])
+    return list(DEFAULT_METRICS)
+
+
 from tqdm import tqdm  # noqa: E402
 
 if TYPE_CHECKING:
@@ -230,7 +270,7 @@ def initialize_azure_openai_for_ragas(
         )
         sys.exit(1)
 
-    log_info("Initializing Azure OpenAI for Ragas evaluation (Faithfulness only)")
+    log_info("Initializing Azure OpenAI for Ragas evaluation")
     log_info(f"Endpoint: {azure_endpoint}")
     log_info(f"Model/Deployment: {model_name}")
     log_info(f"API Version: {azure_api_version}")
@@ -289,9 +329,10 @@ def evaluate_with_ragas(
     contexts_list: List[List[str]],
     llm: "AzureChatOpenAI",
     model_name: str = "Model",
+    metric_names: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
-    Evaluate responses using Ragas faithfulness metric.
+    Evaluate responses using Ragas metrics.
 
     Args:
         questions: List of questions
@@ -301,9 +342,18 @@ def evaluate_with_ragas(
         model_name: Name for labeling (e.g., "Model_A" or "Model_B")
 
     Returns:
-        DataFrame with Ragas faithfulness scores
+        DataFrame with Ragas scores for the requested metrics.
     """
-    log_info(f"\nEvaluating {model_name} with Ragas (Faithfulness only)...")
+    metrics_to_run = list(metric_names) if metric_names else list(DEFAULT_METRICS)
+    invalid_metrics = [
+        metric for metric in metrics_to_run if metric not in AVAILABLE_METRICS
+    ]
+    if invalid_metrics:
+        raise ValueError(f"Unsupported metrics requested: {', '.join(invalid_metrics)}")
+
+    log_info(
+        f"\nEvaluating {model_name} with Ragas metrics: {', '.join(metrics_to_run)}"
+    )
 
     # Prepare dataset for Ragas
     data = {
@@ -314,10 +364,8 @@ def evaluate_with_ragas(
 
     dataset = Dataset.from_dict(data)
 
-    # Define metrics to evaluate (only faithfulness - no embeddings required)
-    metrics_to_use = [
-        faithfulness,
-    ]
+    # Define metrics to evaluate
+    metrics_to_use = [AVAILABLE_METRICS[metric] for metric in metrics_to_run]
 
     # Run evaluation
     try:
@@ -333,15 +381,15 @@ def evaluate_with_ragas(
 
         # Rename columns with model prefix
         score_columns = {
-            "faithfulness": f"{model_name}_faithfulness_score",
+            metric: f"{model_name}_{metric}_score" for metric in metrics_to_run
         }
 
         results_df = results_df.rename(columns=score_columns)
 
         return results_df
 
-    except (ValueError, KeyError, AttributeError) as e:
-        # データ構造のエラーは詳細な情報を記録
+    except (ValueError, KeyError, AttributeError, Exception) as e:
+        # エラー内容を詳細に記録し、期待される列構造を維持したDataFrameを返す
         log_error(
             f"ERROR during Ragas evaluation for {model_name}: {type(e).__name__}: {e}"
         )
@@ -349,47 +397,18 @@ def evaluate_with_ragas(
         import traceback
 
         traceback.print_exc(file=sys.stderr)
-        # エラー時は空のDataFrameを返す
-        error_df = pd.DataFrame(
-            {
-                "question": questions,
-                f"{model_name}_faithfulness_score": [None] * len(questions),
-            }
-        )
-        return error_df
-    except Exception as e:
-        # その他の予期しないエラー
-        log_error(
-            f"ERROR during Ragas evaluation for {model_name}: {type(e).__name__}: {e}"
-        )
-        log_error("Traceback:")
-        import traceback
-
-        traceback.print_exc(file=sys.stderr)
-        # エラー時は空のDataFrameを返す
-        error_df = pd.DataFrame(
-            {
-                "question": questions,
-                f"{model_name}_faithfulness_score": [None] * len(questions),
-            }
-        )
-        return error_df
-
-        # Return empty DataFrame with expected columns
-        error_df = pd.DataFrame(
-            {
-                f"{model_name}_faithfulness_score": [None] * len(questions),
-            }
-        )
-
-        return error_df
+        error_data: Dict[str, List[Any]] = {"question": questions}
+        for metric in metrics_to_run:
+            error_data[f"{model_name}_{metric}_score"] = [None] * len(questions)
+        return pd.DataFrame(error_data)
 
 
 def process_csv(
     input_file: str,
-    output_file: str = "ragas_evaluation_output.csv",
+    output_file: str = "output/ragas_evaluation_output.csv",
     limit_rows: Optional[int] = None,
     model_name: Optional[str] = None,
+    metric_names: Optional[List[str]] = None,
 ) -> None:
     """
     Main processing function that reads the input CSV, parses ReAct logs,
@@ -400,9 +419,11 @@ def process_csv(
         output_file: Path to the output CSV file
         limit_rows: Optional limit on number of rows to process
         model_name: Optional model name. If None, uses environment variable or default.
+        metric_names: List of Ragas metrics to compute (defaults to preset/CLI selection)
     """
     # Initialize Azure OpenAI for Ragas
     llm, client = initialize_azure_openai_for_ragas(model_name=model_name)
+    metrics_to_run = metric_names or DEFAULT_METRICS
 
     # Read input CSV
     log_info(f"\nReading input file: {input_file}")
@@ -515,6 +536,7 @@ def process_csv(
         contexts_list=model_a_contexts,
         llm=llm,
         model_name="Model_A",
+        metric_names=metrics_to_run,
     )
 
     # Evaluate Model B with Ragas
@@ -525,6 +547,7 @@ def process_csv(
         contexts_list=model_b_contexts,
         llm=llm,
         model_name="Model_B",
+        metric_names=metrics_to_run,
     )
 
     # Merge results back into main DataFrame
@@ -564,21 +587,25 @@ def process_csv(
     output_df = df[output_columns]
 
     # Save to CSV
-    output_df.to_csv(output_file, index=False)
+    output_path = Path(output_file)
+    if output_path.parent and output_path.parent != Path(""):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_df.to_csv(output_path, index=False)
 
     log_section("✓ EVALUATION COMPLETE!")
-    log_success(f"Results written to: {output_file}")
+    log_success(f"Results written to: {output_path}")
     log_success(f"Processed {len(output_df)} rows")
 
     # Print summary statistics
     log_section("SUMMARY STATISTICS")
 
-    for model_name, prefix in [("Model A", "Model_A_"), ("Model B", "Model_B_")]:
-        log_info(f"\n{model_name}:")
-        col_name = f"{prefix}faithfulness_score"
-        if col_name in output_df.columns:
-            mean_score = output_df[col_name].mean()
-            log_info(f"  faithfulness        : {mean_score:.4f}")
+    for display_name, prefix in [("Model A", "Model_A_"), ("Model B", "Model_B_")]:
+        log_info(f"\n{display_name}:")
+        for metric in metrics_to_run:
+            col_name = f"{prefix}{metric}_score"
+            if col_name in output_df.columns:
+                mean_score = output_df[col_name].mean()
+                log_info(f"  {metric:<18}: {mean_score:.4f}")
 
 
 def main():
@@ -628,11 +655,14 @@ Input Format:
     - Results separated by ################################################
     
 Output:
-    A CSV file (ragas_evaluation_output.csv by default) containing:
+    A CSV file (output/ragas_evaluation_output.csv by default) containing:
     - Original columns (Question, Model_A_Response, Model_B_Response)
     - Parsed columns (model_A_answer, model_A_contexts, etc.)
-    - Ragas scores for both models (no ground truth required):
+    - Ragas scores for both models (configurable via --metrics / --metrics-preset):
       * Model_A_faithfulness_score / Model_B_faithfulness_score
+      * Model_A_answer_relevance_score / Model_B_answer_relevance_score
+      * Model_A_context_precision_score / Model_B_context_precision_score
+      * Model_A_context_recall_score / Model_B_context_recall_score
         """,
     )
 
@@ -644,8 +674,8 @@ Output:
     parser.add_argument(
         "-o",
         "--output",
-        default="ragas_evaluation_output.csv",
-        help="Path to the output CSV file (default: ragas_evaluation_output.csv). Note: It's recommended to use output/ directory (e.g., output/ragas_evaluation_output.csv)",
+        default="output/ragas_evaluation_output.csv",
+        help="Path to the output CSV file (default: output/ragas_evaluation_output.csv)",
     )
 
     parser.add_argument(
@@ -662,6 +692,30 @@ Output:
         type=str,
         default=None,
         help=f"Model to use for evaluation (default: {DEFAULT_MODEL}). Supported models: {', '.join(SUPPORTED_MODELS)}",
+    )
+
+    parser.add_argument(
+        "--metrics",
+        nargs="+",
+        choices=sorted(AVAILABLE_METRICS.keys()),
+        default=None,
+        help=(
+            "List of Ragas metrics to compute. "
+            f"Choices: {', '.join(sorted(AVAILABLE_METRICS.keys()))}. "
+            f"Default: {', '.join(DEFAULT_METRICS)}"
+        ),
+    )
+
+    parser.add_argument(
+        "--metrics-preset",
+        choices=sorted(METRIC_PRESETS.keys()),
+        default=None,
+        help=(
+            "Preset of Ragas metrics to compute. "
+            "basic: faithfulness + answer_relevance. "
+            "extended: full metric set (default). "
+            "Ignored when --metrics is provided."
+        ),
     )
 
     parser.add_argument(
@@ -691,8 +745,19 @@ Output:
     if model_name:
         log_info(f"Using model: {model_name}")
 
+    if args.metrics and args.metrics_preset:
+        log_warning(
+            "--metrics overrides --metrics-preset; ignoring the preset selection."
+        )
+    selected_metrics = resolve_metrics(args.metrics, args.metrics_preset)
+    log_info(f"Using Ragas metrics: {', '.join(selected_metrics)}")
+
     process_csv(
-        args.input_csv, args.output, limit_rows=args.limit, model_name=model_name
+        args.input_csv,
+        args.output,
+        limit_rows=args.limit,
+        model_name=model_name,
+        metric_names=selected_metrics,
     )
 
 

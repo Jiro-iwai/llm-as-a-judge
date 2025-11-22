@@ -201,6 +201,38 @@ class TestPipelineOptions:
 
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
+    def test_pipeline_passes_ragas_metrics_preset(self, mock_exists, mock_subprocess_run):
+        """Test that --ragas-metrics-preset is forwarded to ragas evaluator"""
+        mock_exists.return_value = True
+
+        mock_subprocess_run.side_effect = [
+            Mock(returncode=0),  # collect_responses.py
+            Mock(returncode=0),  # ragas_llm_judge_evaluator.py
+            Mock(returncode=0),  # visualize_results.py
+        ]
+
+        from scripts.run_full_pipeline import main
+
+        with patch(
+            "sys.argv",
+            [
+                "scripts/run_full_pipeline.py",
+                "questions.txt",
+                "--evaluator",
+                "ragas",
+                "--ragas-metrics-preset",
+                "basic",
+            ],
+        ):
+            main()
+
+        evaluation_call = mock_subprocess_run.call_args_list[1][0][0]
+        assert "--metrics-preset" in evaluation_call
+        preset_index = evaluation_call.index("--metrics-preset")
+        assert evaluation_call[preset_index + 1] == "basic"
+
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
     def test_pipeline_with_limit(self, mock_exists, mock_subprocess_run):
         """Test that --limit option is passed correctly to evaluation script"""
         mock_exists.return_value = True
