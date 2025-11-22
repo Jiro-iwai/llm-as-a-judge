@@ -508,29 +508,21 @@ def evaluate_with_ragas(
         return pd.DataFrame(error_data)
 
 
-def process_csv(
-    input_file: str,
-    output_file: str = "output/ragas_evaluation_output.csv",
-    limit_rows: Optional[int] = None,
-    model_name: Optional[str] = None,
-    metric_names: Optional[List[str]] = None,
-) -> None:
+def read_and_validate_csv_ragas(input_file: str) -> pd.DataFrame:
     """
-    Main processing function that reads the input CSV, parses ReAct logs,
-    evaluates with Ragas, and writes results to output CSV.
+    Read and validate input CSV file for ragas_llm_judge_evaluator.
+
+    Supports Model_A_Full_Log/Model_B_Full_Log column names.
 
     Args:
         input_file: Path to the input CSV file
-        output_file: Path to the output CSV file
-        limit_rows: Optional limit on number of rows to process
-        model_name: Optional model name. If None, uses environment variable or default.
-        metric_names: List of Ragas metrics to compute (defaults to preset/CLI selection)
-    """
-    # Initialize Azure OpenAI for Ragas
-    llm, client, embeddings = initialize_azure_openai_for_ragas(model_name=model_name)
-    metrics_to_run = metric_names or DEFAULT_METRICS
 
-    # Read input CSV
+    Returns:
+        DataFrame with standardized column names
+
+    Raises:
+        SystemExit: If file cannot be read or validated
+    """
     log_info(f"\nReading input file: {input_file}")
     try:
         # Try to detect if there's a header row by reading first line
@@ -585,13 +577,39 @@ def process_csv(
         sys.exit(1)
 
     log_info(f"Loaded {len(df)} rows from input file.")
+    return df
 
-    # Apply row limit if specified
+
+def apply_row_limit_ragas(df: pd.DataFrame, limit_rows: Optional[int]) -> pd.DataFrame:
+    """
+    Apply row limit if specified (ragas_llm_judge_evaluator version).
+
+    Args:
+        df: Input DataFrame
+        limit_rows: Optional limit on number of rows to process
+
+    Returns:
+        DataFrame with row limit applied
+    """
     if limit_rows is not None and limit_rows < len(df):
         df = df.head(limit_rows)
         log_warning(f"LIMITING to first {limit_rows} rows for testing")
 
-    # Parse ReAct logs for both models
+    return df
+
+
+def parse_react_logs_for_both_models(
+    df: pd.DataFrame,
+) -> tuple[List[str], List[List[str]], List[str], List[List[str]]]:
+    """
+    Parse ReAct logs for both Model A and Model B.
+
+    Args:
+        df: DataFrame with Model_A_Response and Model_B_Response columns
+
+    Returns:
+        Tuple of (model_a_answers, model_a_contexts, model_b_answers, model_b_contexts)
+    """
     log_info("\nParsing ReAct logs...")
     model_a_answers = []
     model_a_contexts = []
@@ -625,14 +643,36 @@ def process_csv(
         model_b_answers.append(b_answer)
         model_b_contexts.append(b_contexts)
 
-    # Add parsed data to DataFrame
-    df["model_A_answer"] = model_a_answers
-    df["model_A_contexts"] = model_a_contexts
-    df["model_B_answer"] = model_b_answers
-    df["model_B_contexts"] = model_b_contexts
-
     log_success(f"Parsed {len(df)} ReAct logs for both models")
+    return model_a_answers, model_a_contexts, model_b_answers, model_b_contexts
 
+
+def evaluate_both_models_with_ragas(
+    df: pd.DataFrame,
+    model_a_answers: List[str],
+    model_a_contexts: List[List[str]],
+    model_b_answers: List[str],
+    model_b_contexts: List[List[str]],
+    llm: "AzureChatOpenAI",
+    metrics_to_run: List[str],
+    embeddings: Optional["AzureOpenAIEmbeddings"],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Evaluate both Model A and Model B with Ragas.
+
+    Args:
+        df: DataFrame with questions
+        model_a_answers: List of answers for Model A
+        model_a_contexts: List of contexts for Model A
+        model_b_answers: List of answers for Model B
+        model_b_contexts: List of contexts for Model B
+        llm: AzureChatOpenAI instance
+        metrics_to_run: List of metric names to compute
+        embeddings: AzureOpenAIEmbeddings instance
+
+    Returns:
+        Tuple of (model_a_results, model_b_results) DataFrames
+    """
     # Evaluate Model A with Ragas
     log_section("EVALUATING MODEL A")
     model_a_results = evaluate_with_ragas(
@@ -657,12 +697,49 @@ def process_csv(
         embeddings=embeddings,
     )
 
-    # Merge results back into main DataFrame
-    # Only merge the score columns (not the duplicated question/answer/contexts columns)
     # model_a_results and model_b_results are guaranteed to be DataFrames (not None)
     assert model_a_results is not None, "Model A evaluation failed"
     assert model_b_results is not None, "Model B evaluation failed"
 
+    return model_a_results, model_b_results
+
+
+def merge_ragas_results_and_write(
+    df: pd.DataFrame,
+    model_a_results: pd.DataFrame,
+    model_b_results: pd.DataFrame,
+    model_a_answers: List[str],
+    model_a_contexts: List[List[str]],
+    model_b_answers: List[str],
+    model_b_contexts: List[List[str]],
+    metrics_to_run: List[str],
+    output_file: str,
+) -> pd.DataFrame:
+    """
+    Merge Ragas evaluation results and write to CSV file.
+
+    Args:
+        df: Original DataFrame
+        model_a_results: DataFrame with Model A evaluation results
+        model_b_results: DataFrame with Model B evaluation results
+        model_a_answers: List of answers for Model A
+        model_a_contexts: List of contexts for Model A
+        model_b_answers: List of answers for Model B
+        model_b_contexts: List of contexts for Model B
+        metrics_to_run: List of metric names
+        output_file: Path to output CSV file
+
+    Returns:
+        Output DataFrame
+    """
+    # Add parsed data to DataFrame
+    df["model_A_answer"] = model_a_answers
+    df["model_A_contexts"] = model_a_contexts
+    df["model_B_answer"] = model_b_answers
+    df["model_B_contexts"] = model_b_contexts
+
+    # Merge results back into main DataFrame
+    # Only merge the score columns (not the duplicated question/answer/contexts columns)
     score_columns_a = [
         col for col in model_a_results.columns if col.startswith("Model_A_")
     ]
@@ -713,6 +790,69 @@ def process_csv(
             if col_name in output_df.columns:
                 mean_score = output_df[col_name].mean()
                 log_info(f"  {metric:<18}: {mean_score:.4f}")
+
+    return output_df
+
+
+def process_csv(
+    input_file: str,
+    output_file: str = "output/ragas_evaluation_output.csv",
+    limit_rows: Optional[int] = None,
+    model_name: Optional[str] = None,
+    metric_names: Optional[List[str]] = None,
+) -> None:
+    """
+    Main processing function that reads the input CSV, parses ReAct logs,
+    evaluates with Ragas, and writes results to output CSV.
+
+    Args:
+        input_file: Path to the input CSV file
+        output_file: Path to the output CSV file
+        limit_rows: Optional limit on number of rows to process
+        model_name: Optional model name. If None, uses environment variable or default.
+        metric_names: List of Ragas metrics to compute (defaults to preset/CLI selection)
+    """
+    # Initialize Azure OpenAI for Ragas
+    llm, client, embeddings = initialize_azure_openai_for_ragas(model_name=model_name)
+    metrics_to_run: List[str] = (
+        list(metric_names) if metric_names else list(DEFAULT_METRICS)
+    )
+
+    # Read and validate CSV
+    df = read_and_validate_csv_ragas(input_file)
+
+    # Apply row limit if specified
+    df = apply_row_limit_ragas(df, limit_rows)
+
+    # Parse ReAct logs for both models
+    model_a_answers, model_a_contexts, model_b_answers, model_b_contexts = (
+        parse_react_logs_for_both_models(df)
+    )
+
+    # Evaluate both models with Ragas
+    model_a_results, model_b_results = evaluate_both_models_with_ragas(
+        df,
+        model_a_answers,
+        model_a_contexts,
+        model_b_answers,
+        model_b_contexts,
+        llm,
+        metrics_to_run,
+        embeddings,
+    )
+
+    # Merge results and write to CSV
+    merge_ragas_results_and_write(
+        df,
+        model_a_results,
+        model_b_results,
+        model_a_answers,
+        model_a_contexts,
+        model_b_answers,
+        model_b_contexts,
+        metrics_to_run,
+        output_file,
+    )
 
 
 def main():

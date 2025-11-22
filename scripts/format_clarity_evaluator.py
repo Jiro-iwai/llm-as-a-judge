@@ -630,7 +630,9 @@ def process_csv(
     df = read_and_validate_csv_format_clarity(input_file)
 
     # Apply row limit and confirm if needed
-    df = apply_row_limit_and_confirm_format_clarity(df, limit_rows, model_name, non_interactive)
+    df = apply_row_limit_and_confirm_format_clarity(
+        df, limit_rows, model_name, non_interactive
+    )
 
     # Process each row with progress bar
     log_info("\nParsing logs and evaluating format similarity...")
@@ -642,7 +644,9 @@ def process_csv(
         results.append(result_row)
 
     # Write results to CSV
-    write_results_to_csv_format_clarity(results, output_file, FORMAT_CLARITY_OUTPUT_COLUMNS)
+    write_results_to_csv_format_clarity(
+        results, output_file, FORMAT_CLARITY_OUTPUT_COLUMNS
+    )
 
 
 def main():
