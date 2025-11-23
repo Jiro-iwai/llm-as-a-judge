@@ -101,8 +101,8 @@ AZURE_OPENAI_API_VERSION=2024-08-01-preview
 
 # Ragas評価用のEmbeddings設定（必須）
 # チャットモデル（gpt-4.1など）はEmbeddings操作に使用できないため、別途Embeddingsデプロイメントが必要です
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312  # あなたのEmbeddingsデプロイメント名に置き換えてください
-AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312  # モデル名（デフォルト: text-embedding-3-large-20240312、オプション）
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002  # あなたのEmbeddingsデプロイメント名に置き換えてください
+# AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002  # モデル名（オプション、通常は設定不要）
 ```
 
 **Standard OpenAI の場合：**
@@ -679,13 +679,20 @@ Ragas評価では、内部的にEmbeddingsモデルを使用します。**チャ
 
 - **`AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`**: Embeddings用のデプロイメント名（**必須**）
   - Azure OpenAIリソースで作成したEmbeddingsデプロイメント名を指定してください
-  - 例: `text-embedding-3-large-20240312`
-- **`AZURE_OPENAI_EMBEDDING_MODEL_NAME`**: Embeddingsモデル名（オプション、デフォルト: `text-embedding-3-large-20240312`）
+  - 例: `text-embedding-ada-002` または `your-embedding-deployment-name`
+- **`AZURE_OPENAI_EMBEDDING_MODEL_NAME`**: Embeddingsモデル名（**オプション**）
+  - 通常は設定不要です。デプロイメント名とモデル名が異なる場合のみ設定してください
+  - 未設定の場合、デプロイメント名がモデル名として使用されます
 
-`.env`ファイルに追加する例：
+`.env`ファイルに追加する例（最小構成）：
 ```env
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312
-AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002
+```
+
+デプロイメント名とモデル名が異なる場合のみ、両方を設定：
+```env
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=your-embedding-deployment-name
+AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002
 ```
 
 **重要**: `AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`が`.env`ファイルに設定されていない場合、スクリプトはエラーで終了します。

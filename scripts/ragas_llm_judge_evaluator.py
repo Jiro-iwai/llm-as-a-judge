@@ -271,18 +271,17 @@ def initialize_azure_openai_for_ragas(
             "Chat models (like gpt-4.1) cannot be used for embeddings operations."
         )
         log_error("\nPlease set the following environment variable in your .env file:")
-        log_error(
-            "  AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312"
-        )
+        log_error("  AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002")
         log_error("  # Replace with your actual embedding deployment name")
         log_error("\nOptional:")
-        log_error("  AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312")
+        log_error("  AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002")
         sys.exit(1)
 
-    # Embedding model name (e.g., text-embedding-3-large-20240312)
-    embedding_model_name = os.getenv(
-        "AZURE_OPENAI_EMBEDDING_MODEL_NAME", "text-embedding-3-large-20240312"
-    )
+    # Embedding model name (optional, defaults to deployment name if not set)
+    embedding_model_name = os.getenv("AZURE_OPENAI_EMBEDDING_MODEL_NAME")
+    if not embedding_model_name:
+        # If not set, use deployment name as model name (common case)
+        embedding_model_name = embedding_deployment
 
     if not azure_endpoint or not azure_api_key:
         log_error("Azure OpenAI credentials not found.")
@@ -296,11 +295,9 @@ def initialize_azure_openai_for_ragas(
         )
         log_error("\nOptional (for Ragas embeddings):")
         log_error(
-            "  export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-3-large'"
+            "  export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-ada-002'"
         )
-        log_error(
-            "  export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-3-large-20240312'"
-        )
+        log_error("  export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-ada-002'")
         sys.exit(1)
 
     log_info("Initializing Azure OpenAI for Ragas evaluation")
@@ -888,13 +885,13 @@ Setup:
        export AZURE_OPENAI_API_VERSION='2024-08-01-preview'  # optional
        
        # REQUIRED for Ragas evaluation (chat models cannot be used for embeddings):
-       export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-3-large-20240312'
-       # Optional (defaults to text-embedding-3-large-20240312):
-       export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-3-large-20240312'
+       export AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME='text-embedding-ada-002'
+       # Optional (defaults to deployment name if not set):
+       export AZURE_OPENAI_EMBEDDING_MODEL_NAME='text-embedding-ada-002'
        
        # Or add to .env file:
-       # AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-3-large-20240312
-       # AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large-20240312
+       # AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002
+       # AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-ada-002  # Optional
        
     4. Run the script:
        python scripts/ragas_llm_judge_evaluator.py input.csv -m gpt-4.1  # Use -m to specify model
