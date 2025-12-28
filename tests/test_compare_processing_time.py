@@ -23,9 +23,9 @@ class TestExtractProcessingTimes:
 
     def test_extract_processing_times_success(self):
         """Test successful extraction of processing times"""
-        log_content = """📥 [claude3.5-sonnet] HTTPステータス: 200 (経過時間: 10.5秒)
+        log_content = """📥 [claude4.5-sonnet] HTTPステータス: 200 (経過時間: 10.5秒)
 📥 [claude4.5-haiku] HTTPステータス: 200 (経過時間: 8.3秒)
-📥 [claude3.5-sonnet] HTTPステータス: 200 (経過時間: 12.1秒)
+📥 [claude4.5-sonnet] HTTPステータス: 200 (経過時間: 12.1秒)
 📥 [claude4.5-haiku] HTTPステータス: 200 (経過時間: 9.2秒)"""
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
@@ -50,9 +50,9 @@ class TestExtractProcessingTimes:
 
     def test_extract_processing_times_mismatched_counts(self):
         """Test handling mismatched data counts"""
-        log_content = """📥 [claude3.5-sonnet] HTTPステータス: 200 (経過時間: 10.5秒)
+        log_content = """📥 [claude4.5-sonnet] HTTPステータス: 200 (経過時間: 10.5秒)
 📥 [claude4.5-haiku] HTTPステータス: 200 (経過時間: 8.3秒)
-📥 [claude3.5-sonnet] HTTPステータス: 200 (経過時間: 12.1秒)"""
+📥 [claude4.5-sonnet] HTTPステータス: 200 (経過時間: 12.1秒)"""
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
             f.write(log_content)

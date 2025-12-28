@@ -110,7 +110,7 @@ def extract_processing_times(
     # 質問番号を生成
     question_numbers = list(range(1, len(model_a_times) + 1))
 
-    display_a = model_a_name or "claude3.5-sonnet"
+    display_a = model_a_name or "claude4.5-sonnet"
     display_b = model_b_name or "claude4.5-haiku"
     log_success(f"Model A ({display_a}) の処理時間: {len(model_a_times)}件")
     log_success(f"Model B ({display_b}) の処理時間: {len(model_b_times)}件")
@@ -154,7 +154,7 @@ def create_comparison_chart(
         [i - width / 2 for i in x],
         model_a_times,
         width,
-        label="Model A (claude3.5-sonnet)",
+        label="Model A (claude4.5-sonnet)",
         alpha=0.8,
         color="#3498db",
     )
@@ -216,7 +216,7 @@ def create_statistics_chart(
     avg_a = sum(model_a_times) / len(model_a_times)
     avg_b = sum(model_b_times) / len(model_b_times)
     bars = ax1.bar(
-        ["Model A\n(claude3.5-sonnet)", "Model B\n(claude4.5-haiku)"],
+        ["Model A\n(claude4.5-sonnet)", "Model B\n(claude4.5-haiku)"],
         [avg_a, avg_b],
         color=["#3498db", "#e74c3c"],
         alpha=0.8,
@@ -364,7 +364,7 @@ def create_summary_table(
         f.write("統計情報\n")
         f.write("=" * 70 + "\n\n")
 
-        f.write("Model A (claude3.5-sonnet):\n")
+        f.write("Model A (claude4.5-sonnet):\n")
         f.write(f"  平均: {df['Model_A_Time'].mean():.2f}秒\n")
         f.write(f"  最小: {df['Model_A_Time'].min():.2f}秒\n")
         f.write(f"  最大: {df['Model_A_Time'].max():.2f}秒\n")
@@ -423,7 +423,7 @@ def main():
     python scripts/compare_processing_time.py output/processing_time_log.txt
     
     # モデル名を指定（動的パターン生成）
-    python scripts/compare_processing_time.py output/processing_time_log.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+    python scripts/compare_processing_time.py output/processing_time_log.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku
 
 入力ファイル形式:
     処理時間ログファイルには以下の形式の行が含まれている必要があります:

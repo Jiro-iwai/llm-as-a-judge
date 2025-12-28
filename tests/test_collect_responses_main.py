@@ -67,7 +67,7 @@ class TestLogProcessingTimeEntry:
         log_file.write_text("# Header\n")
 
         log_processing_time_entry(
-            "claude3.5-sonnet",
+            "claude4.5-sonnet",
             1.23,
             str(log_file),
             question_number=1,
@@ -75,7 +75,7 @@ class TestLogProcessingTimeEntry:
         )
 
         content = log_file.read_text()
-        assert "📥 [claude3.5-sonnet]" in content
+        assert "📥 [claude4.5-sonnet]" in content
         assert "Model A" in content
         assert "質問1" in content
         assert "1.23秒" in content

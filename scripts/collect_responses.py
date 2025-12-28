@@ -2,7 +2,7 @@
 """
 LLM Response Collector Script
 
-This script collects responses from the LLM API for two models (claude3.5-sonnet and claude4.5-haiku)
+This script collects responses from the LLM API for two models (claude4.5-sonnet and claude4.5-haiku)
 and creates a CSV file suitable for evaluation.
 
 Usage:
@@ -149,7 +149,7 @@ def call_api(
     Args:
         question: The question to ask
         api_url: The API endpoint URL
-        model_name: The model name (claude3.5-sonnet or claude4.5-haiku)
+        model_name: The model name (claude4.5-sonnet or claude4.5-haiku)
         identity: The x-amzn-oidc-identity header value (defaults to config value)
         timeout: Request timeout in seconds (defaults to config value)
         verbose: Whether to print detailed logs
@@ -298,7 +298,7 @@ def collect_responses(
     Args:
         questions: List of questions to ask
         api_url: The API endpoint URL
-        model_a: Model name for Model A (e.g., claude3.5-sonnet)
+        model_a: Model name for Model A (e.g., claude4.5-sonnet)
         model_b: Model name for Model B (e.g., claude4.5-haiku)
         identity: The x-amzn-oidc-identity header value (defaults to config value)
         timeout: Request timeout in seconds (defaults to config value)
@@ -797,7 +797,7 @@ Examples:
     python scripts/collect_responses.py examples/questions.txt --api-url http://localhost:8080/api/v1/urls -o output/responses.csv
     
     # Use custom models
-    python scripts/collect_responses.py examples/questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku -o output/responses.csv
+    python scripts/collect_responses.py examples/questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku -o output/responses.csv
     
     # Use custom identity
     python scripts/collect_responses.py examples/questions.txt --identity YOUR_IDENTITY -o output/responses.csv
@@ -839,8 +839,8 @@ Input file format:
 
     parser.add_argument(
         "--model-a",
-        default="claude3.5-sonnet",
-        help="Model name for Model A (default: claude3.5-sonnet)",
+        default="claude4.5-sonnet",
+        help="Model name for Model A (default: claude4.5-sonnet)",
     )
 
     parser.add_argument(
