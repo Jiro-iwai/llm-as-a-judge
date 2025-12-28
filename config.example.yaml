@@ -37,6 +37,6 @@ output_files:
 # Regex patterns for processing time extraction
 # Used by compare_processing_time.py to extract processing times from log files
 regex_patterns:
-  model_a_pattern: "📥 \\[claude3\\.5-sonnet\\].*?経過時間: ([\\d.]+)秒"
+  model_a_pattern: "📥 \\[claude4\\.5-sonnet\\].*?経過時間: ([\\d.]+)秒"
   model_b_pattern: "📥 \\[claude4\\.5-haiku\\].*?経過時間: ([\\d.]+)秒"
 

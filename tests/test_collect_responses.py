@@ -233,7 +233,7 @@ class TestCallApi:
         result = call_api(
             "Test question",
             "http://example.com/api",
-            "claude3.5-sonnet",
+            "claude4.5-sonnet",
             time_log_path=str(log_file),
             question_number=2,
             model_label="Model A",
@@ -243,7 +243,7 @@ class TestCallApi:
         assert result == "Logged answer"
         assert log_file.exists()
         content = log_file.read_text(encoding="utf-8")
-        assert "claude3.5-sonnet" in content
+        assert "claude4.5-sonnet" in content
         assert "質問2" in content
         assert "Model A" in content
         assert "経過時間" in content
@@ -356,7 +356,7 @@ class TestCollectResponsesIntegration:
         df = collect_responses(
             questions=["Q1", "Q2"],
             api_url="http://example.com/api",
-            model_a="claude3.5-sonnet",
+            model_a="claude4.5-sonnet",
             model_b="claude4.5-haiku",
             time_log_path=str(log_file),
             verbose=False,
@@ -367,7 +367,7 @@ class TestCollectResponsesIntegration:
         assert mock_call_api.call_count == 4  # two models per question
         mock_generate_reports.assert_called_once_with(
             str(log_file),
-            model_a_name="claude3.5-sonnet",
+            model_a_name="claude4.5-sonnet",
             model_b_name="claude4.5-haiku",
         )
 

@@ -72,7 +72,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "processing_time_log": "output/processing_time_log.txt",
     },
     "regex_patterns": {
-        "model_a_pattern": r"📥 \[claude3\.5-sonnet\].*?経過時間: ([\d.]+)秒",
+        "model_a_pattern": r"📥 \[claude4\.5-sonnet\].*?経過時間: ([\d.]+)秒",
         "model_b_pattern": r"📥 \[claude4\.5-haiku\].*?経過時間: ([\d.]+)秒",
     },
 }

@@ -903,7 +903,7 @@ python scripts/collect_responses.py examples/questions.txt -o responses.csv
 python scripts/collect_responses.py examples/questions.txt --api-url http://localhost:8080/api/v1/urls
 
 # カスタムモデルを指定
-python scripts/collect_responses.py examples/questions.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+python scripts/collect_responses.py examples/questions.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku
 
 # カスタムidentity、timeout、delayを指定（デフォルト値は設定ファイルまたは環境変数から読み込まれます）
 python scripts/collect_responses.py examples/questions.txt --identity YOUR_IDENTITY --timeout 150 --delay 2.5
@@ -977,7 +977,7 @@ python scripts/compare_processing_time.py
 python scripts/compare_processing_time.py output/processing_time_log.txt
 
 # モデル名を指定して動的パターン生成を使用
-python scripts/compare_processing_time.py output/processing_time_log.txt --model-a claude3.5-sonnet --model-b claude4.5-haiku
+python scripts/compare_processing_time.py output/processing_time_log.txt --model-a claude4.5-sonnet --model-b claude4.5-haiku
 ```
 
 **コマンドラインオプション：**
@@ -1006,7 +1006,7 @@ python scripts/compare_processing_time.py output/processing_time_log.txt --model
 ログファイルには、以下のような形式で処理時間情報が含まれている必要があります：
 
 ```
-📥 [claude3.5-sonnet] ... 経過時間: 12.34秒
+📥 [claude4.5-sonnet] ... 経過時間: 12.34秒
 📥 [claude4.5-haiku] ... 経過時間: 8.90秒
 ```
 

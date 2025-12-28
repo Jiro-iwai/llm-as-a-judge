@@ -67,7 +67,7 @@ def run_collect_step(
     Args:
         questions_file: Path to questions file
         output_file: Output CSV file path
-        model_a: Model A name (optional, defaults to claude3.5-sonnet)
+        model_a: Model A name (optional, defaults to claude4.5-sonnet)
         model_b: Model B name (optional, defaults to claude4.5-haiku)
         api_url: API URL (optional)
         **kwargs: Additional arguments to pass to collect_responses.py
@@ -77,7 +77,7 @@ def run_collect_step(
         Returns the actual model names used (defaults if not specified)
     """
     # Default model names (matching collect_responses.py defaults)
-    DEFAULT_MODEL_A = "claude3.5-sonnet"
+    DEFAULT_MODEL_A = "claude4.5-sonnet"
     DEFAULT_MODEL_B = "claude4.5-haiku"
 
     actual_model_a = model_a or DEFAULT_MODEL_A
@@ -479,7 +479,7 @@ Examples:
             sys.exit(1)
         # If skip_collect and model names not specified, use defaults
         if not actual_model_a:
-            actual_model_a = "claude3.5-sonnet"
+            actual_model_a = "claude4.5-sonnet"
         if not actual_model_b:
             actual_model_b = "claude4.5-haiku"
 
